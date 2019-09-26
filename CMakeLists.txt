@@ -17,7 +17,7 @@ project(gazebosc)
 
 set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
-set(DEP_IMNODES_DIR "~/src/ImNodes")
+set(DEP_IMNODES_DIR ".")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED sdl2)
@@ -40,6 +40,9 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
 endif ()
 
 if (UNIX)
+    link_directories(
+        /usr/local/lib/
+    )
     add_executable(gazebosc 
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/example_sdl_opengl3/main.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.cpp
@@ -73,7 +76,11 @@ if (UNIX)
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
         ${DEP_IMNODES_DIR}
     )
-    target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl -lGL)
+    if (APPLE)
+        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation")
+    else()
+        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl -lGL)
+    endif()
     target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER})
     target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 endif ()
