@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include "RtMidi.h"
 #include <imgui.h>
+#include <czmq.h>
 
 struct MidiNode : GNode
 {
@@ -93,16 +94,22 @@ struct MidiNode : GNode
         static int nBytes, i;
         static std::vector<unsigned char> message;
         
-        stamp = midiin->getMessage( &message );
-        nBytes = message.size();
-        
-        if ( nBytes > 0 ) {
-            for ( i=0; i<nBytes; i++ )
-                printf( "Byte %i = %i, stamp = %f \n", i, (int)message[i], stamp );
-            //TODO: Create zmsg_t with byte data
+        if ( midiin->isPortOpen() ) {
             
+            stamp = midiin->getMessage( &message );
+            nBytes = message.size();
+            
+            if ( nBytes > 0 ) {
+                //TODO: Create zmsg_t with byte data
+                zmsg_t *msg = zmsg_new();
+                for ( i=0; i<nBytes; i++ ) {
+                    zmsg_addstrf(msg, "%i", message[i]);
+                }
+                zmsg_addstrf(msg, "%f", stamp);
+                
+                return msg;
+            }
         }
-        
         return nullptr;
     }
     
@@ -136,17 +143,52 @@ struct CountNode : GNode
     using GNode::GNode;
 
     int count = 0;
+    
+    explicit CountNode() : GNode(   "Count",
+                                 { {"OSC", NodeSlotOSC} },    //Input slots
+                                 { {"OSC", NodeSlotOSC} } )// Output slots
+    {
+        
+    }
 
     virtual zmsg_t *Update(sphactor_event_t *ev, void*args)
     {
-        //TODO: Print whatever OSC we received...
+        if ( ev->msg != NULL ) {
+            count += 1;
+        }
         
+        //send whatever we received to our output
+        return ev->msg;
+    }
+    
+    virtual void RenderUI() {
+        ImGui::Text("Count: %i", count);
+    }
+};
+
+struct LogNode : GNode
+{
+    explicit LogNode() : GNode(   "Log",
+                                 { {"OSC", NodeSlotOSC} },    //Input slot
+                                 { } )// Output slotss
+    {
         
-        count += 1;
-        zframe_t *f = zframe_new(&count, sizeof(int));
-        zmsg_t* ret = zmsg_new();
-        zmsg_add(ret, f);
-        return ret;
+    }
+    
+    virtual zmsg_t *Update(sphactor_event_t *ev, void*args)
+    {
+        static char* str;
+        if ( ev->msg != NULL ) {
+            printf("LogMsg: \n");
+            do {
+                str = zmsg_popstr(ev->msg);
+                printf("  %s \n", str);
+            } while ( str != NULL );
+        }
+        
+        //TODO: Clean up the message
+        
+        return NULL;
     }
 };
 

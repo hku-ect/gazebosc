@@ -36,26 +36,12 @@
 //TODO: generate this?
 // we probably need to dynamically define inputs and outputs based on nodes written by ourselves/others...
 std::map<std::string, GNode*(*)()> available_nodes{
-    //Compose Node
-    {"Compose", []() -> GNode* { return new GNode("Compose", {
-        {"Position", NodeSlotPosition}, {"Rotation", NodeSlotRotation}  // Input slots
-    }, {
-        {"Matrix", NodeSlotMatrix}                                      // Output slots
-    }); }},
-    //Decompose Node
-    {"Decompose", []() -> GNode* { return new GNode("Decompose", {
-        {"Matrix", NodeSlotMatrix}                                      // Input slots
-    }, {
-        {"Position", NodeSlotPosition}, {"Rotation", NodeSlotRotation}  // Output slots
-    }); }},
     //Count Node
-    {"Count", []() -> GNode* { return new CountNode("Count", {
-        {"In", NodeSlotAny}                                      // Input slots
-    }, {
-        {"Count", NodeSlotInt}  // Output slots
-    }); }},
+    {"Count", []() -> GNode* { return new CountNode(); } },
     //Midi Node
-    {"Midi", []() -> GNode* { return new MidiNode(); } }
+    {"Midi", []() -> GNode* { return new MidiNode(); } },
+    //Midi Node
+    {"Log", []() -> GNode* { return new LogNode(); } }
 };
 std::vector<GNode*> nodes;
 
@@ -101,8 +87,8 @@ namespace ImGui
                         assert(new_connection.output_node);
                         ((GNode*) new_connection.input_node)->connections.push_back(new_connection);
                         ((GNode*) new_connection.output_node)->connections.push_back(new_connection);
-                        sphactor_connect( ((GNode*) new_connection.output_node)->actor,
-                                          sphactor_endpoint( ((GNode*) new_connection.input_node)->actor ) );
+                        sphactor_connect( ((GNode*) new_connection.input_node)->actor,
+                                          sphactor_endpoint( ((GNode*) new_connection.output_node)->actor ) );
                     }
 
                     // Render output connections of this node
