@@ -36,33 +36,43 @@
 //TODO: generate this?
 // we probably need to dynamically define inputs and outputs based on nodes written by ourselves/others...
 std::map<std::string, GNode*(*)()> available_nodes{
+    //Compose Node
     {"Compose", []() -> GNode* { return new GNode("Compose", {
         {"Position", NodeSlotPosition}, {"Rotation", NodeSlotRotation}  // Input slots
     }, {
         {"Matrix", NodeSlotMatrix}                                      // Output slots
     }); }},
+    //Decompose Node
     {"Decompose", []() -> GNode* { return new GNode("Decompose", {
         {"Matrix", NodeSlotMatrix}                                      // Input slots
     }, {
         {"Position", NodeSlotPosition}, {"Rotation", NodeSlotRotation}  // Output slots
     }); }},
-    {"Count", []() -> GNode* { return new CountNode("Decompose", {
-        {"Matrix", NodeSlotMatrix}                                      // Input slots
+    //Count Node
+    {"Count", []() -> GNode* { return new CountNode("Count", {
+        {"In", NodeSlotAny}                                      // Input slots
     }, {
-        {"Position", NodeSlotPosition}, {"Rotation", NodeSlotRotation}  // Output slots
-    }); }}
+        {"Count", NodeSlotInt}  // Output slots
+    }); }},
+    //Midi Node
+    {"Midi", []() -> GNode* { return new MidiNode(); } }
 };
 std::vector<GNode*> nodes;
 
 namespace ImGui
 {
-    void ShowDemoWindow(bool*)
+    //TODO: refactor into our own full-screen background editor
+    void ShowDemoWindow(bool*, ImVec2 size)
     {
         // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
         static ImNodes::CanvasState canvas{};
-
+        
         //const ImGuiStyle& style = ImGui::GetStyle();
-        if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+        
+        ImGui::SetNextWindowPos(ImVec2(0,0));
+        ImGui::SetNextWindowSize(size);
+        
+        if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
         {
             // We probably need to keep some state, like positions of nodes/slots for rendering connections.
             ImNodes::BeginCanvas(&canvas);
@@ -77,7 +87,7 @@ namespace ImGui
                     ImNodes::Ez::InputSlots(node->input_slots.data(), node->input_slots.size());
 
                     // Custom node content may go here
-                    ImGui::Text("Content of %s", node->title);
+                    node->RenderUI();
 
                     // Render output nodes first (order is important)
                     ImNodes::Ez::OutputSlots(node->output_slots.data(), node->output_slots.size());
@@ -120,7 +130,7 @@ namespace ImGui
                 // Node rendering is done. This call will render node background based on size of content inside node.
                 ImNodes::Ez::EndNode();
 
-                if (node->selected && ImGui::IsKeyPressedMap(ImGuiKey_Delete))
+                if (node->selected && ImGui::IsKeyPressedMap(ImGuiKey_Backspace))
                 {
                     for (auto& connection : node->connections)
                     {

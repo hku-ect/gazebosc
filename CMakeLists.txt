@@ -65,7 +65,15 @@ if (UNIX)
         ${DEP_IMNODES_DIR}/ImNodes.cpp
         ${DEP_IMNODES_DIR}/ImNodesEz.h
         ${DEP_IMNODES_DIR}/ImNodesEz.cpp
+
+	RtMidi.h
+        RtMidi.cpp
+	rtmidi_c.h
+        rtmidi_c.cpp
+	
         sample.cpp
+	TestNodes.h
+	GNode.h
     )
     target_include_directories(gazebosc PUBLIC
         ${SDL2_INCLUDE_DIRS}
@@ -77,7 +85,8 @@ if (UNIX)
         ${DEP_IMNODES_DIR}
     )
     if (APPLE)
-        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation")
+        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
+	add_definitions(-D__MACOSX_CORE__)
     else()
         target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl -lGL)
     endif()

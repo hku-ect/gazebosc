@@ -36,9 +36,12 @@ struct Connection
 
 enum GNodeSlotTypes
 {
-    NodeSlotPosition = 1,   // ID can not be 0
+    NodeSlotAny = 1,    // ID can not be 0
+    NodeSlotPosition,
     NodeSlotRotation,
     NodeSlotMatrix,
+    NodeSlotInt,
+    NodeSlotOSC
 };
 
 /// A structure holding node state.
@@ -104,6 +107,10 @@ struct GNode
     virtual zmsg_t *Timer()
     {
         return nullptr;
+    }
+    
+    virtual void RenderUI() {
+        
     }
 };
 
