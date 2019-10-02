@@ -88,7 +88,7 @@ struct MidiNode : GNode
         }
     }
     
-    virtual zmsg_t *Update(sphactor_event_t *ev, void*args)
+    virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
     {
         static double stamp;
         static int nBytes, i;
@@ -151,7 +151,7 @@ struct CountNode : GNode
         
     }
 
-    virtual zmsg_t *Update(sphactor_event_t *ev, void*args)
+    virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
     {
         if ( ev->msg != NULL ) {
             count += 1;
@@ -175,7 +175,7 @@ struct LogNode : GNode
         
     }
     
-    virtual zmsg_t *Update(sphactor_event_t *ev, void*args)
+    virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
     {
         static char* str;
         if ( ev->msg != NULL ) {
