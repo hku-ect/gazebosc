@@ -86,7 +86,7 @@ if (UNIX)
         ${DEP_IMNODES_DIR}
     )
     if (APPLE)
-        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
+        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
 	add_definitions(-D__MACOSX_CORE__)
     else()
         target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl -lGL)

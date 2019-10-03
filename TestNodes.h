@@ -12,6 +12,7 @@
 #include "RtMidi.h"
 #include <imgui.h>
 #include <czmq.h>
+#include <lo/lo_cpp.h>
 
 struct MidiNode : GNode
 {
@@ -90,26 +91,47 @@ struct MidiNode : GNode
     
     virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
     {
+        static char* msgBuffer = new char[1024];
         static double stamp;
         static int nBytes, i;
         static std::vector<unsigned char> message;
         
-        if ( midiin->isPortOpen() ) {
+        if ( midiin && midiin->isPortOpen() ) {
+            zmsg_t *msg = nullptr;
             
-            stamp = midiin->getMessage( &message );
-            nBytes = message.size();
-            
-            if ( nBytes > 0 ) {
-                //TODO: Create zmsg_t with byte data
-                zmsg_t *msg = zmsg_new();
-                for ( i=0; i<nBytes; i++ ) {
-                    zmsg_addstrf(msg, "%i", message[i]);
-                }
-                zmsg_addstrf(msg, "%f", stamp);
+            do {
+                stamp = midiin->getMessage( &message );
+                nBytes = message.size();
                 
-                return msg;
-            }
+                if ( nBytes > 0 ) {
+                    //manually read the three bytes
+                    byte b1 = message[0];
+                    int channel = b1 & 0x0F;
+                    int index = (int)message[1];
+                    int value = (int)message[2];
+                    
+                    char *address = new char[64];
+                    sprintf(address, "/%s/%i/event", portNames[midiPort].c_str(), channel);
+                    
+                    lo_message lo = lo_message_new();
+                    lo_message_add_int32(lo, index);
+                    lo_message_add_int32(lo, value);
+                    size_t len = sizeof(msgBuffer);
+                    lo_message_serialise(lo, address, msgBuffer, &len);
+                    lo_message_free(lo);
+                    
+                    if ( msg == NULL ) {
+                        msg = zmsg_new();
+                    }
+                    
+                    zframe_t *frame = zframe_new(msgBuffer, len);
+                    zmsg_append(msg, &frame);
+                }
+            } while ( nBytes > 0 );
+
+            return msg;
         }
+        
         return nullptr;
     }
     
@@ -177,13 +199,47 @@ struct LogNode : GNode
     
     virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
     {
-        static char* str;
+        static byte *msgBuffer = new byte[1024];
+        static zframe_t* frame;
         if ( ev->msg != NULL ) {
-            printf("LogMsg: \n");
+            printf("Log: \n");
             do {
-                str = zmsg_popstr(ev->msg);
-                printf("  %s \n", str);
-            } while ( str != NULL );
+                frame = zmsg_pop(ev->msg);
+                if ( frame ) {
+                    // get byte array for frame
+                    msgBuffer = zframe_data(frame);
+                    size_t len = zframe_size(frame);
+                    
+                    // convert to osc message
+                    int result;
+                    lo_message lo = lo_message_deserialise(msgBuffer, len, &result);
+                    assert( result == 0 );
+                    
+                    // first part of bytes is the osc address
+                    printf(" %s \n", msgBuffer);
+                    
+                    // parse individual arguments
+                    int count = lo_message_get_argc(lo);
+                    char *types = lo_message_get_types(lo);
+                    lo_arg **argv = lo_message_get_argv(lo);
+                    for ( int i = 0; i < count; ++i ) {
+                        switch(types[i]) {
+                            case 'i':
+                                printf("  Int: %i \n", argv[i]->i);
+                                break;
+                            case 'f':
+                                printf("  Float: %f \n", argv[i]->f);
+                                break;
+                            default:
+                                printf("  Unhandled type: %c \n", types[i]);
+                                break;
+                        }
+                    }
+                    
+                    //free message
+                    lo_message_free(lo);
+                }
+            } while ( frame != NULL );
         }
         
         //TODO: Clean up the message
