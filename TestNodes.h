@@ -23,6 +23,8 @@ struct MidiNode : GNode
     RtMidiIn *midiin = nullptr;
     std::vector<std::string> portNames;
     const char *activePort;
+    char* msgBuffer = new char[1024];
+    const char* current_item = "Select device...";
     
     explicit MidiNode() : GNode( "MidiNode",
                                 { },    //no input slots
@@ -62,6 +64,17 @@ struct MidiNode : GNode
         }
     }
     
+    virtual ~MidiNode() {
+        
+        if ( midiin )
+        {
+            midiin->closePort();
+            delete midiin;
+        }
+        
+        delete[] msgBuffer;
+    }
+    
     //This function attempts to open the port midiPort
     // the idea is that this can be called from the UI with a button after this data changes...
     //  TODO: decide if this automatically should happen when this value changes...
@@ -80,18 +93,8 @@ struct MidiNode : GNode
         }
     }
     
-    virtual ~MidiNode() {
-        
-        if ( midiin )
-        {
-            midiin->closePort();
-            delete midiin;
-        }
-    }
-    
     virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
-        static char* msgBuffer = new char[1024];
         static double stamp;
         static int nBytes;
         static std::vector<unsigned char> message;
@@ -106,14 +109,16 @@ struct MidiNode : GNode
                 
                 if ( nBytes > 0 ) {
                     //TODO: this assumes the message is always 3 bytes...
-                    assert(nBytes == 3);
+                    if ( nBytes != 3 ) {
+                        printf("NBYTES NOT 3: %i", nBytes );
+                    }
                     //manually read three bytes
                     byte b1 = message[0];
                     int channel = b1 & 0x0F;
                     int index = (int)message[1];
                     int value = (int)message[2];
                     
-                    sprintf(address, "/%s/%i/event", portNames[midiPort].c_str(), channel);
+                    sprintf(address, "/midi/%s/%i/event", portNames[midiPort].c_str(), channel);
                     
                     lo_message lo = lo_message_new();
                     lo_message_add_int32(lo, index);
@@ -142,7 +147,6 @@ struct MidiNode : GNode
     virtual void RenderUI() {
         ImGui::SetNextItemWidth(200);
         
-        static const char* current_item = "Select device...";
         if ( ImGui::BeginCombo("", current_item) ) {
             for (int n = 0; n < portNames.size(); n++)
             {
@@ -283,7 +287,7 @@ struct ClientNode : GNode
         msgBuffer = new byte[1024];
     }
     
-    ~ClientNode() {
+    virtual ~ClientNode() {
         delete ipAddress;
         delete port;
         delete msgBuffer;
