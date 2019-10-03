@@ -41,7 +41,9 @@ std::map<std::string, GNode*(*)()> available_nodes{
     //Midi Node
     {"Midi", []() -> GNode* { return new MidiNode(); } },
     //Midi Node
-    {"Log", []() -> GNode* { return new LogNode(); } }
+    {"Log", []() -> GNode* { return new LogNode(); } },
+    //Client Node
+    {"Client", []() -> GNode* { return new ClientNode(); } },
 };
 std::vector<GNode*> nodes;
 

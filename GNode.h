@@ -94,10 +94,10 @@ struct GNode
     static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
     {
         GNode *self = (GNode *)args;
-        return self->HandleMessage(ev, nullptr);
+        return self->HandleMessage(ev);
     }
 
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
+    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
         assert( ev->msg );
         ImGui::LogText("Node %s says: %s", ev->name, zmsg_popstr(ev->msg));

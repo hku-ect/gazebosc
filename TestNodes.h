@@ -89,28 +89,30 @@ struct MidiNode : GNode
         }
     }
     
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
+    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
         static char* msgBuffer = new char[1024];
         static double stamp;
-        static int nBytes, i;
+        static int nBytes;
         static std::vector<unsigned char> message;
         
         if ( midiin && midiin->isPortOpen() ) {
             zmsg_t *msg = nullptr;
+            char *address = new char[64];
             
             do {
                 stamp = midiin->getMessage( &message );
                 nBytes = message.size();
                 
                 if ( nBytes > 0 ) {
-                    //manually read the three bytes
+                    //TODO: this assumes the message is always 3 bytes...
+                    assert(nBytes == 3);
+                    //manually read three bytes
                     byte b1 = message[0];
                     int channel = b1 & 0x0F;
                     int index = (int)message[1];
                     int value = (int)message[2];
                     
-                    char *address = new char[64];
                     sprintf(address, "/%s/%i/event", portNames[midiPort].c_str(), channel);
                     
                     lo_message lo = lo_message_new();
@@ -126,9 +128,11 @@ struct MidiNode : GNode
                     
                     zframe_t *frame = zframe_new(msgBuffer, len);
                     zmsg_append(msg, &frame);
+                    
                 }
             } while ( nBytes > 0 );
-
+            
+            delete[] address;
             return msg;
         }
         
@@ -173,7 +177,7 @@ struct CountNode : GNode
         
     }
 
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
+    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
         if ( ev->msg != NULL ) {
             count += 1;
@@ -197,7 +201,7 @@ struct LogNode : GNode
         
     }
     
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev, void*args)
+    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
         static byte *msgBuffer = new byte[1024];
         static zframe_t* frame;
@@ -248,15 +252,104 @@ struct LogNode : GNode
     }
 };
 
+/*
 //Most basic form of node that performs its own (threaded) behaviour
 struct PulseNode : GNode
 {
     using GNode::GNode;
     
-    int millis = 16;    //60 fps
-    
     virtual zmsg_t *Timer() {
         return nullptr;
+    }
+};
+*/
+
+struct ClientNode : GNode
+{
+    using GNode::GNode;
+    
+    char *ipAddress;
+    char *port;
+    bool isDirty = true;
+    lo_address address = nullptr;
+    byte *msgBuffer;
+    
+    explicit ClientNode() : GNode(   "Client",
+                                    { {"OSC", NodeSlotOSC} },    //Input slot
+                                    { } )// Output slotss
+    {
+        ipAddress = new char[64];
+        port = new char[5];
+        msgBuffer = new byte[1024];
+    }
+    
+    ~ClientNode() {
+        delete ipAddress;
+        delete port;
+        delete msgBuffer;
+        
+        if ( address != NULL ) {
+            lo_address_free(address);
+            address = NULL;
+        }
+    }
+    
+    virtual void RenderUI() {
+        ImGui::SetNextItemWidth(150);
+        if ( ImGui::InputText("IP Address", ipAddress, 64) ) {
+            isDirty = true;
+        }
+        ImGui::SetNextItemWidth(100);
+        if ( ImGui::InputText( "Port", port, 5) ) {
+            isDirty = true;
+        }
+    }
+    
+    virtual zmsg_t *HandleMessage( sphactor_event_t *ev )
+    {
+        if ( ev->msg == nullptr ) return nullptr;
+        
+        static zframe_t* frame;
+        
+        //if port/ip information changed, update our target address
+        if ( isDirty ) {
+            if ( address != nullptr ) {
+                lo_address_free(address);
+            }
+            address = lo_address_new(ipAddress, port);
+        }
+        
+        lo_bundle bundle = nullptr;
+        
+        //parse individual frames into messages
+        do {
+            frame = zmsg_pop(ev->msg);
+            if ( frame ) {
+                // get byte array for frame
+                msgBuffer = zframe_data(frame);
+                size_t len = zframe_size(frame);
+                
+                // convert to osc message
+                int result;
+                lo_message lo = lo_message_deserialise(msgBuffer, len, &result);
+                assert( result == 0 );
+                
+                if ( bundle == nullptr ) {
+                    lo_timetag now;
+                    lo_timetag_now(&now);
+                    bundle = lo_bundle_new(now);
+                }
+                lo_bundle_add_message(bundle, (char*) msgBuffer, lo);
+            }
+        }
+        while ( frame != NULL );
+        
+        //send as bundle
+        lo_send_bundle(address, bundle);
+        //free bundle recursively (all nested messages as well)
+        lo_bundle_free_recursive(bundle);
+        
+        return ev->msg;
     }
 };
 
