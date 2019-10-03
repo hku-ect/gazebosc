@@ -317,6 +317,7 @@ struct ClientNode : GNode
                 lo_address_free(address);
             }
             address = lo_address_new(ipAddress, port);
+            isDirty = false;
         }
         
         lo_bundle bundle = nullptr;
@@ -334,6 +335,7 @@ struct ClientNode : GNode
                 lo_message lo = lo_message_deserialise(msgBuffer, len, &result);
                 assert( result == 0 );
                 
+                // add to bundle
                 if ( bundle == nullptr ) {
                     lo_timetag now;
                     lo_timetag_now(&now);
