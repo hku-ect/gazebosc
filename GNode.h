@@ -110,8 +110,7 @@ struct GNode
     virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
         assert( ev->msg );
-        ImGui::LogText("Node %s says: %s", ev->name, zmsg_popstr(ev->msg));
-        return nullptr;
+        return ev->msg;
     }
     
     virtual zmsg_t *Timer()

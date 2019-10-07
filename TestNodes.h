@@ -23,7 +23,8 @@ struct MidiNode : GNode
     RtMidiIn *midiin = nullptr;
     std::vector<std::string> portNames;
     const char *activePort;
-    char* msgBuffer = new char[1024];
+    char *msgBuffer;
+    char *address;
     const char* current_item = "Select device...";
     
     explicit MidiNode() : GNode( "MidiNode",
@@ -32,6 +33,8 @@ struct MidiNode : GNode
                                     {"MidiOSC", NodeSlotOSC}  // Output slots
                                 } )
     {
+        msgBuffer = new char[1024];
+        address = new char[64];
         //TODO: Setup thread-timing on the sphactor side
         
         //get midi
@@ -72,6 +75,7 @@ struct MidiNode : GNode
             delete midiin;
         }
         
+        delete[] address;
         delete[] msgBuffer;
     }
     
@@ -93,7 +97,7 @@ struct MidiNode : GNode
         }
     }
     
-    virtual zmsg_t *Update()
+    zmsg_t *Update()
     {
         static double stamp;
         static int nBytes;
@@ -101,7 +105,6 @@ struct MidiNode : GNode
         
         if ( midiin && midiin->isPortOpen() ) {
             zmsg_t *msg = nullptr;
-            char *address = new char[64];
             
             do {
                 stamp = midiin->getMessage( &message );
@@ -137,14 +140,13 @@ struct MidiNode : GNode
                 }
             } while ( nBytes > 0 );
             
-            delete[] address;
             return msg;
         }
         
         return nullptr;
     }
     
-    virtual void RenderUI() {
+    void RenderUI() {
         ImGui::SetNextItemWidth(200);
         
         if ( ImGui::BeginCombo("", current_item) ) {
@@ -181,7 +183,7 @@ struct CountNode : GNode
         
     }
 
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
+    zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
         count += 1;
         
@@ -189,7 +191,7 @@ struct CountNode : GNode
         return ev->msg;
     }
     
-    virtual void RenderUI() {
+    void RenderUI() {
         ImGui::Text("Count: %i", count);
     }
 };
@@ -200,13 +202,14 @@ struct LogNode : GNode
                                  { {"OSC", NodeSlotOSC} },    //Input slot
                                  { } )// Output slotss
     {
-        
+       
     }
     
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
+    zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
-        static byte *msgBuffer = new byte[1024];
         static zframe_t* frame;
+        
+        byte *msgBuffer;// = new byte[1024];
         
         printf("Log: \n");
         do {
@@ -244,27 +247,68 @@ struct LogNode : GNode
                 
                 //free message
                 lo_message_free(lo);
+                zframe_destroy(&frame);
             }
         } while ( frame != NULL );
         
-        //TODO: Clean up the message
-        //zmsg_destroy(ev->msg); //?
+        //delete[] msgBuffer;
+        
+        zmsg_destroy(&ev->msg);
         
         return NULL;
     }
 };
 
-/*
+
 //Most basic form of node that performs its own (threaded) behaviour
 struct PulseNode : GNode
 {
     using GNode::GNode;
     
-    virtual zmsg_t *Timer() {
-        return nullptr;
+    char* msgBuffer;
+    const char* address;
+    
+    explicit PulseNode() : GNode(   "Pulse",
+                                    {  },    //Input slot
+                                    { { "OSC", NodeSlotOSC } } )// Output slotss
+    {
+        msgBuffer = new char[1024];
+        address = "/test";
+    }
+    
+    virtual ~PulseNode() {
+        delete[] msgBuffer;
+    }
+    
+    zmsg_t *Update() {
+        //TODO: write osc message
+        
+        lo_message lo = lo_message_new();
+        size_t len = sizeof(msgBuffer);
+        lo_message_serialise(lo, address, msgBuffer, &len);
+        lo_message_free(lo);
+        
+        zmsg_t *msg =zmsg_new();
+        zframe_t *frame = zframe_new(msgBuffer, len);
+        zmsg_append(msg, &frame);
+        
+        //TODO: figure out if this needs to be destroyed here...
+        zframe_destroy(&frame);
+        
+        return msg;
     }
 };
-*/
+
+struct NothingNode : GNode
+{
+    explicit NothingNode() : GNode(   "Nothing",
+                                    { { "OSC", NodeSlotOSC } },    //Input slot
+                                    {  } )// Output slotss
+    {
+        
+    }
+};
+
 
 struct ClientNode : GNode
 {
@@ -277,18 +321,16 @@ struct ClientNode : GNode
     byte *msgBuffer;
     
     explicit ClientNode() : GNode(   "Client",
-                                    { {"OSC", NodeSlotOSC} },    //Input slot
+                                    { { "OSC", NodeSlotOSC } },    //Input slot
                                     { } )// Output slotss
     {
         ipAddress = new char[64];
         port = new char[5];
-        msgBuffer = new byte[1024];
     }
     
     virtual ~ClientNode() {
         delete[] ipAddress;
         delete[] port;
-        delete[] msgBuffer;
         
         if ( address != NULL ) {
             lo_address_free(address);
@@ -296,7 +338,7 @@ struct ClientNode : GNode
         }
     }
     
-    virtual void RenderUI() {
+    void RenderUI() {
         ImGui::SetNextItemWidth(150);
         if ( ImGui::InputText("IP Address", ipAddress, 64) ) {
             isDirty = true;
@@ -307,7 +349,7 @@ struct ClientNode : GNode
         }
     }
     
-    virtual zmsg_t *HandleMessage( sphactor_event_t *ev )
+    zmsg_t *HandleMessage( sphactor_event_t *ev )
     {
         static zframe_t* frame;
         
@@ -342,6 +384,8 @@ struct ClientNode : GNode
                     bundle = lo_bundle_new(now);
                 }
                 lo_bundle_add_message(bundle, (char*) msgBuffer, lo);
+                
+                zframe_destroy(&frame);
             }
         }
         while ( frame != NULL );

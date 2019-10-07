@@ -44,6 +44,10 @@ std::map<std::string, GNode*(*)()> available_nodes{
     {"Log", []() -> GNode* { return new LogNode(); } },
     //Client Node
     {"Client", []() -> GNode* { return new ClientNode(); } },
+    //Pulse Node
+    {"Pulse", []() -> GNode* { return new PulseNode(); } },
+    //Nothing Node to test memory handling
+    {"Nothing", []() -> GNode* { return new NothingNode(); } }
 };
 std::vector<GNode*> nodes;
 
