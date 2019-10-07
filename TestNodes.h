@@ -93,7 +93,7 @@ struct MidiNode : GNode
         }
     }
     
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
+    virtual zmsg_t *Update()
     {
         static double stamp;
         static int nBytes;
@@ -183,9 +183,7 @@ struct CountNode : GNode
 
     virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
     {
-        if ( ev->msg != NULL ) {
-            count += 1;
-        }
+        count += 1;
         
         //send whatever we received to our output
         return ev->msg;
@@ -209,48 +207,48 @@ struct LogNode : GNode
     {
         static byte *msgBuffer = new byte[1024];
         static zframe_t* frame;
-        if ( ev->msg != NULL ) {
-            printf("Log: \n");
-            do {
-                frame = zmsg_pop(ev->msg);
-                if ( frame ) {
-                    // get byte array for frame
-                    msgBuffer = zframe_data(frame);
-                    size_t len = zframe_size(frame);
-                    
-                    // convert to osc message
-                    int result;
-                    lo_message lo = lo_message_deserialise(msgBuffer, len, &result);
-                    assert( result == 0 );
-                    
-                    // first part of bytes is the osc address
-                    printf(" %s \n", msgBuffer);
-                    
-                    // parse individual arguments
-                    int count = lo_message_get_argc(lo);
-                    char *types = lo_message_get_types(lo);
-                    lo_arg **argv = lo_message_get_argv(lo);
-                    for ( int i = 0; i < count; ++i ) {
-                        switch(types[i]) {
-                            case 'i':
-                                printf("  Int: %i \n", argv[i]->i);
-                                break;
-                            case 'f':
-                                printf("  Float: %f \n", argv[i]->f);
-                                break;
-                            default:
-                                printf("  Unhandled type: %c \n", types[i]);
-                                break;
-                        }
+        
+        printf("Log: \n");
+        do {
+            frame = zmsg_pop(ev->msg);
+            if ( frame ) {
+                // get byte array for frame
+                msgBuffer = zframe_data(frame);
+                size_t len = zframe_size(frame);
+                
+                // convert to osc message
+                int result;
+                lo_message lo = lo_message_deserialise(msgBuffer, len, &result);
+                assert( result == 0 );
+                
+                // first part of bytes is the osc address
+                printf(" %s \n", msgBuffer);
+                
+                // parse individual arguments
+                int count = lo_message_get_argc(lo);
+                char *types = lo_message_get_types(lo);
+                lo_arg **argv = lo_message_get_argv(lo);
+                for ( int i = 0; i < count; ++i ) {
+                    switch(types[i]) {
+                        case 'i':
+                            printf("  Int: %i \n", argv[i]->i);
+                            break;
+                        case 'f':
+                            printf("  Float: %f \n", argv[i]->f);
+                            break;
+                        default:
+                            printf("  Unhandled type: %c \n", types[i]);
+                            break;
                     }
-                    
-                    //free message
-                    lo_message_free(lo);
                 }
-            } while ( frame != NULL );
-        }
+                
+                //free message
+                lo_message_free(lo);
+            }
+        } while ( frame != NULL );
         
         //TODO: Clean up the message
+        //zmsg_destroy(ev->msg); //?
         
         return NULL;
     }
@@ -288,9 +286,9 @@ struct ClientNode : GNode
     }
     
     virtual ~ClientNode() {
-        delete ipAddress;
-        delete port;
-        delete msgBuffer;
+        delete[] ipAddress;
+        delete[] port;
+        delete[] msgBuffer;
         
         if ( address != NULL ) {
             lo_address_free(address);
@@ -311,8 +309,6 @@ struct ClientNode : GNode
     
     virtual zmsg_t *HandleMessage( sphactor_event_t *ev )
     {
-        if ( ev->msg == nullptr ) return nullptr;
-        
         static zframe_t* frame;
         
         //if port/ip information changed, update our target address

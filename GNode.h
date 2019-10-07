@@ -94,7 +94,17 @@ struct GNode
     static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
     {
         GNode *self = (GNode *)args;
+        
+        if ( ev->msg == NULL ) {
+            return self->Update();
+        }
+        
         return self->HandleMessage(ev);
+    }
+    
+    virtual zmsg_t *Update()
+    {
+        return nullptr;
     }
 
     virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
