@@ -168,6 +168,11 @@ struct MidiNode : GNode
         
         GNode::RenderUI();
     }
+    
+    virtual void Serialize( zconfig_t *section ) {
+        zconfig_t *device = zconfig_new("device", section);
+        zconfig_set_value(device, "%s", activePort);
+    }
 };
 
 struct CountNode : GNode
@@ -396,6 +401,14 @@ struct ClientNode : GNode
         lo_bundle_free_recursive(bundle);
         
         return ev->msg;
+    }
+    
+    virtual void Serialize( zconfig_t *section ) {
+        zconfig_t *zIP = zconfig_new("ipAddress", section);
+        zconfig_set_value(zIP, "%s", ipAddress);
+        
+        zconfig_t *zPort = zconfig_new("port", section);
+        zconfig_set_value(zPort, "%s", port);
     }
 };
 

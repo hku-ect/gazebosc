@@ -185,7 +185,7 @@ bool RenderConnection(const ImVec2& input_pos, const ImVec2& output_pos, float t
 {
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     CanvasState* canvas = gCanvas;
-    const ImGuiStyle& style = ImGui::GetStyle();
+    //const ImGuiStyle& style = ImGui::GetStyle();
 
     thickness *= canvas->zoom;
 
@@ -269,7 +269,7 @@ void EndCanvas()
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     auto* canvas = gCanvas;
     auto* impl = canvas->_impl;
-    const ImGuiStyle& style = ImGui::GetStyle();
+    //const ImGuiStyle& style = ImGui::GetStyle();
 
     // Draw pending connection
     if (const ImGuiPayload* payload = ImGui::GetDragDropPayload())
@@ -689,7 +689,7 @@ bool BeginSlot(const char* title, int kind)
 
 void EndSlot()
 {
-    const ImGuiStyle& style = ImGui::GetStyle();
+    //const ImGuiStyle& style = ImGui::GetStyle();
     auto* canvas = gCanvas;
     auto* impl = canvas->_impl;
 

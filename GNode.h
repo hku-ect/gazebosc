@@ -113,12 +113,11 @@ struct GNode
         return ev->msg;
     }
     
-    virtual zmsg_t *Timer()
-    {
-        return nullptr;
+    virtual void RenderUI() {
+        
     }
     
-    virtual void RenderUI() {
+    virtual void Serialize(zconfig_t *section) {
         
     }
 };

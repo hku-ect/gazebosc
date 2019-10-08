@@ -35,7 +35,7 @@
 
 //TODO: generate this?
 // we probably need to dynamically define inputs and outputs based on nodes written by ourselves/others...
-std::map<std::string, GNode*(*)()> available_nodes{
+std::map<std::string, GNode*(*)()> available_nodes {
     //Count Node
     {"Count", []() -> GNode* { return new CountNode(); } },
     //Midi Node
@@ -50,6 +50,66 @@ std::map<std::string, GNode*(*)()> available_nodes{
     {"Nothing", []() -> GNode* { return new NothingNode(); } }
 };
 std::vector<GNode*> nodes;
+
+void ShowConfigWindow() {
+    //config window (natnet data, configuration file, connection button
+    //TODO: Move to separate cpp file?
+    //ImGui::ShowControlWindow(true, )
+
+    static int counter = 0;
+    static char* configFile = new char[64];
+    static char* natnetIP = new char[64];
+
+    //creates window
+    ImGui::Begin("Configuration");
+
+    ImGui::Text("GazebOSC Settings");
+
+    ImGui::InputText("Config-file", configFile, 128);
+    
+    if (ImGui::Button("Save")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
+        //counter++;
+        zconfig_t* config = sphactor_zconfig_new("root");
+        for (auto it = nodes.begin(); it != nodes.end(); it++)
+        {
+            GNode* node = *it;
+            zconfig_t* nodeSection = sphactor_zconfig_append(node->actor, config);
+            
+            // Add custom node data to section
+            node->Serialize(nodeSection);
+
+            zconfig_t* connections = zconfig_locate(config, "connections");
+            if ( connections == nullptr ) {
+                connections = zconfig_new("connections", config);
+            }
+            for (const Connection& connection : node->connections)
+            {
+                zconfig_t* item = zconfig_new( "con", connections );
+                
+                GNode *out = (GNode*)connection.output_node;
+                GNode *in = (GNode*)connection.input_node;
+                
+                zconfig_set_value(item,"%s,%s", sphactor_endpoint(out->actor), sphactor_endpoint(in->actor));
+            }
+        }
+        zconfig_save(config, configFile);
+    }
+    ImGui::SameLine();
+    ImGui::Spacing();
+    ImGui::SameLine();
+    if (ImGui::Button("Load")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
+        counter++;
+    }
+    
+    ImGui::Spacing();
+    ImGui::InputText("Natnet IP", natnetIP, 128);
+    if (ImGui::Button("Connect")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
+        counter++;
+    }
+
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
+}
 
 namespace ImGui
 {
@@ -111,8 +171,8 @@ namespace ImGui
                         {
                             assert(connection.input_node);
                             assert(connection.output_node);
-                            sphactor_disconnect( ((GNode*) connection.output_node)->actor,
-                                              sphactor_endpoint( ((GNode*) connection.input_node)->actor ) );
+                            sphactor_disconnect( ((GNode*) connection.input_node)->actor,
+                                              sphactor_endpoint( ((GNode*) connection.output_node)->actor ) );
                             // Remove deleted connections
                             ((GNode*) connection.input_node)->DeleteConnection(connection);
                             ((GNode*) connection.output_node)->DeleteConnection(connection);
@@ -167,4 +227,7 @@ namespace ImGui
         ImGui::End();
 
     }
+
+    
+
 }   // namespace ImGui
