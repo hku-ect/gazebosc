@@ -71,8 +71,6 @@ struct GNode
         this->title = title;
         this->input_slots = input_slots;
         this->output_slots = output_slots;
-        
-        SetRate(60);
     }
 
     virtual ~GNode()
@@ -85,6 +83,7 @@ struct GNode
         char* strRate = new char[64];
         sprintf( strRate, "%i", rate );
         zstr_send(sphactor_socket(this->actor), strRate );
+        delete[] strRate;
     }
 
     /// Deletes connection from this node.

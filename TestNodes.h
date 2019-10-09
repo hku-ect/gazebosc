@@ -61,10 +61,9 @@ struct MidiNode : GNode
               }
                 printf( "  Input Port #%i: %s \n", i+1, portName.c_str() );
             }
-            
-            //open selected port
-            Connect();
         }
+        
+        SetRate(60);
     }
     
     virtual ~MidiNode() {
@@ -271,23 +270,37 @@ struct PulseNode : GNode
     using GNode::GNode;
     
     char* msgBuffer;
-    const char* address;
+    char* address;
+    int rate;
     
     explicit PulseNode() : GNode(   "Pulse",
                                     {  },    //Input slot
                                     { { "OSC", NodeSlotOSC } } )// Output slotss
     {
         msgBuffer = new char[1024];
-        address = "/test";
+        address = new char[32];
+        rate = 1;
+        
+        sprintf(address, "/pulse" );
+        
+        SetRate(rate);
     }
     
     virtual ~PulseNode() {
         delete[] msgBuffer;
+        delete[] address;
+    }
+    
+    void RenderUI() {
+        ImGui::SetNextItemWidth(100);
+        if ( ImGui::InputInt( "Rate", &rate ) ) {
+            SetRate(rate);
+        }
+        ImGui::SetNextItemWidth(100);
+        ImGui::InputText( "Address", address, 32 );
     }
     
     zmsg_t *Update() {
-        //TODO: write osc message
-        
         lo_message lo = lo_message_new();
         size_t len = sizeof(msgBuffer);
         lo_message_serialise(lo, address, msgBuffer, &len);
@@ -304,24 +317,15 @@ struct PulseNode : GNode
     }
 };
 
-struct NothingNode : GNode
-{
-    explicit NothingNode() : GNode(   "Nothing",
-                                    { { "OSC", NodeSlotOSC } },    //Input slot
-                                    {  } )// Output slotss
-    {
-        
-    }
-};
-
 
 struct ClientNode : GNode
 {
     using GNode::GNode;
     
     char *ipAddress;
-    char *port;
+    int port;
     bool isDirty = true;
+    bool debug = false;
     lo_address address = nullptr;
     byte *msgBuffer;
     
@@ -330,12 +334,11 @@ struct ClientNode : GNode
                                     { } )// Output slotss
     {
         ipAddress = new char[64];
-        port = new char[5];
+        port = 1234;
     }
     
     virtual ~ClientNode() {
         delete[] ipAddress;
-        delete[] port;
         
         if ( address != NULL ) {
             lo_address_free(address);
@@ -349,8 +352,12 @@ struct ClientNode : GNode
             isDirty = true;
         }
         ImGui::SetNextItemWidth(100);
-        if ( ImGui::InputText( "Port", port, 5) ) {
+        if ( ImGui::InputInt( "Port", &port ) ) {
             isDirty = true;
+        }
+        ImGui::SetNextItemWidth(100);
+        if ( ImGui::Checkbox("Debug", &debug) ) {
+            
         }
     }
     
@@ -363,7 +370,12 @@ struct ClientNode : GNode
             if ( address != nullptr ) {
                 lo_address_free(address);
             }
-            address = lo_address_new(ipAddress, port);
+            
+            char* buf = new char[32];
+            sprintf( buf, "%i", port);
+            address = lo_address_new(ipAddress, buf);
+            delete[] buf;
+            
             isDirty = false;
         }
         
@@ -389,8 +401,6 @@ struct ClientNode : GNode
                     bundle = lo_bundle_new(now);
                 }
                 lo_bundle_add_message(bundle, (char*) msgBuffer, lo);
-                
-                zframe_destroy(&frame);
             }
         }
         while ( frame != NULL );
@@ -400,6 +410,7 @@ struct ClientNode : GNode
         //free bundle recursively (all nested messages as well)
         lo_bundle_free_recursive(bundle);
         
+        //clean up msg, return null
         return ev->msg;
     }
     

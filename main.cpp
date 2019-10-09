@@ -174,7 +174,8 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         
         SDL_GetWindowSize(window, &w, &h);
         ImVec2 size = ImVec2(w,h);
-        ImGui::ShowDemoWindow(&show_demo_window, size);
+        ImGui::SetNextWindowSize(size);
+        ImGui::ShowDemoWindow(&show_demo_window);
 
         // Save/load window
         ShowConfigWindow();

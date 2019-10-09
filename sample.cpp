@@ -45,9 +45,7 @@ std::map<std::string, GNode*(*)()> available_nodes {
     //Client Node
     {"Client", []() -> GNode* { return new ClientNode(); } },
     //Pulse Node
-    {"Pulse", []() -> GNode* { return new PulseNode(); } },
-    //Nothing Node to test memory handling
-    {"Nothing", []() -> GNode* { return new NothingNode(); } }
+    {"Pulse", []() -> GNode* { return new PulseNode(); } }
 };
 std::vector<GNode*> nodes;
 
@@ -114,7 +112,7 @@ void ShowConfigWindow() {
 namespace ImGui
 {
     //TODO: refactor into our own full-screen background editor
-    void ShowDemoWindow(bool*, ImVec2 size)
+    void ShowDemoWindow(bool*)//, ImVec2 size)
     {
         // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
         static ImNodes::CanvasState canvas{};
@@ -122,7 +120,6 @@ namespace ImGui
         //const ImGuiStyle& style = ImGui::GetStyle();
         
         ImGui::SetNextWindowPos(ImVec2(0,0));
-        ImGui::SetNextWindowSize(size);
         
         if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
         {
@@ -186,8 +183,14 @@ namespace ImGui
                 {
                     for (auto& connection : node->connections)
                     {
-                        ((GNode*) connection.input_node)->DeleteConnection(connection);
-                        ((GNode*) connection.output_node)->DeleteConnection(connection);
+                        if (connection.output_node == node) {
+                            ((GNode*) connection.input_node)->DeleteConnection(connection);
+                            ((GNode*) connection.output_node)->DeleteConnection(connection);
+                        }
+                        else {
+                            ((GNode*) connection.output_node)->DeleteConnection(connection);
+                            ((GNode*) connection.input_node)->DeleteConnection(connection);
+                        }
                     }
                     delete node;
                     it = nodes.erase(it);
