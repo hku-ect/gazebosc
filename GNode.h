@@ -8,6 +8,12 @@
 #ifndef GNode_h
 #define GNode_h
 
+#include <string>
+#include <vector>
+#include <sphactor_library.h>
+#include "ImNodes.h"
+#include "ImNodesEz.h"
+
 /// A structure defining a connection between two slots of two nodes.
 struct Connection
 {
@@ -79,7 +85,8 @@ struct GNode
     }
     
     void SetRate( int rate ) {
-        zstr_sendm(sphactor_socket(this->actor), "SET RATE");
+        rate = 1000/rate;
+        zstr_sendm(sphactor_socket(this->actor), "SET TIMEOUT");
         char* strRate = new char[64];
         sprintf( strRate, "%i", rate );
         zstr_send(sphactor_socket(this->actor), strRate );
