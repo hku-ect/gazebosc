@@ -2,7 +2,7 @@
 //  GNode.h
 //  gazebosc
 //
-//  Created by Call +31646001602 on 26/09/2019.
+//  Created by aaronvark on 26/09/2019.
 //
 
 #ifndef GNode_h

@@ -2,7 +2,7 @@
 //  TestNodes.h
 //  gazebosc
 //
-//  Created by Call +31646001602 on 26/09/2019.
+//  Created by aaronvark on 26/09/2019.
 //
 
 #ifndef TestNodes_h
@@ -315,6 +315,14 @@ struct PulseNode : GNode
         
         return msg;
     }
+    
+    virtual void Serialize( zconfig_t *section ) {
+        zconfig_t *zRate = zconfig_new("rate", section);
+        zconfig_set_value(zRate, "%i", rate);
+        
+        zconfig_t *zAddress = zconfig_new("address", section);
+        zconfig_set_value(zAddress, "%s", address);
+    }
 };
 
 
@@ -328,6 +336,7 @@ struct ClientNode : GNode
     bool debug = false;
     lo_address address = nullptr;
     byte *msgBuffer;
+    zframe_t* frame;
     
     explicit ClientNode() : GNode(   "Client",
                                     { { "OSC", NodeSlotOSC } },    //Input slot
@@ -363,8 +372,6 @@ struct ClientNode : GNode
     
     zmsg_t *HandleMessage( sphactor_event_t *ev )
     {
-        static zframe_t* frame;
-        
         //if port/ip information changed, update our target address
         if ( isDirty ) {
             if ( address != nullptr ) {
@@ -401,6 +408,8 @@ struct ClientNode : GNode
                     bundle = lo_bundle_new(now);
                 }
                 lo_bundle_add_message(bundle, (char*) msgBuffer, lo);
+                
+                zframe_destroy(&frame);
             }
         }
         while ( frame != NULL );
@@ -411,7 +420,8 @@ struct ClientNode : GNode
         lo_bundle_free_recursive(bundle);
         
         //clean up msg, return null
-        return ev->msg;
+        zmsg_destroy(&ev->msg);
+        return nullptr;
     }
     
     virtual void Serialize( zconfig_t *section ) {
@@ -419,7 +429,7 @@ struct ClientNode : GNode
         zconfig_set_value(zIP, "%s", ipAddress);
         
         zconfig_t *zPort = zconfig_new("port", section);
-        zconfig_set_value(zPort, "%s", port);
+        zconfig_set_value(zPort, "%i", port);
     }
 };
 

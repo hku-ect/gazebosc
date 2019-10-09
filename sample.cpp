@@ -112,7 +112,7 @@ void ShowConfigWindow() {
 namespace ImGui
 {
     //TODO: refactor into our own full-screen background editor
-    void ShowDemoWindow(bool*)//, ImVec2 size)
+    void ShowDemoWindow(bool*)
     {
         // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
         static ImNodes::CanvasState canvas{};
