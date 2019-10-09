@@ -29,247 +29,208 @@
 #include <imgui.h>
 #include "ImNodesEz.h"
 #include "libsphactor.h"
+#include "GNode.h"
+#include "TestNodes.h"
 
-/// A structure defining a connection between two slots of two nodes.
-struct Connection
-{
-    /// `id` that was passed to BeginNode() of input node.
-    void* input_node = nullptr;
-    /// Descriptor of input slot.
-    const char* input_slot = nullptr;
-    /// `id` that was passed to BeginNode() of output node.
-    void* output_node = nullptr;
-    /// Descriptor of output slot.
-    const char* output_slot = nullptr;
 
-    bool operator==(const Connection& other) const
-    {
-        return input_node == other.input_node &&
-               input_slot == other.input_slot &&
-               output_node == other.output_node &&
-               output_slot == other.output_slot;
-    }
-
-    bool operator!=(const Connection& other) const
-    {
-        return !operator ==(other);
-    }
+//TODO: generate this?
+// we probably need to dynamically define inputs and outputs based on nodes written by ourselves/others...
+std::map<std::string, GNode*(*)()> available_nodes {
+    //Count Node
+    {"Count", []() -> GNode* { return new CountNode(); } },
+    //Midi Node
+    {"Midi", []() -> GNode* { return new MidiNode(); } },
+    //Midi Node
+    {"Log", []() -> GNode* { return new LogNode(); } },
+    //Client Node
+    {"Client", []() -> GNode* { return new ClientNode(); } },
+    //Pulse Node
+    {"Pulse", []() -> GNode* { return new PulseNode(); } }
 };
+std::vector<GNode*> nodes;
 
-enum NodeSlotTypes
-{
-    NodeSlotPosition = 1,   // ID can not be 0
-    NodeSlotRotation,
-    NodeSlotMatrix,
-};
+void ShowConfigWindow() {
+    //config window (natnet data, configuration file, connection button
+    //TODO: Move to separate cpp file?
+    //ImGui::ShowControlWindow(true, )
 
-/// A structure holding node state.
-struct MyNode
-{
-    /// Title which will be displayed at the center-top of the node.
-    const char* title = nullptr;
-    /// Flag indicating that node is selected by the user.
-    bool selected = false;
-    /// Node position on the canvas.
-    ImVec2 pos{};
-    /// List of node connections.
-    std::vector<Connection> connections{};
-    /// A list of input slots current node has.
-    std::vector<ImNodes::Ez::SlotInfo> input_slots{};
-    /// A list of output slots current node has.
-    std::vector<ImNodes::Ez::SlotInfo> output_slots{};
-    /// sphactor instance
-    sphactor_t *actor;
+    static int counter = 0;
+    static char* configFile = new char[64];
+    static char* natnetIP = new char[64];
 
-    explicit MyNode(const char* title,
-        const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
-        const std::vector<ImNodes::Ez::SlotInfo>&& output_slots)
-    {
-        actor = sphactor_new(MyNode::_actor_handler, this, title, nullptr);
-        sphactor_set_verbose(actor, true);
-        this->title = title;
-        this->input_slots = input_slots;
-        this->output_slots = output_slots;
-    }
+    //creates window
+    ImGui::Begin("Configuration");
 
-    virtual ~MyNode()
-    {
-        sphactor_destroy(&(this->actor));
-    }
+    ImGui::Text("GazebOSC Settings");
 
-    /// Deletes connection from this node.
-    void DeleteConnection(const Connection& connection)
-    {
-        for (auto it = connections.begin(); it != connections.end(); ++it)
+    ImGui::InputText("Config-file", configFile, 128);
+    
+    if (ImGui::Button("Save")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
+        //counter++;
+        zconfig_t* config = sphactor_zconfig_new("root");
+        for (auto it = nodes.begin(); it != nodes.end(); it++)
         {
-            if (connection == *it)
+            GNode* node = *it;
+            zconfig_t* nodeSection = sphactor_zconfig_append(node->actor, config);
+            
+            // Add custom node data to section
+            node->Serialize(nodeSection);
+
+            zconfig_t* connections = zconfig_locate(config, "connections");
+            if ( connections == nullptr ) {
+                connections = zconfig_new("connections", config);
+            }
+            for (const Connection& connection : node->connections)
             {
-                connections.erase(it);
-                break;
+                zconfig_t* item = zconfig_new( "con", connections );
+                
+                GNode *out = (GNode*)connection.output_node;
+                GNode *in = (GNode*)connection.input_node;
+                
+                zconfig_set_value(item,"%s,%s", sphactor_endpoint(out->actor), sphactor_endpoint(in->actor));
             }
         }
+        zconfig_save(config, configFile);
+    }
+    ImGui::SameLine();
+    ImGui::Spacing();
+    ImGui::SameLine();
+    if (ImGui::Button("Load")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
+        counter++;
+    }
+    
+    ImGui::Spacing();
+    ImGui::InputText("Natnet IP", natnetIP, 128);
+    if (ImGui::Button("Connect")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
+        counter++;
     }
 
-    static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
-    {
-        MyNode *self = (MyNode *)args;
-        self->Update(ev, nullptr);
-    }
-
-    virtual zmsg_t *Update(sphactor_event_t *ev, void*args)
-    {
-        assert( ev->msg );
-        ImGui::LogText("Node %s says: %s", ev->name, zmsg_popstr(ev->msg));
-        return nullptr;
-    }
-};
-
-struct CountNode : MyNode
-{
-    using MyNode::MyNode;
-
-    int count = 0;
-
-    virtual zmsg_t *Update(sphactor_event_t *ev, void*args)
-    {
-        count += 1;
-        zframe_t *f = zframe_new(&count, sizeof(int));
-        zmsg_t* ret = zmsg_new();
-        zmsg_add(ret, f);
-        return ret;
-    }
-};
-
-std::map<std::string, MyNode*(*)()> available_nodes{
-    {"Compose", []() -> MyNode* { return new MyNode("Compose", {
-        {"Position", NodeSlotPosition}, {"Rotation", NodeSlotRotation}  // Input slots
-    }, {
-        {"Matrix", NodeSlotMatrix}                                      // Output slots
-    }); }},
-    {"Decompose", []() -> MyNode* { return new MyNode("Decompose", {
-        {"Matrix", NodeSlotMatrix}                                      // Input slots
-    }, {
-        {"Position", NodeSlotPosition}, {"Rotation", NodeSlotRotation}  // Output slots
-    }); }},
-    {"Count", []() -> MyNode* { return new CountNode("Decompose", {
-        {"Matrix", NodeSlotMatrix}                                      // Input slots
-    }, {
-        {"Position", NodeSlotPosition}, {"Rotation", NodeSlotRotation}  // Output slots
-    }); }}
-};
-std::vector<MyNode*> nodes;
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
+}
 
 namespace ImGui
 {
-
-void ShowDemoWindow(bool*)
-{
-    // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
-    static ImNodes::CanvasState canvas{};
-
-    const ImGuiStyle& style = ImGui::GetStyle();
-    if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+    //TODO: refactor into our own full-screen background editor
+    void ShowDemoWindow(bool*)
     {
-        // We probably need to keep some state, like positions of nodes/slots for rendering connections.
-        ImNodes::BeginCanvas(&canvas);
-        for (auto it = nodes.begin(); it != nodes.end();)
+        // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
+        static ImNodes::CanvasState canvas{};
+        
+        //const ImGuiStyle& style = ImGui::GetStyle();
+        
+        ImGui::SetNextWindowPos(ImVec2(0,0));
+        
+        if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
         {
-            MyNode* node = *it;
-
-            // Start rendering node
-            if (ImNodes::Ez::BeginNode(node, node->title, &node->pos, &node->selected))
+            // We probably need to keep some state, like positions of nodes/slots for rendering connections.
+            ImNodes::BeginCanvas(&canvas);
+            for (auto it = nodes.begin(); it != nodes.end();)
             {
-                // Render input nodes first (order is important)
-                ImNodes::Ez::InputSlots(node->input_slots.data(), node->input_slots.size());
+                GNode* node = *it;
 
-                // Custom node content may go here
-                ImGui::Text("Content of %s", node->title);
-
-                // Render output nodes first (order is important)
-                ImNodes::Ez::OutputSlots(node->output_slots.data(), node->output_slots.size());
-
-                // Store new connections when they are created
-                Connection new_connection;
-                if (ImNodes::GetNewConnection(&new_connection.input_node, &new_connection.input_slot,
-                    &new_connection.output_node, &new_connection.output_slot))
+                // Start rendering node
+                if (ImNodes::Ez::BeginNode(node, node->title, &node->pos, &node->selected))
                 {
-                    assert(new_connection.input_node);
-                    assert(new_connection.output_node);
-                    ((MyNode*) new_connection.input_node)->connections.push_back(new_connection);
-                    ((MyNode*) new_connection.output_node)->connections.push_back(new_connection);
-                    sphactor_connect( ((MyNode*) new_connection.output_node)->actor,
-                                      sphactor_endpoint( ((MyNode*) new_connection.input_node)->actor ) );
-                }
+                    // Render input nodes first (order is important)
+                    ImNodes::Ez::InputSlots(node->input_slots.data(), node->input_slots.size());
 
-                // Render output connections of this node
-                for (const Connection& connection : node->connections)
-                {
-                    // Node contains all it's connections (both from output and to input slots). This means that multiple
-                    // nodes will have same connection. We render only output connections and ensure that each connection
-                    // will be rendered once.
-                    if (connection.output_node != node)
-                        continue;
+                    // Custom node content may go here
+                    node->RenderUI();
 
-                    if (!ImNodes::Connection(connection.input_node, connection.input_slot, connection.output_node,
-                        connection.output_slot))
+                    // Render output nodes first (order is important)
+                    ImNodes::Ez::OutputSlots(node->output_slots.data(), node->output_slots.size());
+
+                    // Store new connections when they are created
+                    Connection new_connection;
+                    if (ImNodes::GetNewConnection(&new_connection.input_node, &new_connection.input_slot,
+                        &new_connection.output_node, &new_connection.output_slot))
                     {
-                        assert(connection.input_node);
-                        assert(connection.output_node);
-                        sphactor_disconnect( ((MyNode*) connection.output_node)->actor,
-                                          sphactor_endpoint( ((MyNode*) connection.input_node)->actor ) );
-                        // Remove deleted connections
-                        ((MyNode*) connection.input_node)->DeleteConnection(connection);
-                        ((MyNode*) connection.output_node)->DeleteConnection(connection);
+                        assert(new_connection.input_node);
+                        assert(new_connection.output_node);
+                        ((GNode*) new_connection.input_node)->connections.push_back(new_connection);
+                        ((GNode*) new_connection.output_node)->connections.push_back(new_connection);
+                        sphactor_connect( ((GNode*) new_connection.input_node)->actor,
+                                          sphactor_endpoint( ((GNode*) new_connection.output_node)->actor ) );
+                    }
+
+                    // Render output connections of this node
+                    for (const Connection& connection : node->connections)
+                    {
+                        // Node contains all it's connections (both from output and to input slots). This means that multiple
+                        // nodes will have same connection. We render only output connections and ensure that each connection
+                        // will be rendered once.
+                        if (connection.output_node != node)
+                            continue;
+
+                        if (!ImNodes::Connection(connection.input_node, connection.input_slot, connection.output_node,
+                            connection.output_slot))
+                        {
+                            assert(connection.input_node);
+                            assert(connection.output_node);
+                            sphactor_disconnect( ((GNode*) connection.input_node)->actor,
+                                              sphactor_endpoint( ((GNode*) connection.output_node)->actor ) );
+                            // Remove deleted connections
+                            ((GNode*) connection.input_node)->DeleteConnection(connection);
+                            ((GNode*) connection.output_node)->DeleteConnection(connection);
+                        }
                     }
                 }
-            }
-            // Node rendering is done. This call will render node background based on size of content inside node.
-            ImNodes::Ez::EndNode();
+                // Node rendering is done. This call will render node background based on size of content inside node.
+                ImNodes::Ez::EndNode();
 
-            if (node->selected && ImGui::IsKeyPressedMap(ImGuiKey_Delete))
-            {
-                for (auto& connection : node->connections)
+                if (node->selected && ImGui::IsKeyPressedMap(ImGuiKey_Backspace))
                 {
-                    ((MyNode*) connection.input_node)->DeleteConnection(connection);
-                    ((MyNode*) connection.output_node)->DeleteConnection(connection);
+                    for (auto& connection : node->connections)
+                    {
+                        if (connection.output_node == node) {
+                            ((GNode*) connection.input_node)->DeleteConnection(connection);
+                            ((GNode*) connection.output_node)->DeleteConnection(connection);
+                        }
+                        else {
+                            ((GNode*) connection.output_node)->DeleteConnection(connection);
+                            ((GNode*) connection.input_node)->DeleteConnection(connection);
+                        }
+                    }
+                    delete node;
+                    it = nodes.erase(it);
                 }
-                delete node;
-                it = nodes.erase(it);
+                else
+                    ++it;
             }
-            else
-                ++it;
-        }
 
-        const ImGuiIO& io = ImGui::GetIO();
-        if (ImGui::IsMouseReleased(1) && ImGui::IsWindowHovered() && !ImGui::IsMouseDragging(1))
-        {
-            ImGui::FocusWindow(ImGui::GetCurrentWindow());
-            ImGui::OpenPopup("NodesContextMenu");
-        }
-
-        if (ImGui::BeginPopup("NodesContextMenu"))
-        {
-            for (const auto& desc : available_nodes)
+            //const ImGuiIO& io = ImGui::GetIO();
+            if (ImGui::IsMouseReleased(1) && ImGui::IsWindowHovered() && !ImGui::IsMouseDragging(1))
             {
-                if (ImGui::MenuItem(desc.first.c_str()))
-                {
-                    nodes.push_back(desc.second());
-                    ImNodes::AutoPositionNode(nodes.back());
-                }
+                ImGui::FocusWindow(ImGui::GetCurrentWindow());
+                ImGui::OpenPopup("NodesContextMenu");
             }
-            ImGui::Separator();
-            if (ImGui::MenuItem("Reset Zoom"))
-                canvas.zoom = 1;
 
-            if (ImGui::IsAnyMouseDown() && !ImGui::IsWindowHovered())
-                ImGui::CloseCurrentPopup();
-            ImGui::EndPopup();
+            if (ImGui::BeginPopup("NodesContextMenu"))
+            {
+                for (const auto& desc : available_nodes)
+                {
+                    if (ImGui::MenuItem(desc.first.c_str()))
+                    {
+                        nodes.push_back(desc.second());
+                        ImNodes::AutoPositionNode(nodes.back());
+                    }
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem("Reset Zoom"))
+                    canvas.zoom = 1;
+
+                if (ImGui::IsAnyMouseDown() && !ImGui::IsWindowHovered())
+                    ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
+            }
+
+            ImNodes::EndCanvas();
         }
+        ImGui::End();
 
-        ImNodes::EndCanvas();
     }
-    ImGui::End();
 
-}
+    
 
 }   // namespace ImGui

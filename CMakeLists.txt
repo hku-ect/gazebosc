@@ -17,13 +17,14 @@ project(gazebosc)
 
 set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
-set(DEP_IMNODES_DIR "~/src/ImNodes")
+set(DEP_IMNODES_DIR ".")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED sdl2)
 pkg_check_modules(ZMQ REQUIRED libzmq)
 pkg_check_modules(CZMQ REQUIRED libczmq)
 pkg_check_modules(SPH REQUIRED libsphactor)
+pkg_check_modules(LO REQUIRED liblo)
 
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -40,8 +41,12 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
 endif ()
 
 if (UNIX)
+    link_directories(
+        /usr/local/lib/
+    )
     add_executable(gazebosc 
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/example_sdl_opengl3/main.cpp
+       	main.cpp
+
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.cpp
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.h
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.cpp
@@ -62,7 +67,15 @@ if (UNIX)
         ${DEP_IMNODES_DIR}/ImNodes.cpp
         ${DEP_IMNODES_DIR}/ImNodesEz.h
         ${DEP_IMNODES_DIR}/ImNodesEz.cpp
+
+	RtMidi.h
+        RtMidi.cpp
+	rtmidi_c.h
+        rtmidi_c.cpp
+	
         sample.cpp
+	TestNodes.h
+	GNode.h
     )
     target_include_directories(gazebosc PUBLIC
         ${SDL2_INCLUDE_DIRS}
@@ -73,7 +86,12 @@ if (UNIX)
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
         ${DEP_IMNODES_DIR}
     )
-    target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} -ldl -lGL)
-    target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER})
+    if (APPLE)
+        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
+	add_definitions(-D__MACOSX_CORE__)
+    else()
+        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} -lasound -ldl -lGL)
+    endif()
+    target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} -D__LINUX_ALSA__ )
     target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 endif ()
