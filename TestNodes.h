@@ -13,6 +13,7 @@
 #include <imgui.h>
 #include <czmq.h>
 #include <lo/lo_cpp.h>
+#include "GNode.h"
 
 struct MidiNode : GNode
 {
@@ -215,7 +216,7 @@ struct LogNode : GNode
         
         byte *msgBuffer;// = new byte[1024];
         
-        printf("Log: \n");
+        zsys_info("Log: ");
         do {
             frame = zmsg_pop(ev->msg);
             if ( frame ) {
@@ -229,7 +230,7 @@ struct LogNode : GNode
                 assert( result == 0 );
                 
                 // first part of bytes is the osc address
-                printf(" %s \n", msgBuffer);
+                zsys_info(" %s", msgBuffer);
                 
                 // parse individual arguments
                 int count = lo_message_get_argc(lo);
@@ -238,13 +239,13 @@ struct LogNode : GNode
                 for ( int i = 0; i < count; ++i ) {
                     switch(types[i]) {
                         case 'i':
-                            printf("  Int: %i \n", argv[i]->i);
+                            zsys_info("  Int: %i ", argv[i]->i);
                             break;
                         case 'f':
-                            printf("  Float: %f \n", argv[i]->f);
+                            zsys_info("  Float: %f ", argv[i]->f);
                             break;
                         default:
-                            printf("  Unhandled type: %c \n", types[i]);
+                            zsys_info("  Unhandled type: %c ", types[i]);
                             break;
                     }
                 }
