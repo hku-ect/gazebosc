@@ -23,20 +23,20 @@ struct MidiNode : GNode
     unsigned int nPorts = 0;
     RtMidiIn *midiin = nullptr;
     std::vector<std::string> portNames;
-    const char *activePort;
+    char *activePort;
     char *msgBuffer;
     char *address;
     const char* current_item = "Select device...";
     
-    explicit MidiNode() : GNode( "MidiNode",
+    explicit MidiNode( const char* uuid ) : GNode( "Midi",
                                 { },    //no input slots
                                 {
-                                    {"MidiOSC", NodeSlotOSC}  // Output slots
-                                } )
+                                    {"OSC", NodeSlotOSC}  // Output slots
+                                }, uuid )
     {
         msgBuffer = new char[1024];
         address = new char[64];
-        //TODO: Setup thread-timing on the sphactor side
+        activePort = new char[128];
         
         //get midi
         try {
@@ -77,6 +77,7 @@ struct MidiNode : GNode
         
         delete[] address;
         delete[] msgBuffer;
+        delete[] activePort;
     }
     
     //This function attempts to open the port midiPort
@@ -89,7 +90,7 @@ struct MidiNode : GNode
         
         if ( nPorts > midiPort ) {
             midiin->openPort(midiPort);
-            activePort = portNames.at(midiPort).c_str();
+            sprintf(activePort, "%s", portNames.at(midiPort).c_str());
             printf("Connected to %s \n", activePort);
         }
         else {
@@ -172,6 +173,37 @@ struct MidiNode : GNode
     virtual void Serialize( zconfig_t *section ) {
         zconfig_t *device = zconfig_new("device", section);
         zconfig_set_value(device, "%s", activePort);
+        
+        GNode::Serialize(section);
+    }
+    
+    void HandleArgs( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+        //pop args from front
+        char* strPort = *it;
+        it++;
+        
+        //find activePort in portNames, and assign index to midiPort
+        //TODO: TEST THIS!
+        int i = 0;
+        bool found = false;
+        for( auto it = portNames.begin(); it != portNames.end(); it++) {
+            if ( streq( it->c_str(), activePort ) ) {
+                midiPort = i;
+                found = true;
+                Connect();
+                break;
+            }
+            i++;
+        }
+        
+        if ( !found ) {
+            zsys_error("Device not found: %s", activePort);
+        }
+        
+        free(strPort);
+        
+        //send remaining args (probably just xpos/ypos) to base
+        GNode::HandleArgs(args, it);
     }
 };
 
@@ -181,9 +213,9 @@ struct CountNode : GNode
 
     int count = 0;
     
-    explicit CountNode() : GNode(   "Count",
+    explicit CountNode(const char* uuid) : GNode(   "Count",
                                  { {"OSC", NodeSlotOSC} },    //Input slots
-                                 { {"OSC", NodeSlotOSC} } )// Output slots
+                                 { {"OSC", NodeSlotOSC} }, uuid )// Output slots
     {
         
     }
@@ -203,9 +235,9 @@ struct CountNode : GNode
 
 struct LogNode : GNode
 {
-    explicit LogNode() : GNode(   "Log",
+    explicit LogNode(const char* uuid) : GNode(   "Log",
                                  { {"OSC", NodeSlotOSC} },    //Input slot
-                                 { } )// Output slotss
+                                 { }, uuid )// Output slotss
     {
        
     }
@@ -274,9 +306,9 @@ struct PulseNode : GNode
     char* address;
     int rate;
     
-    explicit PulseNode() : GNode(   "Pulse",
+    explicit PulseNode(const char* uuid) : GNode(   "Pulse",
                                     {  },    //Input slot
-                                    { { "OSC", NodeSlotOSC } } )// Output slotss
+                                    { { "OSC", NodeSlotOSC } }, uuid )// Output slotss
     {
         msgBuffer = new char[1024];
         address = new char[32];
@@ -323,6 +355,27 @@ struct PulseNode : GNode
         
         zconfig_t *zAddress = zconfig_new("address", section);
         zconfig_set_value(zAddress, "%s", address);
+        
+        GNode::Serialize(section);
+    }
+    
+    void HandleArgs( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+        //pop args from front
+        char* strRate = *it;
+        it++;
+        char* strAddress = *it;
+        it++;
+        
+        rate = atoi(strRate);
+        sprintf(address, "%s", strAddress);
+        
+        SetRate(rate);
+        
+        free(strRate);
+        free(strAddress);
+        
+        //send remaining args (probably just xpos/ypos) to base
+        GNode::HandleArgs(args, it);
     }
 };
 
@@ -339,9 +392,9 @@ struct ClientNode : GNode
     byte *msgBuffer;
     zframe_t* frame;
     
-    explicit ClientNode() : GNode(   "Client",
+    explicit ClientNode(const char* uuid) : GNode(   "Client",
                                     { { "OSC", NodeSlotOSC } },    //Input slot
-                                    { } )// Output slotss
+                                    { }, uuid )// Output slotss
     {
         ipAddress = new char[64];
         port = 1234;
@@ -431,6 +484,27 @@ struct ClientNode : GNode
         
         zconfig_t *zPort = zconfig_new("port", section);
         zconfig_set_value(zPort, "%i", port);
+        
+        GNode::Serialize(section);
+    }
+    
+    void HandleArgs( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+        //pop args from front
+        char* strIp = *it;
+        it++;
+        char* strPort = *it;
+        it++;
+        
+        sprintf(ipAddress, "%s", strIp);
+        port = atoi(strPort);
+        
+        isDirty = true;
+        
+        free(strIp);
+        free(strPort);
+        
+        //send remaining args (probably just xpos/ypos) to base
+        GNode::HandleArgs(args, it);
     }
 };
 

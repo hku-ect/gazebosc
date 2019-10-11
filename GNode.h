@@ -70,13 +70,32 @@ struct GNode
 
     explicit GNode(const char* title,
         const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
-        const std::vector<ImNodes::Ez::SlotInfo>&& output_slots)
+        const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr)
     {
-        actor = sphactor_new(GNode::_actor_handler, this, title, nullptr);
+        zuuid_t *uuid = NULL;
+        if ( uuidStr != nullptr ) {
+            uuid = zuuid_new();
+            zuuid_set_str(uuid, uuidStr);
+        }
+        
+        actor = sphactor_new(GNode::_actor_handler, this, title, uuid);
         sphactor_set_verbose(actor, true);
         this->title = title;
         this->input_slots = input_slots;
         this->output_slots = output_slots;
+    }
+    
+    virtual void HandleArgs( ImVector<char*> *args, ImVector<char*>::iterator it) {
+        char* xpos = *it;
+        it++;
+        char* ypos = *it;
+        it++;
+        
+        pos.x = atof(xpos);
+        pos.y = atof(ypos);
+        
+        free(xpos);
+        free(ypos);
     }
 
     virtual ~GNode()
@@ -92,7 +111,7 @@ struct GNode
         zstr_send(sphactor_socket(this->actor), strRate );
         delete[] strRate;
     }
-
+    
     /// Deletes connection from this node.
     void DeleteConnection(const Connection& connection)
     {
@@ -105,7 +124,7 @@ struct GNode
             }
         }
     }
-
+    
     static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
     {
         GNode *self = (GNode *)args;
@@ -133,7 +152,11 @@ struct GNode
     }
     
     virtual void Serialize(zconfig_t *section) {
+        zconfig_t *xpos = zconfig_new("xpos", section);
+        zconfig_set_value(xpos, "%f", pos.x);
         
+        zconfig_t *ypos = zconfig_new("ypos", section);
+        zconfig_set_value(ypos, "%f", pos.y);
     }
 };
 
