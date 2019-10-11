@@ -29,6 +29,7 @@ void UILoop(SDL_Window* window, ImGuiIO& io );
 void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 
 void ShowConfigWindow();
+void RenderNodes();
 
 // Main code
 int main(int argc, char** argv)
@@ -175,7 +176,7 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         SDL_GetWindowSize(window, &w, &h);
         ImVec2 size = ImVec2(w,h);
         ImGui::SetNextWindowSize(size);
-        ImGui::ShowDemoWindow(&show_demo_window);
+        RenderNodes();
 
         // Save/load window
         ShowConfigWindow();
