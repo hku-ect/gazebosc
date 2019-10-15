@@ -30,6 +30,7 @@ void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 
 void ShowConfigWindow();
 void RenderNodes();
+void RegisterCPPNodes();
 
 // Main code
 int main(int argc, char** argv)
@@ -45,6 +46,10 @@ int main(int argc, char** argv)
     printf(" -- HEADLESS: %i\n", headless ? 1 : 0 );
     
     //TODO: Load default config (maybe start with an example one?), create nodes etc.
+    
+    // Register CPP Node types with sphactor
+    RegisterCPPNodes();
+    
     //TODO: Skip all of this if headless
     
     SDL_Window* window;
