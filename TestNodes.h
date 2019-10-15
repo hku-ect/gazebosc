@@ -296,6 +296,16 @@ struct LogNode : GNode
     }
 };
 
+struct RelayNode : GNode
+{
+    explicit RelayNode(const char* uuid) : GNode(   "Relay",
+                                 { {"OSC", NodeSlotOSC} },    //Input slot
+                                 { {"OSC", NodeSlotOSC} }, uuid )// Output slotss
+    {
+       
+    }
+};
+
 
 //Most basic form of node that performs its own (threaded) behaviour
 struct PulseNode : GNode

@@ -78,7 +78,9 @@ struct GNode
             zuuid_set_str(uuid, uuidStr);
         }
         
-        actor = sphactor_new(GNode::_actor_handler, this, title, uuid);
+        //TODO: replace with sphactor_from_type
+        actor = sphactor_new_by_type(title, this, NULL, uuid);
+        sphactor_set_actor_type(actor, title);
         sphactor_set_verbose(actor, true);
         this->title = title;
         this->input_slots = input_slots;

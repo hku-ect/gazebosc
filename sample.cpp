@@ -33,20 +33,11 @@
 #include "TestNodes.h"
 
 
-//TODO: generate this?
-// we probably need to dynamically define inputs and outputs based on nodes written by ourselves/others...
-std::map<std::string, GNode*(*)(const char*)> available_nodes {
-    //Count Node
-    {"Count", [](const char * uuid) -> GNode* { return new CountNode(uuid); } },
-    //Midi Node
-    {"Midi", [](const char * uuid) -> GNode* { return new MidiNode(uuid); } },
-    //Midi Node
-    {"Log", [](const char * uuid) -> GNode* { return new LogNode(uuid); } },
-    //Client Node
-    {"Client", [](const char * uuid) -> GNode* { return new ClientNode(uuid); } },
-    //Pulse Node
-    {"Pulse", [](const char * uuid) -> GNode* { return new PulseNode(uuid); } }
-};
+// List of actor types and constructors
+//  Currently these are all internal dependencies, but we will need to create
+//   a "generic node" class for types defined outside of this codebase.
+ImVector<char*> actor_types;
+std::map<std::string, GNode*(*)(const char*)> type_constructors;
 std::vector<GNode*> nodes;
 
 void Save( const char* configFile );
@@ -54,12 +45,51 @@ void Load( const char* configFile );
 void Clear();
 GNode* Find( const char* endpoint );
 
+typedef GNode* (*gnode_constructor_fn)(const char*);
+
+void RegisterNode( const char* type, sphactor_handler_fn func, gnode_constructor_fn constructor ) {
+    sphactor_register(type, func);
+    type_constructors[type] = constructor;
+}
+
+void UpdateRegisteredNodesCache() {
+    zlist_t* list = sphactor_get_registered();
+    actor_types.clear();
+    
+    char* item = (char*)zlist_first(list);
+    while( item ) {
+        actor_types.push_back(item);
+        item = (char*)zlist_next(list);
+    }
+}
+
+GNode* CreateFromType( const char* typeStr, const char* uuidStr ) {
+    auto typeIterator = type_constructors.find(typeStr);
+    if ( typeIterator != type_constructors.end() ) {
+        return type_constructors[typeStr](uuidStr);
+    }
+    else {
+        //TODO: Implement base node class
+        zsys_error("Unknown node type encountered: %s -> TODO: implement generic base node", typeStr);
+        return new RelayNode(uuidStr);
+    }
+}
+
+void RegisterCPPNodes() {
+    
+    // When implementing new nodes, this is the only place you need to add them
+    RegisterNode( "Log", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new LogNode(uuid); });
+    RegisterNode( "Midi", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new MidiNode(uuid); });
+    RegisterNode( "Count", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new CountNode(uuid); });
+    RegisterNode( "Client", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new ClientNode(uuid); });
+    RegisterNode( "Pulse", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new PulseNode(uuid); });
+    RegisterNode( "Relay", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new RelayNode(uuid); });
+    
+    //TODO: Figure out when this needs to happen
+    UpdateRegisteredNodesCache();
+}
 
 void ShowConfigWindow() {
-    //config window (natnet data, configuration file, connection button
-    //TODO: Move to separate cpp file?
-    //ImGui::ShowControlWindow(true, )
-
     static int counter = 0;
     static char* configFile = new char[64];
     static char* natnetIP = new char[64];
@@ -98,7 +128,6 @@ void ShowConfigWindow() {
     ImGui::End();
 }
 
-//TODO: refactor into our own full-screen background editor
 void RenderNodes()
 {
     // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
@@ -166,9 +195,11 @@ void RenderNodes()
             // Node rendering is done. This call will render node background based on size of content inside node.
             ImNodes::Ez::EndNode();
 
-            if (node->selected && ImGui::IsKeyPressedMap(ImGuiKey_Backspace))
+            //TODO: Fix this for mac users, because they don't have a delete button...
+            bool del = ImGui::IsKeyPressedMap(ImGuiKey_Backspace);
+            if (node->selected && del)
             {
-                // loop and delete connections of nodes connected to us
+                // Loop and delete connections of nodes connected to us
                 for (auto& connection : node->connections)
                 {
                     if (connection.output_node == node) {
@@ -178,7 +209,7 @@ void RenderNodes()
                         ((GNode*) connection.output_node)->DeleteConnection(connection);
                     }
                 }
-                // delete all our connections separately
+                // Delete all our connections separately
                 node->connections.clear();
                 
                 delete node;
@@ -187,8 +218,7 @@ void RenderNodes()
             else
                 ++it;
         }
-
-        //const ImGuiIO& io = ImGui::GetIO();
+        
         if (ImGui::IsMouseReleased(1) && ImGui::IsWindowHovered() && !ImGui::IsMouseDragging(1))
         {
             ImGui::FocusWindow(ImGui::GetCurrentWindow());
@@ -197,14 +227,16 @@ void RenderNodes()
 
         if (ImGui::BeginPopup("NodesContextMenu"))
         {
-            for (const auto& desc : available_nodes)
+            //TODO: Fetch updated available nodes?
+            for (const auto desc : actor_types)
             {
-                if (ImGui::MenuItem(desc.first.c_str()))
+                if (ImGui::MenuItem(desc))
                 {
-                    nodes.push_back(desc.second(nullptr));
+                    nodes.push_back(CreateFromType(desc, nullptr));
                     ImNodes::AutoPositionNode(nodes.back());
                 }
             }
+            
             ImGui::Separator();
             if (ImGui::MenuItem("Reset Zoom"))
                 canvas.zoom = 1;
@@ -255,16 +287,14 @@ void Load( const char* configFile ) {
     
     if ( root == nullptr ) return;
     
-    zconfig_t* configNodes = zconfig_locate(root, "nodes");
+    zconfig_t* configNodes = zconfig_locate(root, "actors");
     
-    //clear current sketch
+    // Clear current sketch
     //TODO: Maybe ask if people want to save first?
     Clear();
     
-    //recreate nodes
-    //TODO: move this to somewhere else?
-    
-    zconfig_t* node = zconfig_locate(configNodes, "node");
+    // Get and loop all nodes
+    zconfig_t* node = zconfig_locate(configNodes, "actor");
     while( node != nullptr )
     {
         zconfig_t* uuid = zconfig_locate(node, "uuid");
@@ -275,6 +305,8 @@ void Load( const char* configFile ) {
         char *typeStr = zconfig_value(type);
         char *endpointStr = zconfig_value(endpoint);
         
+        // We're assuming the endpoint is the last thing added by the sphactor actor
+        //  from there we ready until we receive null and send that to the high-level node
         ImVector<char*> *args = new ImVector<char*>();
         zconfig_t *arg = zconfig_next(endpoint);
         while ( arg != nullptr ) {
@@ -282,9 +314,9 @@ void Load( const char* configFile ) {
             arg = zconfig_next(arg);
         }
         
-        GNode *gNode = available_nodes[typeStr](uuidStr);
+        GNode *gNode = CreateFromType(typeStr, uuidStr);
         
-        ImVector<char*>::iterator it = args->begin();
+        auto it = args->begin();
         gNode->HandleArgs(args, it);
         
         nodes.push_back(gNode);
@@ -299,12 +331,13 @@ void Load( const char* configFile ) {
         delete args;
     }
     
+    // Get and loop all connections
     zconfig_t* connections = zconfig_locate(root, "connections");
     zconfig_t* con = zconfig_locate( connections, "con");
     while( con != nullptr ) {
         char* conVal = zconfig_value(con);
         
-        //find nodes and connect them
+        // Parse comma separated connection string to get the two endpoints
         int i;
         for( i = 0; conVal[i] != '\0'; ++i ) {
             if ( conVal[i] == ',' ) break;
@@ -319,14 +352,12 @@ void Load( const char* configFile ) {
         pch = strtok (NULL, ",");
         sprintf(input, "%s", pch);
         
-        //printf("output: %s", output);
-        //printf("input: %s", input);
-        
+        // Loop nodes and find output actor
         for (auto it = nodes.begin(); it != nodes.end();)
         {
             GNode* node = *it;
             
-            //if output is our endpoint
+            // We're the output node, so we recreate the connection
             if (streq(sphactor_endpoint(node->actor), output)) {
                 Connection connection;
                 GNode* inputNode = Find(input);
@@ -334,7 +365,7 @@ void Load( const char* configFile ) {
                 
                 connection.output_node = node;
                 connection.input_node = inputNode;
-                //TODO: Fix...
+                //TODO: Fix OSC type assumption -> part of the connection list?
                 connection.input_slot = "OSC";
                 connection.output_slot = "OSC";
                 
@@ -367,14 +398,19 @@ void Clear() {
             //delete them once
             if (connection.output_node == node) {
                 ((GNode*) connection.input_node)->DeleteConnection(connection);
-                ((GNode*) connection.output_node)->DeleteConnection(connection);
             }
         }
-        delete node;
-        it = nodes.erase(it);
+        node->connections.clear();
+        it++;
     }
     
     //delete all nodes
+    for (auto it = nodes.begin(); it != nodes.end();)
+    {
+        GNode* node = *it;
+        delete node;
+        it = nodes.erase(it);
+    }
 }
 
 GNode* Find( const char* endpoint ) {
