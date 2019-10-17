@@ -195,9 +195,8 @@ void RenderNodes()
             }
             // Node rendering is done. This call will render node background based on size of content inside node.
             ImNodes::Ez::EndNode();
-
-            //TODO: Fix this for mac users, because they don't have a delete button...
-            bool del = ImGui::IsKeyPressedMap(ImGuiKey_Backspace);
+            
+            bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || ( ImGui::IsKeyPressedMap(ImGuiKey_Backspace) && ImGui::GetActiveID() == 0 );
             if (node->selected && del)
             {
                 // Loop and delete connections of nodes connected to us

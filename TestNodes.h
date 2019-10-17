@@ -584,7 +584,7 @@ struct OSCListenerNode : GNode
         zframe_t *frame = zframe_new(self->msgBuffer, len);
         zmsg_append(zmsg, &frame);
         
-        // Tell our 
+        // Tell our actor to send the msg
         sphactor_send_msg(self->actor, zmsg);
         
         return 0;

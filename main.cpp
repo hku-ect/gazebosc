@@ -146,9 +146,7 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
 }
 
 void UILoop( SDL_Window* window, ImGuiIO& io ) {
-    // Our state
-    bool show_demo_window = true;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);    //should be irrelevant soon...
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     
     // Main loop
     bool done = false;
