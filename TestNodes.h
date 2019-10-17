@@ -518,4 +518,93 @@ struct ClientNode : GNode
     }
 };
 
+
+struct OSCListenerNode : GNode
+{
+    using GNode::GNode;
+    
+    int port;
+    bool isDirty = true;
+    byte *msgBuffer;
+    lo_server_thread server = NULL;
+    zframe_t* frame;
+    
+    explicit OSCListenerNode(const char* uuid) : GNode(   "OSCListener",
+                                    {  },    //Input slot
+                                    { { "OSC", NodeSlotOSC } }, uuid )// Output slotss
+    {
+        msgBuffer = new byte[1024];
+        
+        port = 1234;
+        StartServer();
+        SetRate(60);
+    }
+    
+    virtual ~OSCListenerNode() {
+        StopAndDestroyServer();
+        
+        delete[] msgBuffer;
+    }
+    
+    void StopAndDestroyServer() {
+        if ( server != NULL ) {
+            zsys_info("REMOVING SERVER\n");
+            lo_server serv = lo_server_thread_get_server(server);
+            if ( serv != NULL ) {
+                lo_server_thread_stop(server);
+            }
+            lo_server_thread_free(server);
+            server = NULL;
+        }
+    }
+    
+    void StartServer() {
+        StopAndDestroyServer();
+        
+        char* buf = new char[32];
+        sprintf( buf, "%i", port);
+        server = lo_server_thread_new(buf, NULL);
+        delete[] buf;
+        
+        lo_server_thread_start(server);
+        lo_server_thread_add_method(server, NULL, NULL, MessageReceived, this);
+    }
+    
+    static int MessageReceived( const char *path, const char *types, lo_arg **argv, int argc, lo_message lo_msg, void *user_data ) {
+        OSCListenerNode *self = (OSCListenerNode*)user_data;
+        
+        zsys_info( " Received OSC Message: %s", path );
+        
+        // Parse msg into a zmgs_t
+        zmsg_t *zmsg = zmsg_new();
+        
+        size_t len = sizeof(msgBuffer);
+        lo_message_serialise(lo_msg, path, self->msgBuffer, &len);
+        
+        zframe_t *frame = zframe_new(self->msgBuffer, len);
+        zmsg_append(zmsg, &frame);
+        
+        // Tell our 
+        sphactor_send_msg(self->actor, zmsg);
+        
+        return 0;
+    }
+    
+    void RenderUI() {
+        ImGui::SetNextItemWidth(100);
+        if ( ImGui::InputInt( "Port", &port ) ) {
+            isDirty = true;
+        }
+    }
+    
+    zmsg_t * Update() {
+        
+        if ( isDirty ) {
+            StartServer();
+            isDirty = false;
+        }
+        
+        return nullptr;
+    }
+};
 #endif /* TestNodes_h */
