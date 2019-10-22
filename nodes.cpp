@@ -31,6 +31,7 @@
 #include "libsphactor.h"
 #include "GNode.h"
 #include "TestNodes.h"
+#include "Nodes/DefaultNodes.h"
 
 
 // List of actor types and constructors
@@ -129,7 +130,7 @@ void ShowConfigWindow() {
     ImGui::End();
 }
 
-void RenderNodes()
+void UpdateNodes(float deltaTime)
 {
     // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
     static ImNodes::CanvasState canvas{};
@@ -153,7 +154,7 @@ void RenderNodes()
                 ImNodes::Ez::InputSlots(node->input_slots.data(), node->input_slots.size());
 
                 // Custom node content may go here
-                node->RenderUI();
+                node->Render(deltaTime);
 
                 // Render output nodes first (order is important)
                 ImNodes::Ez::OutputSlots(node->output_slots.data(), node->output_slots.size());
@@ -259,7 +260,7 @@ void Save( const char* configFile ) {
         zconfig_t* nodeSection = sphactor_zconfig_append(node->actor, config);
         
         // Add custom node data to section
-        node->Serialize(nodeSection);
+        node->SerializeNodeData(nodeSection);
 
         zconfig_t* connections = zconfig_locate(config, "connections");
         if ( connections == nullptr ) {
@@ -317,7 +318,7 @@ void Load( const char* configFile ) {
         GNode *gNode = CreateFromType(typeStr, uuidStr);
         
         auto it = args->begin();
-        gNode->HandleArgs(args, it);
+        gNode->DeserializeNodeData(args, it);
         
         nodes.push_back(gNode);
         

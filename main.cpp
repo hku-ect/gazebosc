@@ -29,7 +29,7 @@ void UILoop(SDL_Window* window, ImGuiIO& io );
 void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 
 void ShowConfigWindow();
-void RenderNodes();
+void UpdateNodes(float deltaTime);
 void RegisterCPPNodes();
 
 // Main code
@@ -150,6 +150,7 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
     
     // Main loop
     bool done = false;
+    unsigned int deltaTime, oldTime;
     while (!done)
     {
         static int w, h;
@@ -179,7 +180,11 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         SDL_GetWindowSize(window, &w, &h);
         ImVec2 size = ImVec2(w,h);
         ImGui::SetNextWindowSize(size);
-        RenderNodes();
+        
+        // Get time since last frame
+        deltaTime = SDL_GetTicks() - oldTime;
+        oldTime = SDL_GetTicks();
+        UpdateNodes( ((float)deltaTime) / 1000 );
 
         // Save/load window
         ShowConfigWindow();

@@ -67,98 +67,37 @@ struct GNode
     std::vector<ImNodes::Ez::SlotInfo> output_slots{};
     /// sphactor instance
     sphactor_t *actor;
-
+    
+    // Construction / Destruction
     explicit GNode(const char* title,
-        const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
-        const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr)
-    {
-        zuuid_t *uuid = NULL;
-        if ( uuidStr != nullptr ) {
-            uuid = zuuid_new();
-            zuuid_set_str(uuid, uuidStr);
-        }
-        
-        actor = sphactor_new_by_type(title, this, NULL, uuid);
-        sphactor_set_actor_type(actor, title);
-        sphactor_set_verbose(actor, true);
-        this->title = title;
-        this->input_slots = input_slots;
-        this->output_slots = output_slots;
-    }
+    const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
+                   const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr);
     
-    virtual void HandleArgs( ImVector<char*> *args, ImVector<char*>::iterator it) {
-        char* xpos = *it;
-        it++;
-        char* ypos = *it;
-        it++;
-        
-        pos.x = atof(xpos);
-        pos.y = atof(ypos);
-        
-        free(xpos);
-        free(ypos);
-    }
-
-    virtual ~GNode()
-    {
-        sphactor_destroy(&(this->actor));
-    }
+    virtual ~GNode();
     
-    void SetRate( int rate ) {
-        rate = 1000/rate;
-        zstr_sendm(sphactor_socket(this->actor), "SET TIMEOUT");
-        char* strRate = new char[64];
-        sprintf( strRate, "%i", rate );
-        zstr_send(sphactor_socket(this->actor), strRate );
-        delete[] strRate;
-    }
+    // UI Functions
+    void DeleteConnection(const Connection& connection);
+    virtual void Render(float deltaTime);
     
-    /// Deletes connection from this node.
-    void DeleteConnection(const Connection& connection)
-    {
-        for (auto it = connections.begin(); it != connections.end(); ++it)
-        {
-            if (connection == *it)
-            {
-                connections.erase(it);
-                break;
-            }
-        }
-    }
+    // Sphactor thread functions
+    void SetRate( int rate );
+    virtual zmsg_t *ActorCallback();
+    virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
     
     static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
     {
         GNode *self = (GNode *)args;
         
         if ( ev->msg == NULL ) {
-            return self->Update();
+            return self->ActorCallback();
         }
         
-        return self->HandleMessage(ev);
+        return self->ActorMessage(ev);
     }
     
-    virtual zmsg_t *Update()
-    {
-        return nullptr;
-    }
-
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
-    {
-        assert( ev->msg );
-        return ev->msg;
-    }
-    
-    virtual void RenderUI() {
-        
-    }
-    
-    virtual void Serialize(zconfig_t *section) {
-        zconfig_t *xpos = zconfig_new("xpos", section);
-        zconfig_set_value(xpos, "%f", pos.x);
-        
-        zconfig_t *ypos = zconfig_new("ypos", section);
-        zconfig_set_value(ypos, "%f", pos.y);
-    }
+    // Serialization functions
+    virtual void SerializeNodeData(zconfig_t *section);
+    virtual void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it);
 };
 
 #endif /* GNode_h */

@@ -73,9 +73,15 @@ if (UNIX)
 	rtmidi_c.h
         rtmidi_c.cpp
 	
-        sample.cpp
-	TestNodes.h
+        nodes.cpp
+
 	GNode.h
+	GNode.cpp
+	Nodes/DefaultNodes.h
+	Nodes/UtilityNodes.cpp
+	Nodes/MidiNode.cpp
+	Nodes/ClientNode.cpp
+	Nodes/OSCListenerNode.cpp
     )
     target_include_directories(gazebosc PUBLIC
         ${SDL2_INCLUDE_DIRS}
