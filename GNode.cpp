@@ -2,7 +2,7 @@
 //  GNode.cpp
 //  gazebosc
 //
-//  Created by Call +31646001602 on 22/10/2019.
+//  Created by aaronvark on 22/10/2019.
 //
 
 #include "GNode.h"

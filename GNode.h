@@ -69,6 +69,7 @@ struct GNode
     sphactor_t *actor;
     
     // Construction / Destruction
+    //  Inheriting classes should call this constructor with correct in/out data
     explicit GNode(const char* title,
     const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
                    const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr);

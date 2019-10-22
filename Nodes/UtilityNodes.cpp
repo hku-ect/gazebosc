@@ -89,8 +89,6 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
         }
     } while ( frame != NULL );
     
-    //delete[] msgBuffer;
-    
     zmsg_destroy(&ev->msg);
     
     return NULL;
