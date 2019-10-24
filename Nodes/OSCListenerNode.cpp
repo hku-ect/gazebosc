@@ -11,40 +11,65 @@ OSCListenerNode::OSCListenerNode(const char* uuid) : GNode(   "OSCListener",
                                 {  },    //Input slot
                                 { { "OSC", NodeSlotOSC } }, uuid )// Output slotss
 {
-    msgBuffer = new byte[1024];
-    
     port = 1234;
-    StartServer();
-    SetRate(1);
+    isDirty = false;
+    //server = NULL;
 }
 
 OSCListenerNode::~OSCListenerNode() {
-    StopAndDestroyServer();
+    //if ( server != NULL ) {;
+    //    lo_server_free(server);
+    //}
     
-    delete[] msgBuffer;
+    zsys_udp_close(udpSock);
 }
 
-void OSCListenerNode::StopAndDestroyServer() {
-    if ( server != NULL ) {
-        lo_server serv = lo_server_thread_get_server(server);
-        if ( serv != NULL ) {
-            lo_server_thread_stop(server);
-        }
-        lo_server_thread_free(server);
-        server = NULL;
-    }
+void OSCListenerNode::CreateActor() {
+    GNode::CreateActor();
+    SetRate(1);
 }
 
-void OSCListenerNode::StartServer() {
-    StopAndDestroyServer();
+void OSCListenerNode::ActorInit( const sphactor_node_t *node ) {
+    StartServer(node);
+}
+
+void OSCListenerNode::ActorStop( const sphactor_node_t *node ) {
+    StopAndDestroyServer(node);
+}
+
+void OSCListenerNode::StopAndDestroyServer( const sphactor_node_t *node ) {
+    sphactor_node_poller_remove((sphactor_node_t*)node, (void*)&udpSock);
+}
+
+void OSCListenerNode::StartServer( const sphactor_node_t *node ) {
     
     char* buf = new char[32];
     sprintf( buf, "%i", port);
-    server = lo_server_thread_new(buf, NULL);
-    delete[] buf;
     
-    lo_server_thread_start(server);
-    lo_server_thread_add_method(server, NULL, NULL, MessageReceived, this);
+    udpSock = zsys_udp_new(false);
+    
+    struct addrinfo *bind_to = NULL;
+    struct addrinfo hint;
+    memset (&hint, 0, sizeof(struct addrinfo));
+    hint.ai_flags = AI_NUMERICHOST;
+#if !defined (CZMQ_HAVE_ANDROID) && !defined (CZMQ_HAVE_FREEBSD)
+    hint.ai_flags |= AI_V4MAPPED;
+#endif
+    hint.ai_socktype = SOCK_DGRAM;
+    hint.ai_protocol = IPPROTO_UDP;
+    hint.ai_family = zsys_ipv6 () ? AF_INET6 : AF_INET;
+    
+    int rc = getaddrinfo (NULL, buf, &hint, &bind_to);
+    assert ( rc == 0 );
+    
+    if ( bind (udpSock, bind_to->ai_addr, bind_to->ai_addrlen) ) {
+        //TODO: Figure out what this if passing even means...
+    }
+    
+    delete[] buf;
+    freeaddrinfo (bind_to);
+    
+    sphactor_node_poller_add((sphactor_node_t*)node, &udpSock, MessageReceived);
 }
 
 void OSCListenerNode::Render(float deltaTime) {
@@ -57,7 +82,7 @@ void OSCListenerNode::Render(float deltaTime) {
     // Short delay before responding to edits
     timer += deltaTime;
     if ( isDirty && timer > 1 ) {
-       StartServer();
-       isDirty = false;
+        CreateActor();
+        isDirty = false;
     }
 }

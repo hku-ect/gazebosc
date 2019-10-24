@@ -11,6 +11,22 @@ GNode::GNode(const char* title,
     const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
     const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr)
 {
+    this->title = title;
+    this->uuidStr = uuidStr;
+    this->input_slots = input_slots;
+    this->output_slots = output_slots;
+}
+
+GNode::~GNode()
+{
+    
+}
+
+void GNode::CreateActor() {
+    if ( actor != NULL ) {
+        DestroyActor();
+    }
+    
     zuuid_t *uuid = NULL;
     if ( uuidStr != nullptr ) {
         uuid = zuuid_new();
@@ -20,14 +36,11 @@ GNode::GNode(const char* title,
     actor = sphactor_new_by_type(title, this, NULL, uuid);
     sphactor_set_actor_type(actor, title);
     sphactor_set_verbose(actor, true);
-    this->title = title;
-    this->input_slots = input_slots;
-    this->output_slots = output_slots;
 }
 
-GNode::~GNode()
-{
-    sphactor_destroy(&(this->actor));
+void GNode::DestroyActor() {
+    sphactor_destroy(&this->actor);
+    this->actor = NULL;
 }
 
 // Front-end functions
@@ -58,6 +71,16 @@ void GNode::SetRate( int rate ) {
     sprintf( strRate, "%i", rate );
     zstr_send(sphactor_socket(this->actor), strRate );
     delete[] strRate;
+}
+
+void GNode::ActorInit( const sphactor_node_t *node )
+{
+    
+}
+
+void GNode::ActorStop( const sphactor_node_t *node )
+{
+    
 }
 
 zmsg_t *GNode::ActorCallback()

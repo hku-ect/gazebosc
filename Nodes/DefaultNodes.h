@@ -32,18 +32,21 @@ struct MidiNode : GNode
     explicit MidiNode( const char* uuid );
     virtual ~MidiNode();
     
+    
+    
     // Node specific functions
     void Connect();
     
     // UI overrides
-    virtual void Render(float deltaTime);
+    void Render(float deltaTime);
     
     // Thread overrides
-    virtual zmsg_t *ActorCallback();
+    void CreateActor();
+    zmsg_t *ActorCallback();
     
     // Serialization overrides
-    virtual void SerializeNodeData( zconfig_t *section );
-    virtual void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
+    void SerializeNodeData( zconfig_t *section );
+    void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
 };
 
 
@@ -92,6 +95,7 @@ struct PulseNode : GNode
     
     void Render(float deltaTime);
     
+    void CreateActor();
     zmsg_t *ActorCallback();
     
     virtual void SerializeNodeData( zconfig_t *section );
@@ -130,34 +134,134 @@ struct OSCListenerNode : GNode
     
     int port;
     bool isDirty = true;
-    byte *msgBuffer;
-    lo_server_thread server = NULL;
-    zframe_t* frame;
-    zmsg_t* toSend;
+    //lo_server server = NULL;
     float timer = 0;
+    SOCKET udpSock = -1;
     
     explicit OSCListenerNode(const char* uuid);
     virtual ~OSCListenerNode();
     
-    void StopAndDestroyServer();
-    void StartServer();
+    void CreateActor();
     
-    static int MessageReceived( const char *path, const char *types, lo_arg **argv, int argc, lo_message lo_msg, void *user_data ) {
-        OSCListenerNode *self = (OSCListenerNode*)user_data;
+    void StopAndDestroyServer( const sphactor_node_t* node );
+    void StartServer( const sphactor_node_t* node );
+    
+    void ActorInit(const sphactor_node_t *node);
+    void ActorStop(const sphactor_node_t *node);
+    
+    static zmsg_t * MessageReceived(void * socket) {
         
-        // Parse msg into a zmgs_t
-        zmsg_t *zmsg = zmsg_new();
+        char* peer = new char[INET_ADDRSTRLEN];
+        zframe_t * frame;
+        SOCKET s = *(int*)socket;
         
-        size_t len = sizeof(msgBuffer);
-        lo_message_serialise(lo_msg, path, self->msgBuffer, &len);
+        frame = zsys_udp_recv(s, peer, INET_ADDRSTRLEN);
         
-        zframe_t *frame = zframe_new(self->msgBuffer, len);
-        zmsg_append(zmsg, &frame);
+        if ( frame ) {
+            zmsg_t *zmsg = zmsg_new();
+            
+            //TODO: Maybe move this somewhere else?
+            // get byte array for frame
+            byte * data = new byte[2048];   // arbitrary max buffer size
+            data = zframe_data(frame);
+            size_t size = zframe_size(frame);
+            ssize_t len = lo_validate_string(data, size);
+            
+            if (!strcmp((const char *) data, "#bundle")) {
+                // Got bundle
+                //  Parse separate messages into frames
+                char *pos;
+                int remain;
+                uint32_t elem_len;
+                lo_timetag ts, now;
+                
+                pos = (char*) data + len;
+                remain = size - len;
+
+                lo_timetag_now(&now);
+                ts.sec = lo_otoh32(*((uint32_t *) pos));
+                pos += 4;
+                ts.frac = lo_otoh32(*((uint32_t *) pos));
+                pos += 4;
+                remain -= 8;
+                
+                while (remain >= 4) {
+                    lo_message msg;
+                    elem_len = lo_otoh32(*((uint32_t *) pos));
+                    pos += 4;
+                    remain -= 4;
+
+                    if (!strcmp(pos, "#bundle")) {
+                        //TODO: Figure out what needs to happen here...
+                        // This is probably if you receive nested bundles
+                        zsys_info("Unhandled case...");
+                    } else {
+                        int result;
+                        msg = lo_message_deserialise(pos, elem_len, &result);
+                        
+                        // set timetag from bundle
+                        lo_message_add_timetag(msg, ts);
+
+                        // bump the reference count so that it isn't
+                        // automatically released
+                        lo_message_incref(msg);
+
+                        // Send
+                        
+                        byte* buf = new byte[2048];
+                        size_t len = sizeof(buf);
+                        lo_message_serialise(msg, pos, buf, &len);
+                        
+                        zframe_t *frame = zframe_new(buf, len);
+                        zmsg_append(zmsg, &frame);
+                        
+                        zframe_destroy(&frame);
+                        lo_message_free(msg);
+                    }
+
+                    pos += elem_len;
+                    remain -= elem_len;
+                    
+                    return zmsg;
+                }
+            } else {
+                // Got single message
+                //  Just throw the byte array to our output...
+                
+                zmsg_append(zmsg, &frame);
+                return zmsg;
+            }
+        }
         
-        // Tell our actor to send the msg
-        sphactor_send_msg(self->actor, zmsg);
-        
-        return 0;
+        return NULL;
+    }
+    
+    static ssize_t lo_validate_string(void *data, ssize_t size)
+    {
+        ssize_t i = 0, len = 0;
+        char *pos = (char*) data;
+
+        if (size < 0) {
+            return -LO_ESIZE;       // invalid size
+        }
+        for (i = 0; i < size; ++i) {
+            if (pos[i] == '\0') {
+                len = 4 * (i / 4 + 1);
+                break;
+            }
+        }
+        if (0 == len) {
+            return -LO_ETERM;       // string not terminated
+        }
+        if (len > size) {
+            return -LO_ESIZE;       // would overflow buffer
+        }
+        for (; i < len; ++i) {
+            if (pos[i] != '\0') {
+                return -LO_EPAD;    // non-zero char found in pad area
+            }
+        }
+        return len;
     }
     
     void Render(float deltaTime);

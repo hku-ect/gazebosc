@@ -212,6 +212,7 @@ void UpdateNodes(float deltaTime)
                 }
                 // Delete all our connections separately
                 node->connections.clear();
+                node->DestroyActor();
                 
                 delete node;
                 it = nodes.erase(it);
@@ -233,7 +234,9 @@ void UpdateNodes(float deltaTime)
             {
                 if (ImGui::MenuItem(desc))
                 {
-                    nodes.push_back(CreateFromType(desc, nullptr));
+                    GNode* node = CreateFromType(desc, nullptr);
+                    node->CreateActor();
+                    nodes.push_back(node);
                     ImNodes::AutoPositionNode(nodes.back());
                 }
             }
@@ -316,6 +319,7 @@ void Load( const char* configFile ) {
         }
         
         GNode *gNode = CreateFromType(typeStr, uuidStr);
+        gNode->CreateActor();
         
         auto it = args->begin();
         gNode->DeserializeNodeData(args, it);
@@ -409,6 +413,7 @@ void Clear() {
     for (auto it = nodes.begin(); it != nodes.end();)
     {
         GNode* node = *it;
+        node->DestroyActor();
         delete node;
         it = nodes.erase(it);
     }

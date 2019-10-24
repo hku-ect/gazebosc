@@ -55,6 +55,8 @@ struct GNode
 {
     /// Title which will be displayed at the center-top of the node.
     const char* title = nullptr;
+    /// uuid string loaded or generated that stores which actor we are
+    const char* uuidStr = nullptr;
     /// Flag indicating that node is selected by the user.
     bool selected = false;
     /// Node position on the canvas.
@@ -66,7 +68,7 @@ struct GNode
     /// A list of output slots current node has.
     std::vector<ImNodes::Ez::SlotInfo> output_slots{};
     /// sphactor instance
-    sphactor_t *actor;
+    sphactor_t *actor = NULL;
     
     // Construction / Destruction
     //  Inheriting classes should call this constructor with correct in/out data
@@ -76,24 +78,52 @@ struct GNode
     
     virtual ~GNode();
     
+    
+    
     // UI Functions
     void DeleteConnection(const Connection& connection);
     virtual void Render(float deltaTime);
     
     // Sphactor thread functions
     void SetRate( int rate );
+    virtual void CreateActor();
+    virtual void DestroyActor();
+    
+    virtual void ActorInit(const sphactor_node_t *node);
+    virtual void ActorStop(const sphactor_node_t *node);
     virtual zmsg_t *ActorCallback();
     virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
     
     static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
     {
         GNode *self = (GNode *)args;
-        
-        if ( ev->msg == NULL ) {
+                
+        if ( streq(ev->type, "INIT")) {
+            self->ActorInit(ev->node);
+        }
+        else
+        if ( streq(ev->type, "TIME")) {
             return self->ActorCallback();
         }
+        else
+        if ( streq(ev->type, "STOP")) {
+            self->ActorStop(ev->node);
+        }
+        else
+        if ( streq(ev->type, "DESTROY")) {
+            //TODO: Implement destroy callback
+        }
+        else
+        if ( streq(ev->type, "SOCK")) {
+            assert(ev->msg);
+            return self->ActorMessage(ev);
+        }
+        else {
+            zsys_warning("EVENT TYPE: %s \n", ev->type);
+        }
+            
         
-        return self->ActorMessage(ev);
+        return nullptr;
     }
     
     // Serialization functions

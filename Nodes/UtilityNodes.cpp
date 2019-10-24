@@ -111,13 +111,16 @@ PulseNode::PulseNode(const char* uuid) : GNode(   "Pulse",
     rate = 1;
     
     sprintf(address, "/pulse" );
-    
-    SetRate(rate);
 }
 
 PulseNode::~PulseNode() {
     delete[] msgBuffer;
     delete[] address;
+}
+
+void PulseNode::CreateActor() {
+    GNode::CreateActor();
+    SetRate(rate);
 }
 
 void PulseNode::Render(float deltaTime) {

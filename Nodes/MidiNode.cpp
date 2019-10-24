@@ -42,8 +42,6 @@ MidiNode::MidiNode( const char* uuid ) : GNode( "Midi",
             printf( "  Input Port #%i: %s \n", i+1, portName.c_str() );
         }
     }
-    
-    SetRate(60);
 }
     
 MidiNode::~MidiNode() {
@@ -57,6 +55,11 @@ MidiNode::~MidiNode() {
     delete[] address;
     delete[] msgBuffer;
     delete[] activePort;
+}
+
+void MidiNode::CreateActor() {
+    GNode::CreateActor();
+    SetRate(60);
 }
 
 void  MidiNode::Connect() {
