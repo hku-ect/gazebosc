@@ -55,6 +55,8 @@ struct GNode
 {
     /// Title which will be displayed at the center-top of the node.
     const char* title = nullptr;
+    /// uuid string loaded or generated that stores which actor we are
+    const char* uuidStr = nullptr;
     /// Flag indicating that node is selected by the user.
     bool selected = false;
     /// Node position on the canvas.
@@ -66,100 +68,67 @@ struct GNode
     /// A list of output slots current node has.
     std::vector<ImNodes::Ez::SlotInfo> output_slots{};
     /// sphactor instance
-    sphactor_t *actor;
-
+    sphactor_t *actor = NULL;
+    
+    // Construction / Destruction
+    //  Inheriting classes should call this constructor with correct in/out data
     explicit GNode(const char* title,
-        const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
-        const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr)
-    {
-        zuuid_t *uuid = NULL;
-        if ( uuidStr != nullptr ) {
-            uuid = zuuid_new();
-            zuuid_set_str(uuid, uuidStr);
-        }
-        
-        //TODO: replace with sphactor_from_type
-        actor = sphactor_new_by_type(title, this, NULL, uuid);
-        sphactor_set_actor_type(actor, title);
-        sphactor_set_verbose(actor, true);
-        this->title = title;
-        this->input_slots = input_slots;
-        this->output_slots = output_slots;
-    }
+    const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
+                   const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr);
     
-    virtual void HandleArgs( ImVector<char*> *args, ImVector<char*>::iterator it) {
-        char* xpos = *it;
-        it++;
-        char* ypos = *it;
-        it++;
-        
-        pos.x = atof(xpos);
-        pos.y = atof(ypos);
-        
-        free(xpos);
-        free(ypos);
-    }
-
-    virtual ~GNode()
-    {
-        sphactor_destroy(&(this->actor));
-    }
+    virtual ~GNode();
     
-    void SetRate( int rate ) {
-        rate = 1000/rate;
-        zstr_sendm(sphactor_socket(this->actor), "SET TIMEOUT");
-        char* strRate = new char[64];
-        sprintf( strRate, "%i", rate );
-        zstr_send(sphactor_socket(this->actor), strRate );
-        delete[] strRate;
-    }
     
-    /// Deletes connection from this node.
-    void DeleteConnection(const Connection& connection)
-    {
-        for (auto it = connections.begin(); it != connections.end(); ++it)
-        {
-            if (connection == *it)
-            {
-                connections.erase(it);
-                break;
-            }
-        }
-    }
+    
+    // UI Functions
+    void DeleteConnection(const Connection& connection);
+    virtual void Render(float deltaTime);
+    
+    // Sphactor thread functions
+    void SetRate( int rate );
+    virtual void CreateActor();
+    virtual void DestroyActor();
+    
+    virtual void ActorInit(const sphactor_node_t *node);
+    virtual void ActorStop(const sphactor_node_t *node);
+    virtual zmsg_t *ActorCallback();
+    virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
     
     static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
     {
         GNode *self = (GNode *)args;
-        
-        if ( ev->msg == NULL ) {
-            return self->Update();
+                
+        if ( streq(ev->type, "INIT")) {
+            self->ActorInit(ev->node);
         }
+        else
+        if ( streq(ev->type, "TIME")) {
+            return self->ActorCallback();
+        }
+        else
+        if ( streq(ev->type, "STOP")) {
+            self->ActorStop(ev->node);
+        }
+        else
+        if ( streq(ev->type, "DESTROY")) {
+            //TODO: Implement destroy callback
+        }
+        else
+        if ( streq(ev->type, "SOCK")) {
+            assert(ev->msg);
+            return self->ActorMessage(ev);
+        }
+        else {
+            zsys_warning("EVENT TYPE: %s \n", ev->type);
+        }
+            
         
-        return self->HandleMessage(ev);
-    }
-    
-    virtual zmsg_t *Update()
-    {
         return nullptr;
     }
-
-    virtual zmsg_t *HandleMessage(sphactor_event_t *ev)
-    {
-        assert( ev->msg );
-        return ev->msg;
-    }
     
-    virtual void RenderUI() {
-        
-    }
-    
-    virtual void Serialize(zconfig_t *section) {
-        zconfig_t *xpos = zconfig_new("xpos", section);
-        zconfig_set_value(xpos, "%f", pos.x);
-        
-        zconfig_t *ypos = zconfig_new("ypos", section);
-        zconfig_set_value(ypos, "%f", pos.y);
-    }
+    // Serialization functions
+    virtual void SerializeNodeData(zconfig_t *section);
+    virtual void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it);
 };
 
 #endif /* GNode_h */

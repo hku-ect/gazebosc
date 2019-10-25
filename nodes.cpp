@@ -31,6 +31,7 @@
 #include "libsphactor.h"
 #include "GNode.h"
 #include "TestNodes.h"
+#include "Nodes/DefaultNodes.h"
 
 
 // List of actor types and constructors
@@ -84,6 +85,7 @@ void RegisterCPPNodes() {
     RegisterNode( "Client", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new ClientNode(uuid); });
     RegisterNode( "Pulse", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new PulseNode(uuid); });
     RegisterNode( "Relay", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new RelayNode(uuid); });
+    RegisterNode( "OSCListener", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new OSCListenerNode(uuid); });
     
     //TODO: Figure out when this needs to happen
     UpdateRegisteredNodesCache();
@@ -128,7 +130,7 @@ void ShowConfigWindow() {
     ImGui::End();
 }
 
-void RenderNodes()
+void UpdateNodes(float deltaTime)
 {
     // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
     static ImNodes::CanvasState canvas{};
@@ -152,7 +154,7 @@ void RenderNodes()
                 ImNodes::Ez::InputSlots(node->input_slots.data(), node->input_slots.size());
 
                 // Custom node content may go here
-                node->RenderUI();
+                node->Render(deltaTime);
 
                 // Render output nodes first (order is important)
                 ImNodes::Ez::OutputSlots(node->output_slots.data(), node->output_slots.size());
@@ -194,9 +196,8 @@ void RenderNodes()
             }
             // Node rendering is done. This call will render node background based on size of content inside node.
             ImNodes::Ez::EndNode();
-
-            //TODO: Fix this for mac users, because they don't have a delete button...
-            bool del = ImGui::IsKeyPressedMap(ImGuiKey_Backspace);
+            
+            bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || ( ImGui::IsKeyPressedMap(ImGuiKey_Backspace) && ImGui::GetActiveID() == 0 );
             if (node->selected && del)
             {
                 // Loop and delete connections of nodes connected to us
@@ -211,6 +212,7 @@ void RenderNodes()
                 }
                 // Delete all our connections separately
                 node->connections.clear();
+                node->DestroyActor();
                 
                 delete node;
                 it = nodes.erase(it);
@@ -232,7 +234,9 @@ void RenderNodes()
             {
                 if (ImGui::MenuItem(desc))
                 {
-                    nodes.push_back(CreateFromType(desc, nullptr));
+                    GNode* node = CreateFromType(desc, nullptr);
+                    node->CreateActor();
+                    nodes.push_back(node);
                     ImNodes::AutoPositionNode(nodes.back());
                 }
             }
@@ -259,7 +263,7 @@ void Save( const char* configFile ) {
         zconfig_t* nodeSection = sphactor_zconfig_append(node->actor, config);
         
         // Add custom node data to section
-        node->Serialize(nodeSection);
+        node->SerializeNodeData(nodeSection);
 
         zconfig_t* connections = zconfig_locate(config, "connections");
         if ( connections == nullptr ) {
@@ -315,9 +319,10 @@ void Load( const char* configFile ) {
         }
         
         GNode *gNode = CreateFromType(typeStr, uuidStr);
+        gNode->CreateActor();
         
         auto it = args->begin();
-        gNode->HandleArgs(args, it);
+        gNode->DeserializeNodeData(args, it);
         
         nodes.push_back(gNode);
         
@@ -408,6 +413,7 @@ void Clear() {
     for (auto it = nodes.begin(); it != nodes.end();)
     {
         GNode* node = *it;
+        node->DestroyActor();
         delete node;
         it = nodes.erase(it);
     }
