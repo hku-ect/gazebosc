@@ -157,13 +157,14 @@ struct OSCListenerNode : GNode
         
         frame = zsys_udp_recv(s, peer, INET_ADDRSTRLEN);
         
+        delete[] peer;
+        
         if ( frame ) {
             zmsg_t *zmsg = zmsg_new();
             
             //TODO: Maybe move this somewhere else?
             // get byte array for frame
-            byte * data = new byte[2048];   // arbitrary max buffer size
-            data = zframe_data(frame);
+            byte * data = zframe_data(frame);
             size_t size = zframe_size(frame);
             ssize_t len = lo_validate_string(data, size);
             
@@ -217,20 +218,22 @@ struct OSCListenerNode : GNode
                         
                         zframe_destroy(&frame);
                         lo_message_free(msg);
+                        delete[] buf;
                     }
 
                     pos += elem_len;
                     remain -= elem_len;
-                    
-                    return zmsg;
                 }
-            } else {
+            }
+            else {
                 // Got single message
                 //  Just throw the byte array to our output...
-                
                 zmsg_append(zmsg, &frame);
-                return zmsg;
             }
+            
+            zframe_destroy(&frame);
+            
+            return zmsg;
         }
         
         return NULL;
