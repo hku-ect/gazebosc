@@ -183,11 +183,8 @@ install:
 
 script:
   ############################################################################
-    # Build main and tests
-    ############################################################################
-    # - if [ "$TARGET" == "osx" ]; then 
-    #    brew install pkg-config zeromq
-    #  fi
+  # Build main and tests
+  ############################################################################
     - mkdir -p build
     - cd build
     - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage -DBUILD_TESTS=ON .. 
