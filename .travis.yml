@@ -6,10 +6,6 @@ language:
 cache:
 - ccache
 
-os:
-- linux
-- osx
-
 osx_image: xcode11
 
 dist: 
@@ -48,6 +44,21 @@ addons:
 
 matrix:
   include:
+  - env: BUILD_TYPE=cmake
+    os: osx
+    addons:
+  - env: BUILD_TYPE=clang
+    os: osx
+    compiler: clang
+  - env: BUILD_TYPE=default
+    os: linux
+    addons:
+      apt:
+        packages:
+        - git
+        - libzmq3-dev
+        - libczmq-dev
+        - libsdl2-dev
   - env: BUILD_TYPE=valgrind
     os: linux
     addons:
@@ -67,12 +78,6 @@ matrix:
         - libzmq3-dev
         - libczmq-dev
         - libsdl2-dev
-  - env: BUILD_TYPE=cmake ADDRESS_SANITIZER=enabled
-    os: osx
-    addons:
-  - env: BUILD_TYPE=clang ADDRESS_SANITIZER=enabled
-    os: osx
-    compiler: clang
 
 before_install:
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi
