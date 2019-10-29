@@ -134,6 +134,9 @@ matrix:
     dist: xenial
     addons:
       apt:
+        packages:
+        - *pkg_deps_common
+        - *pkg_deps_prereqs
         sources:
         - llvm-toolchain-xenial-5.0
         packages:
