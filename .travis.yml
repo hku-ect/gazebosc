@@ -50,7 +50,7 @@ env:
     #- secure:
   matrix:
     - BUILD_TYPE=default
-    - BUILD_TYPE=default-Werror
+#    - BUILD_TYPE=default-Werror
     - BUILD_TYPE=cmake
 #   - BUILD_TYPE=android
 #   - BUILD_TYPE=check-py
@@ -124,6 +124,7 @@ matrix:
         packages:
         - *pkg_deps_common
   - env: BUILD_TYPE=cmake DO_CLANG_FORMAT_CHECK=1 CLANG_FORMAT=clang-format-5.0
+
 # For non-cmake users, there is an autotools solution with a bit more overhead
 # to have dependencies ready and pass configure script before making this check).
 # Note that the autotools variant will also require dependencies preinstalled to
@@ -145,18 +146,49 @@ before_install:
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "valgrind" ] ; then brew install valgrind ; fi
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
 
-# Hand off to generated script for each BUILD_TYPE
-script: ./ci_build.sh
-before_deploy: . ./ci_deploy.sh && ./ci_deploy_obs.sh
+install:
+  - git submodule update --init --recursive
+  - cd ~
+
+  # libzmq
+  - git clone --depth=1 --branch=master https://github.com/zeromq/libzmq
+  - cd libzmq
+  - ./autogen.sh
+  - ./configure
+  - sudo make install
+  - cd ~
+
+  # czmq
+  - git clone --depth=1 --branch=master https://github.com/zeromq/czmq
+  - cd czmq
+  - ./autogen.sh
+  - ./configure
+  - sudo make install
+  - cd ~
+
+  # libsphactor
+  - git clone --depth=1 --branch=master https://github.com/sphaero/libsphactor
+  - cd libsphactor
+  - ./autogen.sh
+  - ./configure
+  - sudo make install
+  - cd ~
+
+
+script:
+  ############################################################################
+    # Build main and tests
+    ############################################################################
+     - mkdir -p build
+     - cd build
+     - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage -DBUILD_TESTS=ON .. 
+     - make
+
+git:
+  depth: 256
+
+after_success:
+  # TODO?
+
 deploy:
-  provider: releases
-  api_key:
-    # To encrypt your access token run: `travis encrypt -r user/repo`
-    secure: <encrypted github access token>
-  file_glob: true
-  file: ${LIBSPHACTOR_DEPLOYMENT}
-  skip_cleanup: true
-  on:
-    branch: master
-    tags: true
-    condition: $TRAVIS_OS_NAME =~ (linux) && $BUILD_TYPE =~ (default)
+  # TODO
