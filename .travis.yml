@@ -63,7 +63,7 @@ pkg_deps_prereqs_distro: &pkg_deps_prereqs_distro
 pkg_deps_prereqs_source: &pkg_deps_prereqs_source
     - libzmq3-dev
     - libczmq-dev
-    - libSDL2
+    - SDL2
 
 pkg_deps_prereqs: &pkg_deps_prereqs
     - *pkg_deps_prereqs_source
