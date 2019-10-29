@@ -108,6 +108,8 @@ void RegisterCPPNodes() {
 }
 ```
 
+### Node Lifetime
+
 Once a node has been created, it goes through the following steps:
  * **Construction**
    * if performed from loading a file, also passes and Deserializes data
