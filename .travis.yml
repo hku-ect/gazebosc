@@ -149,6 +149,12 @@ before_install:
 install:
   - git submodule update --init --recursive
   - cd ~
+  - if [ "$TARGET" == "osx" ]; then 
+      brew install zeromq czmq
+    fi
+  - if [ "$TARGET" == "linux" ]; then 
+      apt-get install zeromq czmq
+    fi
 
   # libzmq
   - git clone --depth=1 --branch=master https://github.com/zeromq/libzmq
@@ -156,7 +162,7 @@ install:
   - ./autogen.sh
   - ./configure
   - sudo make install
-  - cd ~
+  - cd -
 
   # czmq
   - git clone --depth=1 --branch=master https://github.com/zeromq/czmq
@@ -164,7 +170,7 @@ install:
   - ./autogen.sh
   - ./configure
   - sudo make install
-  - cd ~
+  - cd -
 
   # libsphactor
   - git clone --depth=1 --branch=master https://github.com/sphaero/libsphactor
@@ -172,21 +178,20 @@ install:
   - ./autogen.sh
   - ./configure
   - sudo make install
-  - cd ~
+  - cd -
 
 
 script:
   ############################################################################
     # Build main and tests
     ############################################################################
-    - if [ "$TARGET" == "osx" ]; then 
-        brew install pkg-config zeromq
-      fi
-     - cd aaronvark/gazebosc
-     - mkdir -p build
-     - cd build
-     - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage -DBUILD_TESTS=ON .. 
-     - make
+    # - if [ "$TARGET" == "osx" ]; then 
+    #    brew install pkg-config zeromq
+    #  fi
+    - mkdir -p build
+    - cd build
+    - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage -DBUILD_TESTS=ON .. 
+    - make
 
 git:
   depth: 256
