@@ -149,6 +149,9 @@ before_install:
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "valgrind" ] ; then brew install valgrind ; fi
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
 
+# OSX pre-built dependencies
+- if [ "$TRAVIS_OS_NAME" == "osx" ] ; then brew install sdl2 ; fi
+
 install:
   - git submodule update --init --recursive
 
