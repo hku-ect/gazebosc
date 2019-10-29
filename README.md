@@ -96,6 +96,18 @@ struct MyCustomNode : GNode
     }
 };
 ```
+### Registering the new node
+In order for the system to find and be able to create your node, you will need to add a line to the **nodes.cpp** *RegisterCPPNodes* function:
+```
+void RegisterCPPNodes() {
+    ...
+    
+    RegisterNode( "MyCustomNodeName", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new MyCustomNode(uuid); });
+    
+    ...
+}
+```
+
 Once a node has been created, it goes through the following steps:
  * **Construction**
    * if performed from loading a file, also passes and Deserializes data
