@@ -173,6 +173,9 @@ install:
   - sudo make install
   - cd -
 
+  - if [ "$TRAVIS_OS_NAME" == "osx" ] ; then sudo brew install liblo ; fi
+  - if [ "$TRAVIS_OS_NAME" == "linux" ] ; then sudo apt-get install liblo-dev ; fi
+
 
 script:
   ############################################################################
