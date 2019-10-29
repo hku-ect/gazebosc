@@ -32,8 +32,6 @@ struct MidiNode : GNode
     explicit MidiNode( const char* uuid );
     virtual ~MidiNode();
     
-    
-    
     // Node specific functions
     void Connect();
     
@@ -101,6 +99,32 @@ struct PulseNode : GNode
     virtual void SerializeNodeData( zconfig_t *section );
     void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
 };
+
+
+
+//Sends a message when you click in the UI
+struct ManualPulse : GNode
+{
+    using GNode::GNode;
+    
+    char* msgBuffer;
+    char* address;
+    float delay;
+    float timer;
+    bool send;
+    
+    explicit ManualPulse(const char* uuid);
+    virtual ~ManualPulse();
+    
+    void Render(float deltaTime);
+    
+    void CreateActor();
+    zmsg_t *ActorCallback();
+    
+    virtual void SerializeNodeData( zconfig_t *section );
+    void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
+};
+
 
 
 struct ClientNode : GNode
@@ -201,7 +225,8 @@ struct OSCListenerNode : GNode
                         msg = lo_message_deserialise(pos, elem_len, &result);
                         
                         // set timetag from bundle
-                        lo_message_add_timetag(msg, ts);
+                        // FIXME: this balloons the messages, find a better way
+                        //lo_message_add_timetag(msg, ts);
 
                         // bump the reference count so that it isn't
                         // automatically released

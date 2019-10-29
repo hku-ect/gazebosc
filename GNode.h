@@ -78,8 +78,6 @@ struct GNode
     
     virtual ~GNode();
     
-    
-    
     // UI Functions
     void DeleteConnection(const Connection& connection);
     virtual void Render(float deltaTime);

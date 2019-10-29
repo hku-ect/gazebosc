@@ -192,3 +192,97 @@ void PulseNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::ite
 }
 
 // PulseNode
+
+
+///
+/// ManualPulse
+///
+
+//Most basic form of node that performs its own (threaded) behaviour
+ManualPulse::ManualPulse(const char* uuid) : GNode(   "ManualPulse",
+                                {  },    //Input slot
+                                { { "OSC", NodeSlotOSC } }, uuid )// Output slotss
+{
+    msgBuffer = new char[1024];
+    address = new char[32];
+    delay = 1;
+    timer = 0;
+    send = false;
+    
+    sprintf(address, "/pulse" );
+}
+
+ManualPulse::~ManualPulse() {
+    delete[] msgBuffer;
+    delete[] address;
+}
+
+void ManualPulse::CreateActor() {
+    GNode::CreateActor();
+    SetRate(60);
+}
+
+void ManualPulse::Render(float deltaTime) {
+    ImGui::SetNextItemWidth(100);
+    if ( ImGui::InputFloat( "Delay", &delay ) );
+    ImGui::SetNextItemWidth(100);
+    ImGui::InputText( "Address", address, 32 );
+    if ( ImGui::Button( "Send" ) ) {
+        send = true;
+    }
+}
+
+zmsg_t *ManualPulse::ActorCallback() {
+    if ( !send ) return NULL;
+    
+    timer += .016f;
+    if ( timer >= delay ) {
+        timer = 0;
+        lo_message lo = lo_message_new();
+        size_t len = sizeof(msgBuffer);
+        lo_message_serialise(lo, address, msgBuffer, &len);
+        lo_message_free(lo);
+        
+        zmsg_t *msg =zmsg_new();
+        zframe_t *frame = zframe_new(msgBuffer, len);
+        zmsg_append(msg, &frame);
+        
+        //TODO: figure out if this needs to be destroyed here...
+        zframe_destroy(&frame);
+        
+        send = false;
+        
+        return msg;
+    }
+    
+    return NULL;
+}
+
+void ManualPulse::SerializeNodeData( zconfig_t *section ) {
+    zconfig_t *zDelay = zconfig_new("rate", section);
+    zconfig_set_value(zDelay, "%f", delay);
+    
+    zconfig_t *zAddress = zconfig_new("address", section);
+    zconfig_set_value(zAddress, "%s", address);
+    
+    GNode::SerializeNodeData(section);
+}
+
+void ManualPulse::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+    //pop args from front
+    char* strDelay = *it;
+    it++;
+    char* strAddress = *it;
+    it++;
+    
+    delay = atof(strDelay);
+    sprintf(address, "%s", strAddress);
+    
+    free(strDelay);
+    free(strAddress);
+    
+    //send remaining args (probably just xpos/ypos) to base
+    GNode::DeserializeNodeData(args, it);
+}
+
+// PulseNode

@@ -86,6 +86,7 @@ void RegisterCPPNodes() {
     RegisterNode( "Pulse", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new PulseNode(uuid); });
     RegisterNode( "Relay", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new RelayNode(uuid); });
     RegisterNode( "OSCListener", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new OSCListenerNode(uuid); });
+    RegisterNode( "ManualPulse", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new ManualPulse(uuid); });
     
     //TODO: Figure out when this needs to happen
     UpdateRegisteredNodesCache();

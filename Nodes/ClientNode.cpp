@@ -55,7 +55,7 @@ zmsg_t *ClientNode::ActorMessage( sphactor_event_t *ev )
         isDirty = false;
     }
     
-    lo_bundle bundle = nullptr;
+    lo_bundle bundle = NULL;
     
     // Parse individual frames into messages
     do {
@@ -68,10 +68,15 @@ zmsg_t *ClientNode::ActorMessage( sphactor_event_t *ev )
             // convert to osc message
             int result;
             lo_message lo = lo_message_deserialise(msgBuffer, len, &result);
+            //lo_timetag time = lo_message_get_timestamp(lo);
+            //if ( time.sec == 0 ) {
+            //    lo_timetag_now(&time);
+            //    lo_message_add_timetag(lo, time );
+            //}
             assert( result == 0 );
             
             // add to bundle
-            if ( bundle == nullptr ) {
+            if ( bundle == NULL ) {
                 lo_timetag now;
                 lo_timetag_now(&now);
                 bundle = lo_bundle_new(now);
