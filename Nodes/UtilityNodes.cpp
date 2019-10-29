@@ -40,14 +40,22 @@ LogNode::LogNode(const char* uuid) : GNode(   "Log",
                              { {"OSC", NodeSlotOSC} },    //Input slot
                              { }, uuid )// Output slotss
 {
-   
+    
 }
 
 zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
 {
-    static zframe_t* frame;
+    static double ONE_HALF_TO_32 = .000000000232831;
+    static lo_timetag* timePointer = NULL;
+    static lo_timetag startTime;
     
-    byte *msgBuffer;// = new byte[1024];
+    if ( timePointer == NULL ) {
+        lo_timetag_now(&startTime);
+        timePointer = &startTime;
+    }
+    
+    byte *msgBuffer;
+    zframe_t* frame;
     
     zsys_info("Log: ");
     do {
@@ -69,6 +77,7 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
             int count = lo_message_get_argc(lo);
             char *types = lo_message_get_types(lo);
             lo_arg **argv = lo_message_get_argv(lo);
+            lo_timetag time;
             for ( int i = 0; i < count; ++i ) {
                 switch(types[i]) {
                     case 'i':
@@ -76,6 +85,11 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
                         break;
                     case 'f':
                         zsys_info("  Float: %f ", argv[i]->f);
+                        break;
+                    case 't':
+                        time = argv[i]->t;
+                        // fraction is a measure of 1/2^32nd
+                        zsys_info("  Timestamp: %f", ( time.sec - startTime.sec ) + time.frac * ONE_HALF_TO_32 );
                         break;
                     default:
                         zsys_info("  Unhandled type: %c ", types[i]);
