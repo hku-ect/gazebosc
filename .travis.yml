@@ -148,13 +148,6 @@ before_install:
 
 install:
   - git submodule update --init --recursive
-  - cd ~
-  - if [ "$TARGET" == "osx" ]; then 
-      brew install zeromq czmq
-    fi
-  - if [ "$TARGET" == "linux" ]; then 
-      apt-get install zeromq czmq
-    fi
 
   # libzmq
   - git clone --depth=1 --branch=master https://github.com/zeromq/libzmq
