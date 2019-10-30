@@ -224,7 +224,7 @@ void ManualPulse::CreateActor() {
 
 void ManualPulse::Render(float deltaTime) {
     ImGui::SetNextItemWidth(100);
-    if ( ImGui::InputFloat( "Delay", &delay ) );
+    ImGui::InputFloat( "Delay", &delay );
     ImGui::SetNextItemWidth(100);
     ImGui::InputText( "Address", address, 32 );
     if ( ImGui::Button( "Send" ) ) {
