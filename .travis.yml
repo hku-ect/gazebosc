@@ -128,8 +128,15 @@ script:
   ############################################################################
     - mkdir -p build
     - cd build
-    - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage -DBUILD_TESTS=ON .. 
+    - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage .. 
     - make
+
+  # test
+
+    - mv ../test.txt ./bin/test.txt
+    - cd bin
+    - if [ "$BUILD_TYPE" == "valgrind" ] ; then valgrind --leak-check=yes ./gazebosc -test ; fi
+    - if [ "$BUILD_TYPE" != "valgrind" ] ; then ./gazebosc -test ; fi
 
 git:
   depth: 256

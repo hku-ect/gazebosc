@@ -42,7 +42,7 @@ std::map<std::string, GNode*(*)(const char*)> type_constructors;
 std::vector<GNode*> nodes;
 
 void Save( const char* configFile );
-void Load( const char* configFile );
+bool Load( const char* configFile );
 void Clear();
 GNode* Find( const char* endpoint );
 
@@ -287,10 +287,10 @@ void Save( const char* configFile ) {
     zconfig_save(config, configFile);
 }
 
-void Load( const char* configFile ) {
+bool Load( const char* configFile ) {
     zconfig_t* root = zconfig_load(configFile);
     
-    if ( root == nullptr ) return;
+    if ( root == nullptr ) return false;
     
     zconfig_t* configNodes = zconfig_locate(root, "actors");
     
@@ -391,6 +391,8 @@ void Load( const char* configFile ) {
     }
     
     free(root);
+    
+    return true;
 }
 
 void Clear() {
