@@ -136,9 +136,9 @@ git:
 
 after_success:
   - find
-#   - mv test.txt $TRAVIS_BUILD_DIR/test.txt
-#   - cd $TRAVIS_BUILD_DIR
-#   - ./gazebosc -test
+  - mv ../test.txt ./bin/test.txt
+  - cd bin
+  - ./gazebosc -test
 
 deploy:
   # TODO
