@@ -37,7 +37,7 @@ void RegisterCPPNodes();
 bool Load(const char* fileName);
 void Clear();
 
-volatile sig_atomic_t stop;
+int stop;
 
 void inthand(int signum) {
     stop = 1;
