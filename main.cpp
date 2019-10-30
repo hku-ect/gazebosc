@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <SDL.h>
 
+#include <chrono>
+#include <thread>
+
 // About OpenGL function loaders: modern OpenGL doesn't have a standard header file and requires individual function pointers to be loaded manually.
 // Helper libraries are often used for this purpose! Here we are supporting a few common ones: gl3w, glew, glad.
 // You may use another loader/header of your choice (glext, glLoadGen, etc.), or chose to manually implement your own.
@@ -31,45 +34,93 @@ void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 void ShowConfigWindow();
 void UpdateNodes(float deltaTime);
 void RegisterCPPNodes();
+bool Load(const char* fileName);
+void Clear();
+
+volatile sig_atomic_t stop;
+
+void inthand(int signum) {
+    stop = 1;
+}
 
 // Main code
 int main(int argc, char** argv)
 {
-    //TODO: Figure out how arguments come into the program
-    bool headless = false;
-    for (int i = 0; i < argc; ++i) {
-        printf( "Arguments %s \n", argv[i]);
-        if (strcmp(argv[i], "-h") == 0 )
-            headless = true;
-    }
-    
-    printf(" -- HEADLESS: %i\n", headless ? 1 : 0 );
-    
-    //TODO: Load default config (maybe start with an example one?), create nodes etc.
+    //TODO: Load default config? (maybe start with an example one?), create nodes etc.
     
     // Register CPP Node types with sphactor
     RegisterCPPNodes();
     
-    //TODO: Skip all of this if headless
-    
-    SDL_Window* window;
-    SDL_GLContext gl_context;
-    const char* glsl_version;
-    int result = SDLInit(&window, &gl_context, &glsl_version);
-    if ( result != 0 ) {
-        return result;
+    //TODO: Figure out how arguments come into the program
+    bool headless = false;
+    int loops = -1;
+    int loopCount = 0;
+    for (int i = 0; i < argc; ++i) {
+        if (strcmp(argv[i], "-h") == 0 )
+        {
+            if ( i + 1 < argc ) {
+                // try to load the given file
+                if ( Load(argv[i+1])) {
+                    printf("Loaded file: %s", argv[i+1]);
+                    headless = true;
+                }
+                else {
+                    printf("Headless run error. Sketch file not found.\n");
+                    return -1;
+                }
+            }
+            else {
+                printf("Headless run error. No sketch file provided.\n");
+                return -1;
+            }
+        }
+        else if(strcmp(argv[i], "-test") == 0 ) {
+            if ( Load("test.txt")) {
+                headless = true;
+                loops = 10000;
+            }
+            else {
+                printf("Test error. Sketch file not found.\n");
+                return -1;
+            }
+        }
     }
     
-    printf("VERSION: %s", glsl_version);
-    
-    ImGuiIO& io = ImGUIInit(window, &gl_context, glsl_version);
-    
-    //TODO: blocking loop when running headless...
-    // Blocking UI loop
-    UILoop(window, io);
-    
-    // Cleanup
-    Cleanup(window, &gl_context);
+    //TODO: Skip all of this if headless
+    if ( headless ) {
+        signal(SIGINT, inthand);
+        
+        while (!stop) {
+            if ( loops != -1 ) {
+                std::this_thread::sleep_for (std::chrono::milliseconds(1));
+                if ( ++loopCount > loops ) {
+                    break;
+                }
+            }
+        }
+        
+        Clear();
+    }
+    else {
+        SDL_Window* window;
+        SDL_GLContext gl_context;
+        const char* glsl_version;
+        int result = SDLInit(&window, &gl_context, &glsl_version);
+        if ( result != 0 ) {
+            return result;
+        }
+        
+        printf("VERSION: %s", glsl_version);
+        
+        ImGuiIO& io = ImGUIInit(window, &gl_context, glsl_version);
+        
+        //TODO: blocking loop when running headless...
+        // Blocking UI loop
+        UILoop(window, io);
+        
+        // Cleanup
+        Cleanup(window, &gl_context);
+    }
 
     return 0;
 }

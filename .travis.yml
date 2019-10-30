@@ -135,7 +135,9 @@ git:
   depth: 256
 
 after_success:
-  # TODO?
+  - mv test.txt $TRAVIS_BUILD_DIR/test.txt
+  - cd $TRAVIS_BUILD_DIR
+  - ./gazebosc -test
 
 deploy:
   # TODO
