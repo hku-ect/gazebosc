@@ -135,10 +135,10 @@ git:
   depth: 256
 
 after_success:
-  - find
   - mv ../test.txt ./bin/test.txt
   - cd bin
-  - ./gazebosc -test
+  - if [ "$BUILD_TYPE" == "valgrind" ] ; then valgrind --leak-check=yes ./gazebosc -test ; fi
+  - if [ "$BUILD_TYPE" != "valgrind" ] ; then ./gazebosc -test ; fi
 
 deploy:
   # TODO
