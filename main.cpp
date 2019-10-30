@@ -12,6 +12,8 @@
 #include <chrono>
 #include <thread>
 
+#include <signal.h>
+
 // About OpenGL function loaders: modern OpenGL doesn't have a standard header file and requires individual function pointers to be loaded manually.
 // Helper libraries are often used for this purpose! Here we are supporting a few common ones: gl3w, glew, glad.
 // You may use another loader/header of your choice (glext, glLoadGen, etc.), or chose to manually implement your own.
@@ -37,7 +39,7 @@ void RegisterCPPNodes();
 bool Load(const char* fileName);
 void Clear();
 
-int stop;
+volatile sig_atomic_t stop;
 
 void inthand(int signum) {
     stop = 1;
