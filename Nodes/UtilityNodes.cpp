@@ -40,14 +40,22 @@ LogNode::LogNode(const char* uuid) : GNode(   "Log",
                              { {"OSC", NodeSlotOSC} },    //Input slot
                              { }, uuid )// Output slotss
 {
-   
+    
 }
 
 zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
 {
-    static zframe_t* frame;
+    static double ONE_HALF_TO_32 = .000000000232831;
+    static lo_timetag* timePointer = NULL;
+    static lo_timetag startTime;
     
-    byte *msgBuffer;// = new byte[1024];
+    if ( timePointer == NULL ) {
+        lo_timetag_now(&startTime);
+        timePointer = &startTime;
+    }
+    
+    byte *msgBuffer;
+    zframe_t* frame;
     
     zsys_info("Log: ");
     do {
@@ -69,6 +77,7 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
             int count = lo_message_get_argc(lo);
             char *types = lo_message_get_types(lo);
             lo_arg **argv = lo_message_get_argv(lo);
+            lo_timetag time;
             for ( int i = 0; i < count; ++i ) {
                 switch(types[i]) {
                     case 'i':
@@ -76,6 +85,11 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
                         break;
                     case 'f':
                         zsys_info("  Float: %f ", argv[i]->f);
+                        break;
+                    case 't':
+                        time = argv[i]->t;
+                        // fraction is a measure of 1/2^32nd
+                        zsys_info("  Timestamp: %f", ( time.sec - startTime.sec ) + time.frac * ONE_HALF_TO_32 );
                         break;
                     default:
                         zsys_info("  Unhandled type: %c ", types[i]);
@@ -171,6 +185,100 @@ void PulseNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::ite
     SetRate(rate);
     
     free(strRate);
+    free(strAddress);
+    
+    //send remaining args (probably just xpos/ypos) to base
+    GNode::DeserializeNodeData(args, it);
+}
+
+// PulseNode
+
+
+///
+/// ManualPulse
+///
+
+//Most basic form of node that performs its own (threaded) behaviour
+ManualPulse::ManualPulse(const char* uuid) : GNode(   "ManualPulse",
+                                {  },    //Input slot
+                                { { "OSC", NodeSlotOSC } }, uuid )// Output slotss
+{
+    msgBuffer = new char[1024];
+    address = new char[32];
+    delay = 1;
+    timer = 0;
+    send = false;
+    
+    sprintf(address, "/pulse" );
+}
+
+ManualPulse::~ManualPulse() {
+    delete[] msgBuffer;
+    delete[] address;
+}
+
+void ManualPulse::CreateActor() {
+    GNode::CreateActor();
+    SetRate(60);
+}
+
+void ManualPulse::Render(float deltaTime) {
+    ImGui::SetNextItemWidth(100);
+    if ( ImGui::InputFloat( "Delay", &delay ) );
+    ImGui::SetNextItemWidth(100);
+    ImGui::InputText( "Address", address, 32 );
+    if ( ImGui::Button( "Send" ) ) {
+        send = true;
+    }
+}
+
+zmsg_t *ManualPulse::ActorCallback() {
+    if ( !send ) return NULL;
+    
+    timer += .016f;
+    if ( timer >= delay ) {
+        timer = 0;
+        lo_message lo = lo_message_new();
+        size_t len = sizeof(msgBuffer);
+        lo_message_serialise(lo, address, msgBuffer, &len);
+        lo_message_free(lo);
+        
+        zmsg_t *msg =zmsg_new();
+        zframe_t *frame = zframe_new(msgBuffer, len);
+        zmsg_append(msg, &frame);
+        
+        //TODO: figure out if this needs to be destroyed here...
+        zframe_destroy(&frame);
+        
+        send = false;
+        
+        return msg;
+    }
+    
+    return NULL;
+}
+
+void ManualPulse::SerializeNodeData( zconfig_t *section ) {
+    zconfig_t *zDelay = zconfig_new("rate", section);
+    zconfig_set_value(zDelay, "%f", delay);
+    
+    zconfig_t *zAddress = zconfig_new("address", section);
+    zconfig_set_value(zAddress, "%s", address);
+    
+    GNode::SerializeNodeData(section);
+}
+
+void ManualPulse::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+    //pop args from front
+    char* strDelay = *it;
+    it++;
+    char* strAddress = *it;
+    it++;
+    
+    delay = atof(strDelay);
+    sprintf(address, "%s", strAddress);
+    
+    free(strDelay);
     free(strAddress);
     
     //send remaining args (probably just xpos/ypos) to base

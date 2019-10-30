@@ -32,8 +32,6 @@ struct MidiNode : GNode
     explicit MidiNode( const char* uuid );
     virtual ~MidiNode();
     
-    
-    
     // Node specific functions
     void Connect();
     
@@ -103,6 +101,32 @@ struct PulseNode : GNode
 };
 
 
+
+//Sends a message when you click in the UI
+struct ManualPulse : GNode
+{
+    using GNode::GNode;
+    
+    char* msgBuffer;
+    char* address;
+    float delay;
+    float timer;
+    bool send;
+    
+    explicit ManualPulse(const char* uuid);
+    virtual ~ManualPulse();
+    
+    void Render(float deltaTime);
+    
+    void CreateActor();
+    zmsg_t *ActorCallback();
+    
+    virtual void SerializeNodeData( zconfig_t *section );
+    void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
+};
+
+
+
 struct ClientNode : GNode
 {
     using GNode::GNode;
@@ -157,13 +181,14 @@ struct OSCListenerNode : GNode
         
         frame = zsys_udp_recv(s, peer, INET_ADDRSTRLEN);
         
+        delete[] peer;
+        
         if ( frame ) {
             zmsg_t *zmsg = zmsg_new();
             
             //TODO: Maybe move this somewhere else?
             // get byte array for frame
-            byte * data = new byte[2048];   // arbitrary max buffer size
-            data = zframe_data(frame);
+            byte * data = zframe_data(frame);
             size_t size = zframe_size(frame);
             ssize_t len = lo_validate_string(data, size);
             
@@ -200,7 +225,8 @@ struct OSCListenerNode : GNode
                         msg = lo_message_deserialise(pos, elem_len, &result);
                         
                         // set timetag from bundle
-                        lo_message_add_timetag(msg, ts);
+                        // FIXME: this balloons the messages, find a better way
+                        //lo_message_add_timetag(msg, ts);
 
                         // bump the reference count so that it isn't
                         // automatically released
@@ -217,20 +243,22 @@ struct OSCListenerNode : GNode
                         
                         zframe_destroy(&frame);
                         lo_message_free(msg);
+                        delete[] buf;
                     }
 
                     pos += elem_len;
                     remain -= elem_len;
-                    
-                    return zmsg;
                 }
-            } else {
+            }
+            else {
                 // Got single message
                 //  Just throw the byte array to our output...
-                
                 zmsg_append(zmsg, &frame);
-                return zmsg;
             }
+            
+            zframe_destroy(&frame);
+            
+            return zmsg;
         }
         
         return NULL;

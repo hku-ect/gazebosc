@@ -20,8 +20,6 @@ OSCListenerNode::~OSCListenerNode() {
     //if ( server != NULL ) {;
     //    lo_server_free(server);
     //}
-    
-    zsys_udp_close(udpSock);
 }
 
 void OSCListenerNode::CreateActor() {
@@ -39,6 +37,7 @@ void OSCListenerNode::ActorStop( const sphactor_node_t *node ) {
 
 void OSCListenerNode::StopAndDestroyServer( const sphactor_node_t *node ) {
     sphactor_node_poller_remove((sphactor_node_t*)node, (void*)&udpSock);
+    zsys_udp_close(udpSock);
 }
 
 void OSCListenerNode::StartServer( const sphactor_node_t *node ) {

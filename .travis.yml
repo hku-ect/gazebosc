@@ -1,0 +1,141 @@
+# Travis CI script
+
+language:
+- c
+
+cache:
+- ccache
+
+osx_image: xcode11
+
+dist: 
+- xenial
+
+env:
+  global:
+    - SPHACTOR_SOCKET_LIMIT=20
+    - CI_TIME=false
+    - CI_TRACE=false
+    - CI_CONFIG_QUIET=true
+    - CI_REQUIRE_GOOD_GITIGNORE=false
+    - CI_REQUIRE_GOOD_CLANG_FORMAT=false
+    - CI_TEST_DISTCHECK=true
+
+# dist==trusty means ubuntu14
+pkg_src_zeromq_ubuntu14: &pkg_src_zeromq_ubuntu14
+  sourceline: 'deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_14.04/ ./'
+  key_url: 'http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_14.04/Release.key'
+
+# dist==xenial means ubuntu16
+pkg_src_zeromq_ubuntu16: &pkg_src_zeromq_ubuntu16
+  sourceline: 'deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_16.04/ ./'
+  key_url: 'http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_16.04/Release.key'
+
+# Also note that as of early 2017, either dist==trusty or services==docker
+# is needed for some C++11 support; docker envs are usually faster to start up
+# A newer dist==xenial completes the C++11 support with gcc-5+
+addons:
+  apt:
+    packages:
+    - git
+    - libzmq3-dev
+    - libczmq-dev
+    - libsdl2-dev
+
+matrix:
+  include:
+  - env: BUILD_TYPE=cmake
+    os: osx
+    addons:
+  - env: BUILD_TYPE=clang
+    os: osx
+    compiler: clang
+  - env: BUILD_TYPE=default
+    os: linux
+    addons:
+      apt:
+        packages:
+        - git
+        - libzmq3-dev
+        - libczmq-dev
+        - libsdl2-dev
+  - env: BUILD_TYPE=valgrind
+    os: linux
+    addons:
+      apt:
+        packages:
+        - valgrind
+        - git
+        - libzmq3-dev
+        - libczmq-dev
+        - libsdl2-dev
+  - env: BUILD_TYPE=default ADDRESS_SANITIZER=enabled
+    os: linux
+    addons:
+      apt:
+        packages:
+        - git
+        - libzmq3-dev
+        - libczmq-dev
+        - libsdl2-dev
+
+before_install:
+- if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi
+- if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "valgrind" ] ; then brew install valgrind ; fi
+- if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
+
+# OSX pre-built dependencies
+- if [ "$TRAVIS_OS_NAME" == "osx" ] ; then brew install sdl2 ; fi
+
+install:
+  - git submodule update --init --recursive
+
+  # libzmq
+  - git clone --depth=1 --branch=master https://github.com/zeromq/libzmq
+  - cd libzmq
+  - ./autogen.sh
+  - ./configure
+  - sudo make install
+  - cd -
+
+  # czmq
+  - git clone --depth=1 --branch=master https://github.com/zeromq/czmq
+  - cd czmq
+  - ./autogen.sh
+  - ./configure
+  - sudo make install
+  - cd -
+
+  # libsphactor
+  - git clone --depth=1 --branch=master https://github.com/sphaero/libsphactor
+  - cd libsphactor
+  - ./autogen.sh
+  - ./configure
+  - sudo make install
+  - cd -
+
+  # liblo
+  - git clone --depth=1 --branch=master git://liblo.git.sourceforge.net/gitroot/liblo/liblo
+  - cd liblo
+  - ./autogen.sh
+  - ./configure
+  - sudo make install
+  - cd -
+
+script:
+  ############################################################################
+  # Build main and tests
+  ############################################################################
+    - mkdir -p build
+    - cd build
+    - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage -DBUILD_TESTS=ON .. 
+    - make
+
+git:
+  depth: 256
+
+after_success:
+  # TODO?
+
+deploy:
+  # TODO
