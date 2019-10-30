@@ -1,3 +1,5 @@
+OSX/Linux: [![Build Status](https://api.travis-ci.org/aaronvark/gazebosc.png?branch=master)](https://travis-ci.org/aaronvark/gazebosc)
+
 # GazebOSC
 
 A node-based implementation to author high-level sphactor node actors. A multi-in-single-out (for now) information hub that outputs OSC. May support different protocols in future that OSC does not handle well (eg. streaming video)
