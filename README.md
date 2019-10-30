@@ -19,6 +19,7 @@ There are four main dependencies:
  * czmq
  * sdl2
  * libsphactor
+ * liblo
 
 Dependencies for the build process / dependencies are:
 
@@ -30,7 +31,7 @@ Building them should be pretty straight forward:
 ```
 brew install libtool autoconf automake pkg-config cmake make zeromq sdl2
 ```
- * Clone & build libzmq, czmq & libsphactor
+ * Clone & build libzmq, czmq, libsphactor & liblo
 ```
 git clone git://github.com/zeromq/libzmq.git
 cd libzmq
@@ -50,6 +51,14 @@ cd ..
 
 git clone git://github.com/sphaero/libsphactor.git
 cd libsphactor
+./autogen.sh
+./configure 
+make check
+sudo make install
+cd ..
+
+git clone git://liblo.git.sourceforge.net/gitroot/liblo/liblo
+cd liblo
 ./autogen.sh
 ./configure 
 make check
