@@ -133,15 +133,14 @@ void ShowLogWindow(ImGuiTextBuffer& buffer) {
     ImGui::SetNextWindowSizeConstraints(ImVec2(100,100), ImVec2(1000,1000));
     ImGui::Begin("Console");
     
-    if (ImGui::Button("Clear")) buffer.clear();
-    ImGui::SameLine();
-    if ( ImGui::Button("To Bottom") ) {
-        ScrollToBottom = true;
-    }
-    
     ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
     
+    if ( ImGui::GetIO().MouseWheel > 0 && ImGui::GetActiveID() == 123 ) {
+        zsys_info("FALSE");
+        ScrollToBottom = false;
+    }
     if ( !ScrollToBottom && ImGui::GetScrollY() == ImGui::GetScrollMaxY() ) {
+        zsys_info("TRUE");
         ScrollToBottom = true;
     }
     

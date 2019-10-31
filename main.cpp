@@ -15,6 +15,10 @@
 #include <signal.h>
 #include "libsphactor.h"
 
+#include <streambuf>
+#include <iostream>
+#include <sstream>
+
 // About OpenGL function loaders: modern OpenGL doesn't have a standard header file and requires individual function pointers to be loaded manually.
 // Helper libraries are often used for this purpose! Here we are supporting a few common ones: gl3w, glew, glad.
 // You may use another loader/header of your choice (glext, glLoadGen, etc.), or chose to manually implement your own.
@@ -34,14 +38,14 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
 void UILoop(SDL_Window* window, ImGuiIO& io );
 void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 
-void ShowConfigWindow();
+void ShowConfigWindow(bool * showLog);
+void ShowLogWindow(ImGuiTextBuffer&);
 void UpdateNodes(float deltaTime);
 void RegisterCPPNodes();
 bool Load(const char* fileName);
 void Clear();
 
 volatile sig_atomic_t stop;
-
 void inthand(int signum) {
     stop = 1;
 }
@@ -51,14 +55,36 @@ SDL_Window* window;
 SDL_GLContext gl_context;
 ImGuiIO io;
 const char* glsl_version;
+// Logging
+bool logWindow = false;
+char huge_string_buf[4096];
+
+ImGuiTextBuffer& getBuffer(){
+    static ImGuiTextBuffer sLogBuffer; // static log buffer for logger channel
+    
+    int readPos = 0;
+    if ( strlen(&huge_string_buf[readPos]) > 0 )
+    {
+        sLogBuffer.appendf("%s", &huge_string_buf[readPos]);
+        int len = strlen(&huge_string_buf[readPos]);
+        readPos += len + 1;
+    }
+    memset(huge_string_buf,0,4096);
+    return sLogBuffer;
+}
 
 // Main code
 int main(int argc, char** argv)
 {
+    // capture stdout
+    memset(huge_string_buf,0,4096);
+    freopen("/dev/null", "a", stdout);
+    setbuf(stdout, huge_string_buf);
+    
     // Register CPP Node types with sphactor
     RegisterCPPNodes();
-    
-    //TODO: Figure out how arguments come into the program
+
+    // Argument capture
     bool headless = false;
     int loops = -1;
     int loopCount = 0;
@@ -68,16 +94,16 @@ int main(int argc, char** argv)
             if ( i + 1 < argc ) {
                 // try to load the given file
                 if ( Load(argv[i+1])) {
-                    printf("Loaded file: %s", argv[i+1]);
+                    zsys_info("Loaded file: %s", argv[i+1]);
                     headless = true;
                 }
                 else {
-                    printf("Headless run error. Sketch file not found.\n");
+                    zsys_info("Headless run error. Sketch file not found.");
                     return -1;
                 }
             }
             else {
-                printf("Headless run error. No sketch file provided.\n");
+                zsys_info("Headless run error. No sketch file provided.");
                 return -1;
             }
         }
@@ -87,7 +113,7 @@ int main(int argc, char** argv)
                 loops = 10000;
             }
             else {
-                printf("Test error. Sketch file not found.\n");
+                zsys_info("Test error. Sketch file not found.");
                 return -1;
             }
         }
@@ -112,7 +138,7 @@ int main(int argc, char** argv)
             return result;
         }
         
-        printf("VERSION: %s", glsl_version);
+        zsys_info("VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
         
         //TODO: blocking loop when running headless...
@@ -126,6 +152,7 @@ int main(int argc, char** argv)
     Clear();
     sphactor_dispose();
 
+    fflush(stdout);
     return 0;
 }
 
@@ -133,7 +160,7 @@ int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_v
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
-        printf("Error: %s\n", SDL_GetError());
+        zsys_info("Error: %s", SDL_GetError());
         return -1;
     }
 
@@ -160,7 +187,7 @@ int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_v
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    *window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    *window = SDL_CreateWindow("GazebOSC", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     *gl_context = SDL_GL_CreateContext(*window);
     SDL_GL_MakeCurrent(*window, *gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
@@ -242,11 +269,15 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         UpdateNodes( ((float)deltaTime) / 1000 );
 
         // Save/load window
-        size = ImVec2(350,125);
+        size = ImVec2(350,135);
         ImVec2 pos = ImVec2(w - 400, 50);
         ImGui::SetNextWindowSize(size);
         ImGui::SetNextWindowPos(pos);
-        ShowConfigWindow();
+        ShowConfigWindow(&logWindow);
+        
+        if ( logWindow ) {
+            ShowLogWindow(getBuffer());
+        }
         
         // Rendering
         ImGui::Render();

@@ -14,6 +14,7 @@
 #include <czmq.h>
 #include <lo/lo_cpp.h>
 #include "GNode.h"
+#include <sstream>
 
 
 struct MidiNode : GNode
@@ -65,6 +66,8 @@ struct LogNode : GNode
     explicit LogNode(const char* uuid);
     
     virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
+    
+    ImGuiTextBuffer logBuffer;
 };
 
 
