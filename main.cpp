@@ -122,7 +122,7 @@ int main(int argc, char** argv)
     }
     
     Clear();
-    sphactor_dispose();
+    // sphactor_dispose();
 
     return 0;
 }
