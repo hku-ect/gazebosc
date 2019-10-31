@@ -127,7 +127,7 @@ struct ManualPulse : GNode
 
 
 
-struct ClientNode : GNode
+struct UDPSendNode : GNode
 {
     using GNode::GNode;
     
@@ -139,8 +139,8 @@ struct ClientNode : GNode
     byte *msgBuffer;
     zframe_t* frame;
     
-    explicit ClientNode(const char* uuid);
-    virtual ~ClientNode();
+    explicit UDPSendNode(const char* uuid);
+    virtual ~UDPSendNode();
     
     void Render(float deltaTime);
     

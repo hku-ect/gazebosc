@@ -7,7 +7,7 @@
 
 #include "DefaultNodes.h"
 
-ClientNode::ClientNode(const char* uuid) : GNode(   "Client",
+UDPSendNode::UDPSendNode(const char* uuid) : GNode(   "UDPSend",
                                 { { "OSC", NodeSlotOSC } },    //Input slot
                                 { }, uuid )// Output slotss
 {
@@ -15,7 +15,7 @@ ClientNode::ClientNode(const char* uuid) : GNode(   "Client",
     port = 1234;
 }
 
-ClientNode::~ClientNode() {
+UDPSendNode::~UDPSendNode() {
     delete[] ipAddress;
     
     if ( address != NULL ) {
@@ -24,7 +24,7 @@ ClientNode::~ClientNode() {
     }
 }
 
-void ClientNode::Render(float deltaTime) {
+void UDPSendNode::Render(float deltaTime) {
     ImGui::SetNextItemWidth(150);
     if ( ImGui::InputText("IP Address", ipAddress, 64) ) {
         isDirty = true;
@@ -33,13 +33,9 @@ void ClientNode::Render(float deltaTime) {
     if ( ImGui::InputInt( "Port", &port ) ) {
         isDirty = true;
     }
-    ImGui::SetNextItemWidth(100);
-    if ( ImGui::Checkbox("Debug", &debug) ) {
-        
-    }
 }
 
-zmsg_t *ClientNode::ActorMessage( sphactor_event_t *ev )
+zmsg_t *UDPSendNode::ActorMessage( sphactor_event_t *ev )
 {
     // If port/ip information changed, update our target address
     if ( isDirty ) {
@@ -98,7 +94,7 @@ zmsg_t *ClientNode::ActorMessage( sphactor_event_t *ev )
     return nullptr;
 }
 
-void ClientNode::SerializeNodeData( zconfig_t *section ) {
+void UDPSendNode::SerializeNodeData( zconfig_t *section ) {
     zconfig_t *zIP = zconfig_new("ipAddress", section);
     zconfig_set_value(zIP, "%s", ipAddress);
     
@@ -108,7 +104,7 @@ void ClientNode::SerializeNodeData( zconfig_t *section ) {
     GNode::SerializeNodeData(section);
 }
 
-void ClientNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+void UDPSendNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
     //pop args from front
     char* strIp = *it;
     it++;

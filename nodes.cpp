@@ -82,7 +82,7 @@ void RegisterCPPNodes() {
     RegisterNode( "Log", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new LogNode(uuid); });
     RegisterNode( "Midi", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new MidiNode(uuid); });
     RegisterNode( "Count", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new CountNode(uuid); });
-    RegisterNode( "Client", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new ClientNode(uuid); });
+    RegisterNode( "UDPSend", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new UDPSendNode(uuid); });
     RegisterNode( "Pulse", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new PulseNode(uuid); });
     RegisterNode( "Relay", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new RelayNode(uuid); });
     RegisterNode( "OSCListener", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new OSCListenerNode(uuid); });
@@ -93,16 +93,14 @@ void RegisterCPPNodes() {
 }
 
 void ShowConfigWindow() {
-    static int counter = 0;
     static char* configFile = new char[64];
-    static char* natnetIP = new char[64];
 
     //creates window
-    ImGui::Begin("Configuration");
+    ImGui::Begin("Sketch Settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove );
 
-    ImGui::Text("GazebOSC Settings");
+    ImGui::Text("Save/load sketch");
 
-    ImGui::InputText("Config-file", configFile, 128);
+    ImGui::InputText("Filename", configFile, 128);
     
     if (ImGui::Button("Save")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
         Save(configFile);
@@ -119,12 +117,6 @@ void ShowConfigWindow() {
     ImGui::SameLine();
     if (ImGui::Button("Clear")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
         Clear();
-    }
-    
-    ImGui::Spacing();
-    ImGui::InputText("Natnet IP", natnetIP, 128);
-    if (ImGui::Button("Connect")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
-        counter++;
     }
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);

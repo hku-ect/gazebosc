@@ -46,6 +46,12 @@ void inthand(int signum) {
     stop = 1;
 }
 
+// Window variables
+SDL_Window* window;
+SDL_GLContext gl_context;
+ImGuiIO io;
+const char* glsl_version;
+
 // Main code
 int main(int argc, char** argv)
 {
@@ -101,17 +107,13 @@ int main(int argc, char** argv)
         }
     }
     else {
-        SDL_Window* window;
-        SDL_GLContext gl_context;
-        const char* glsl_version;
         int result = SDLInit(&window, &gl_context, &glsl_version);
         if ( result != 0 ) {
             return result;
         }
         
         printf("VERSION: %s", glsl_version);
-        
-        ImGuiIO& io = ImGUIInit(window, &gl_context, glsl_version);
+        io = ImGUIInit(window, &gl_context, glsl_version);
         
         //TODO: blocking loop when running headless...
         // Blocking UI loop
@@ -122,7 +124,7 @@ int main(int argc, char** argv)
     }
     
     Clear();
-    // sphactor_dispose();
+    sphactor_dispose();
 
     return 0;
 }
@@ -240,6 +242,10 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         UpdateNodes( ((float)deltaTime) / 1000 );
 
         // Save/load window
+        size = ImVec2(350,125);
+        ImVec2 pos = ImVec2(w - 400, 50);
+        ImGui::SetNextWindowSize(size);
+        ImGui::SetNextWindowPos(pos);
         ShowConfigWindow();
         
         // Rendering
