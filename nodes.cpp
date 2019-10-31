@@ -92,7 +92,7 @@ void RegisterCPPNodes() {
     UpdateRegisteredNodesCache();
 }
 
-void ShowConfigWindow() {
+void ShowConfigWindow(bool * showLog) {
     static char* configFile = new char[64];
 
     //creates window
@@ -118,9 +118,44 @@ void ShowConfigWindow() {
     if (ImGui::Button("Clear")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
         Clear();
     }
-
+    
+    ImGui::Checkbox("Show Log Window", showLog);
+    
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
+}
+
+void ShowLogWindow(ImGuiTextBuffer& buffer) {
+    static bool ScrollToBottom = true;
+    
+    ImGui::PushID(123);
+    
+    ImGui::SetNextWindowSizeConstraints(ImVec2(100,100), ImVec2(1000,1000));
+    ImGui::Begin("Console");
+    
+    if (ImGui::Button("Clear")) buffer.clear();
+    ImGui::SameLine();
+    if ( ImGui::Button("To Bottom") ) {
+        ScrollToBottom = true;
+    }
+    
+    ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
+    
+    if ( !ScrollToBottom && ImGui::GetScrollY() == ImGui::GetScrollMaxY() ) {
+        ScrollToBottom = true;
+    }
+    
+    ImGui::TextUnformatted(buffer.begin());
+    
+    if (ScrollToBottom)
+        ImGui::SetScrollHereY(1.0f);
+    ScrollToBottom = false;
+
+    ImGui::EndChild();
+    
+    ImGui::End();
+    
+    ImGui::PopID();
 }
 
 void UpdateNodes(float deltaTime)
@@ -219,7 +254,7 @@ void UpdateNodes(float deltaTime)
             ImGui::FocusWindow(ImGui::GetCurrentWindow());
             ImGui::OpenPopup("NodesContextMenu");
         }
-
+        
         if (ImGui::BeginPopup("NodesContextMenu"))
         {
             //TODO: Fetch updated available nodes?

@@ -6,6 +6,7 @@
 //
 
 #include "DefaultNodes.h"
+#include <sstream>
 
 ///
 /// CountNode
@@ -57,7 +58,7 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
     byte *msgBuffer;
     zframe_t* frame;
     
-    zsys_info("Log: ");
+    //zsys_info("Log: ");
     do {
         frame = zmsg_pop(ev->msg);
         if ( frame ) {
@@ -71,31 +72,38 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
             assert( result == 0 );
             
             // first part of bytes is the osc address
-            zsys_info(" %s", msgBuffer);
+            logBuffer.appendf("OSCLog: %s", msgBuffer);
             
             // parse individual arguments
             int count = lo_message_get_argc(lo);
+            if ( count > 0 ) {
+                logBuffer.append("\n");
+            }
+            
             char *types = lo_message_get_types(lo);
             lo_arg **argv = lo_message_get_argv(lo);
             lo_timetag time;
             for ( int i = 0; i < count; ++i ) {
                 switch(types[i]) {
                     case 'i':
-                        zsys_info("  Int: %i ", argv[i]->i);
+                        logBuffer.appendf(" Int: %i ", argv[i]->i);
                         break;
                     case 'f':
-                        zsys_info("  Float: %f ", argv[i]->f);
+                        logBuffer.appendf(" Float: %f ", argv[i]->f);
                         break;
                     case 't':
                         time = argv[i]->t;
                         // fraction is a measure of 1/2^32nd
-                        zsys_info("  Timestamp: %f", ( time.sec - startTime.sec ) + time.frac * ONE_HALF_TO_32 );
+                        logBuffer.appendf(" Timestamp: %f ", ( time.sec - startTime.sec ) + time.frac * ONE_HALF_TO_32 );
                         break;
                     default:
-                        zsys_info("  Unhandled type: %c ", types[i]);
+                        logBuffer.appendf(" Unhandled type: %c ", types[i]);
                         break;
                 }
             }
+            
+            zsys_info("%s", logBuffer.c_str());
+            logBuffer.clear();
             
             //free message
             lo_message_free(lo);

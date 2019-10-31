@@ -80,7 +80,7 @@ if (UNIX)
 	Nodes/DefaultNodes.h
 	Nodes/UtilityNodes.cpp
 	Nodes/MidiNode.cpp
-	Nodes/ClientNode.cpp
+	Nodes/UDPSendNode.cpp
 	Nodes/OSCListenerNode.cpp
     )
     target_include_directories(gazebosc PUBLIC
