@@ -1742,6 +1742,7 @@ MidiInAlsa :: ~MidiInAlsa()
   snd_seq_free_queue( data->seq, data->queue_id );
 #endif
   snd_seq_close( data->seq );
+  snd_config_update_free_global();
   delete data;
 }
 

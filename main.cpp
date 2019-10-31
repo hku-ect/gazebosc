@@ -13,6 +13,7 @@
 #include <thread>
 
 #include <signal.h>
+#include "libsphactor.h"
 
 // About OpenGL function loaders: modern OpenGL doesn't have a standard header file and requires individual function pointers to be loaded manually.
 // Helper libraries are often used for this purpose! Here we are supporting a few common ones: gl3w, glew, glad.
@@ -48,8 +49,6 @@ void inthand(int signum) {
 // Main code
 int main(int argc, char** argv)
 {
-    //TODO: Load default config? (maybe start with an example one?), create nodes etc.
-    
     // Register CPP Node types with sphactor
     RegisterCPPNodes();
     
@@ -88,7 +87,7 @@ int main(int argc, char** argv)
         }
     }
     
-    //TODO: Skip all of this if headless
+    //TODO: Implement an argument to allow opening a window during a headless run
     if ( headless ) {
         signal(SIGINT, inthand);
         
@@ -100,8 +99,6 @@ int main(int argc, char** argv)
                 }
             }
         }
-        
-        Clear();
     }
     else {
         SDL_Window* window;
@@ -123,6 +120,9 @@ int main(int argc, char** argv)
         // Cleanup
         Cleanup(window, &gl_context);
     }
+    
+    Clear();
+    sphactor_dispose();
 
     return 0;
 }
