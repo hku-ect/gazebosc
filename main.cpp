@@ -13,6 +13,7 @@
 #include <thread>
 
 #include <signal.h>
+#include "libsphactor.h"
 
 // About OpenGL function loaders: modern OpenGL doesn't have a standard header file and requires individual function pointers to be loaded manually.
 // Helper libraries are often used for this purpose! Here we are supporting a few common ones: gl3w, glew, glad.
@@ -45,11 +46,15 @@ void inthand(int signum) {
     stop = 1;
 }
 
+// Window variables
+SDL_Window* window;
+SDL_GLContext gl_context;
+ImGuiIO io;
+const char* glsl_version;
+
 // Main code
 int main(int argc, char** argv)
 {
-    //TODO: Load default config? (maybe start with an example one?), create nodes etc.
-    
     // Register CPP Node types with sphactor
     RegisterCPPNodes();
     
@@ -88,7 +93,7 @@ int main(int argc, char** argv)
         }
     }
     
-    //TODO: Skip all of this if headless
+    //TODO: Implement an argument to allow opening a window during a headless run
     if ( headless ) {
         signal(SIGINT, inthand);
         
@@ -100,21 +105,15 @@ int main(int argc, char** argv)
                 }
             }
         }
-        
-        Clear();
     }
     else {
-        SDL_Window* window;
-        SDL_GLContext gl_context;
-        const char* glsl_version;
         int result = SDLInit(&window, &gl_context, &glsl_version);
         if ( result != 0 ) {
             return result;
         }
         
         printf("VERSION: %s", glsl_version);
-        
-        ImGuiIO& io = ImGUIInit(window, &gl_context, glsl_version);
+        io = ImGUIInit(window, &gl_context, glsl_version);
         
         //TODO: blocking loop when running headless...
         // Blocking UI loop
@@ -123,6 +122,9 @@ int main(int argc, char** argv)
         // Cleanup
         Cleanup(window, &gl_context);
     }
+    
+    Clear();
+    sphactor_dispose();
 
     return 0;
 }
@@ -240,6 +242,10 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         UpdateNodes( ((float)deltaTime) / 1000 );
 
         // Save/load window
+        size = ImVec2(350,125);
+        ImVec2 pos = ImVec2(w - 400, 50);
+        ImGui::SetNextWindowSize(size);
+        ImGui::SetNextWindowPos(pos);
         ShowConfigWindow();
         
         // Rendering
