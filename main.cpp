@@ -55,21 +55,21 @@ SDL_Window* window;
 SDL_GLContext gl_context;
 ImGuiIO io;
 const char* glsl_version;
+
 // Logging
 bool logWindow = false;
 char huge_string_buf[4096];
+int out_pipe[2];
 
 ImGuiTextBuffer& getBuffer(){
     static ImGuiTextBuffer sLogBuffer; // static log buffer for logger channel
     
-    int readPos = 0;
-    if ( strlen(&huge_string_buf[readPos]) > 0 )
-    {
-        sLogBuffer.appendf("%s", &huge_string_buf[readPos]);
-        int len = strlen(&huge_string_buf[readPos]);
-        readPos += len + 1;
+    read(out_pipe[0], huge_string_buf, 4096);
+    if ( strlen( huge_string_buf ) > 0 ) {
+        sLogBuffer.appendf("%s", huge_string_buf);
+        memset(huge_string_buf,0,4096);
     }
-    memset(huge_string_buf,0,4096);
+    
     return sLogBuffer;
 }
 
@@ -77,9 +77,18 @@ ImGuiTextBuffer& getBuffer(){
 int main(int argc, char** argv)
 {
     // capture stdout
+    // This approach uses a pipe to prevent multiple writes before reads overlapping
     memset(huge_string_buf,0,4096);
-    freopen("/dev/null", "a", stdout);
-    setbuf(stdout, huge_string_buf);
+    
+    int rc = pipe(out_pipe);
+    assert( rc == 0 );
+    
+    long flags = fcntl(out_pipe[0], F_GETFL);
+    flags |= O_NONBLOCK;
+    fcntl(out_pipe[0], F_SETFL, flags);
+    
+    dup2(out_pipe[1], STDOUT_FILENO);   /* redirect stdout to the pipe */
+    close(out_pipe[1]);
     
     // Register CPP Node types with sphactor
     RegisterCPPNodes();

@@ -66,8 +66,6 @@ struct LogNode : GNode
     explicit LogNode(const char* uuid);
     
     virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
-    
-    ImGuiTextBuffer logBuffer;
 };
 
 

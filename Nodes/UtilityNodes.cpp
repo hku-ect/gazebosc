@@ -72,13 +72,10 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
             assert( result == 0 );
             
             // first part of bytes is the osc address
-            logBuffer.appendf("OSCLog: %s", msgBuffer);
+            zsys_info("OSCLog: %s", msgBuffer);
             
             // parse individual arguments
             int count = lo_message_get_argc(lo);
-            if ( count > 0 ) {
-                logBuffer.append("\n");
-            }
             
             char *types = lo_message_get_types(lo);
             lo_arg **argv = lo_message_get_argv(lo);
@@ -86,24 +83,21 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
             for ( int i = 0; i < count; ++i ) {
                 switch(types[i]) {
                     case 'i':
-                        logBuffer.appendf(" Int: %i ", argv[i]->i);
+                        zsys_info(" Int: %i ", argv[i]->i);
                         break;
                     case 'f':
-                        logBuffer.appendf(" Float: %f ", argv[i]->f);
+                        zsys_info(" Float: %f ", argv[i]->f);
                         break;
                     case 't':
                         time = argv[i]->t;
                         // fraction is a measure of 1/2^32nd
-                        logBuffer.appendf(" Timestamp: %f ", ( time.sec - startTime.sec ) + time.frac * ONE_HALF_TO_32 );
+                        zsys_info(" Timestamp: %f ", ( time.sec - startTime.sec ) + time.frac * ONE_HALF_TO_32 );
                         break;
                     default:
-                        logBuffer.appendf(" Unhandled type: %c ", types[i]);
+                        zsys_info(" Unhandled type: %c ", types[i]);
                         break;
                 }
             }
-            
-            zsys_info("%s", logBuffer.c_str());
-            logBuffer.clear();
             
             //free message
             lo_message_free(lo);
