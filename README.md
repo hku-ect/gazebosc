@@ -139,9 +139,13 @@ cd build
 cmake ..
 make
 ```
-You'll find the Gazebosc 
+You'll find the Gazebosc binary in the bin directory, to run:
+```
+cd bin
+./gazebosc
+```
 
-If you want to work on Gazebosc it's easiest to use QtCreator. Just load the CMakeLists.txt as a project in QtCreator.
+If you want to work on Gazebosc it's easiest to use QtCreator. Just load the CMakeLists.txt as a project in QtCreator and run from there.
 
 ---
 
@@ -199,5 +203,65 @@ Throughout the lifetime of the actor, the GNode class will receive events, and p
 
 #### Destruction
 When deleting nodes or clearing sketches, the node instance will be destroyed and its actor stopped.
+
+## QtCreator example
+
+Create a new class in Nodes:
+
+* right click the nodes folder, Add new
+* Select C++ class
+* Enter HelloWorldNomnbvcxzzxcvb8de as the name
+* Enter GNode as the base class
+* Finish the wizard
+
+It will probably ask you to add the source file to the CMakeLists.txt. Do so as follows:
+```
+	GNode.h
+	GNode.cpp
+	Nodes/DefaultNodes.h
+	Nodes/UtilityNodes.cpp
+	Nodes/MidiNode.cpp
+	Nodes/UDPSendNode.cpp
+	Nodes/OSCListenerNode.cpp
+    Nodes/HelloWorldNode.h
+    Nodes/HelloWorldNode.cpp
+)
+```
+You'll now have an empty skeleton class. In the .h file make the constructor look like this:
+```
+#ifndef HELLOWORLDNODE_H
+#define HELLOWORLDNODE_H
+
+#include "GNode.h"
+
+class HelloWorldNode : public GNode
+{
+public:
+    explicit HelloWorldNode(const char* uuid) : GNode(   "MyCustomNodeName",              // title
+                                                          { {"OSC", NodeSlotOSC} },       // Input slots
+                                                          { {"OSC", NodeSlotOSC} },       // Output slots
+                                                            uuid )                        // uuid pass-through
+    {
+
+    }
+};
+
+#endif // HELLOWORLDNODE_H
+```
+
+Open "nodes.cpp" and add this node to the registration block and include it:
+```
+#include "Nodes/HelloWorldNode.h"
+
+...
+
+void RegisterCPPNodes() {
+    ...
+    
+    RegisterNode( "HelloWorldNodeName", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new HelloWorldNode(uuid); });
+    
+    ...
+}
+```
 
 ---

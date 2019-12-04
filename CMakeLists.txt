@@ -82,6 +82,8 @@ if (UNIX)
 	Nodes/MidiNode.cpp
 	Nodes/UDPSendNode.cpp
 	Nodes/OSCListenerNode.cpp
+        Nodes/HelloWorldNode.h
+        Nodes/HelloWorldNode.cpp
     )
     target_include_directories(gazebosc PUBLIC
         ${SDL2_INCLUDE_DIRS}
