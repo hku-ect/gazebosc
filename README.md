@@ -9,10 +9,6 @@ Also includes a UI based on ImGui, but will eventually also support headless run
 
 ## Building
 
-### OSX
-
-### Building Dependencies
-
 There are four main dependencies:
 
  * libzmq
@@ -25,9 +21,13 @@ Dependencies for the build process / dependencies are:
 
    * git, libtool, autoconf, automake, cmake, make, pkg-config, pcre
 
-Building them should be pretty straight forward:
+Building dependencies should be pretty straight forward:
 
- * Get dependencies via brew:
+### OSX
+
+#### Building Dependencies
+
+ * Get build dependencies via brew:
 ```
 brew install libtool autoconf automake pkg-config cmake make zeromq sdl2
 ```
@@ -68,9 +68,9 @@ cd ..
 
 ---
 
-### Building Gazebosc
+#### Building Gazebosc
 
-Once the above dependencies are installed, you are ready to build libsphactor. The process for this is much the same:
+Once the above dependencies are installed, you are ready to build Gazebosc. The process for this is much the same:
 
  * Clone the repo
 ```
@@ -86,6 +86,62 @@ cd xcodeproj
 cmake -G Xcode ..
 ```
 This should generate a valid Xcode project that can run and pass tests.
+
+### (Debian/Ubuntu) Linux
+
+*(tested on ubuntu 16.04)*
+
+First install required dependencies *(don't install liblo on Ubuntu 16.04, see below)*
+
+```
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential libtool cmake \
+    pkg-config autotools-dev autoconf automake \
+    uuid-dev libpcre3-dev libsodium-dev libzmq5-dev \
+    libczmq-dev liblo-dev libsdl2-dev
+```
+
+Clone & build libsphactor
+
+```
+git clone git://github.com/sphaero/libsphactor.git
+cd libsphactor
+./autogen.sh
+./configure
+make check
+sudo make install
+cd ..
+```
+
+On Ubuntu 16.04 liblo is broken, install liblo from source:
+
+```
+git clone git://liblo.git.sourceforge.net/gitroot/liblo/liblo
+cd liblo
+./autogen.sh
+./configure 
+make check
+sudo make install
+cd ..
+```
+
+#### Building Gazebosc
+
+Once the above dependencies are installed, you are ready to build Gazebosc:
+
+ * Clone the repo and build Gazebosc
+```
+git clone http://github.com/sphaero/gazebosc.git
+cd gazebosc
+mkdir build
+cd build
+cmake ..
+make
+```
+You'll find the Gazebosc 
+
+If you want to work on Gazebosc it's easiest to use QtCreator. Just load the CMakeLists.txt as a project in QtCreator.
 
 ---
 
