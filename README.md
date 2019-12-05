@@ -216,6 +216,7 @@ Create a new class in Nodes:
 
 It will probably ask you to add the source file to the CMakeLists.txt. Do so as follows:
 ```
+    ...
 	GNode.h
 	GNode.cpp
 	Nodes/DefaultNodes.h
@@ -227,7 +228,7 @@ It will probably ask you to add the source file to the CMakeLists.txt. Do so as 
     Nodes/HelloWorldNode.cpp
 )
 ```
-You'll now have an empty skeleton class. In the .h file make the constructor look like this:
+You'll now have an empty skeleton class. In the .h file make the header file look like this:
 ```
 #ifndef HELLOWORLDNODE_H
 #define HELLOWORLDNODE_H
@@ -244,6 +245,9 @@ public:
     {
 
     }
+    
+    //  this the method which will be called on an event
+    zmsg_t *ActorMessage( sphactor_event_t *ev );
 };
 
 #endif // HELLOWORLDNODE_H
@@ -261,6 +265,39 @@ void RegisterCPPNodes() {
     RegisterNode( "HelloWorldNodeName", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new HelloWorldNode(uuid); });
     
     ...
+}
+```
+
+Now we can finalize the implementation in HelloWorldNode.cpp. See the comments in the source:
+```
+#include "HelloWorldNode.h"
+#include <iostream>     //  needed for cout
+#include <lo/lo_cpp.h>  //  needed to construct an OSC message
+
+zmsg_t *
+HelloWorldNode::ActorMessage(sphactor_event_t *ev)
+{
+    //  just print the event fields
+    std::cout << "Hello World Node: name=" << ev->name << " type=" << ev->type << " uuid=" << ev->uuid << "\n";
+
+    //  create a new OSC message
+    lo_message oscmsg = lo_message_new();
+    //  add a string to the message
+    lo_message_add_string(oscmsg, "Hello World");
+
+    //  create a buffer for the message
+    byte* buf = new byte[2048];
+    size_t len = sizeof(buf);
+
+    //  place the osc message in the buffer
+    lo_message_serialise(oscmsg, "hello", buf, &len);
+    lo_message_free(oscmsg);
+
+    //  create a zmsg to return
+    zmsg_t *returnMsg = zmsg_new();
+    //  place the buffer in the zmsg
+    zmsg_pushmem(returnMsg, buf, len);
+    return returnMsg;
 }
 ```
 
