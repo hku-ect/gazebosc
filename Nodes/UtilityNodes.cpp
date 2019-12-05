@@ -82,6 +82,9 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
             lo_timetag time;
             for ( int i = 0; i < count; ++i ) {
                 switch(types[i]) {
+                    case 's':
+                        zsys_info(" String: %s ", &argv[i]->S);
+                        break;
                     case 'i':
                         zsys_info(" Int: %i ", argv[i]->i);
                         break;
