@@ -4,14 +4,9 @@ OSX/Linux: [![Build Status](https://api.travis-ci.org/aaronvark/gazebosc.png?bra
 
 A node-based implementation to author high-level sphactor node actors. A multi-in-single-out (for now) information hub that outputs OSC. May support different protocols in future that OSC does not handle well (eg. streaming video)
 
-Also includes a UI based on ImGui, but will eventually also support headless running of pre-created sketches.
-
+The UI based on ImGui, but we will eventually also support headless running of pre-created sketches.
 
 ## Building
-
-### OSX
-
-### Building Dependencies
 
 There are four main dependencies:
 
@@ -25,12 +20,48 @@ Dependencies for the build process / dependencies are:
 
    * git, libtool, autoconf, automake, cmake, make, pkg-config, pcre
 
-Building them should be pretty straight forward:
+### OSX
 
- * Get dependencies via brew:
+#### Building Dependencies
+
+ * Get build dependencies via brew:
 ```
-brew install libtool autoconf automake pkg-config cmake make zeromq sdl2
+brew install libtool autoconf automake pkg-config cmake make zeromq czmq sdl2 liblo
 ```
+
+#### Building Gazebosc
+
+Once the above dependencies are installed, you are ready to build Gazebosc. 
+
+* Clone the repo
+```
+git clone http://github.com/hku-ect/gazebosc.git
+```
+You can now build using cmake/make or generate an Xcode project file.
+
+* Creating an XCode project
+
+To create an xcode project, perform the following commands from the root git folder:
+
+```
+mkdir xcodeproj
+cd xcodeproj
+cmake -G Xcode ..
+```
+This should generate a valid Xcode project that can run and pass tests.
+
+* Build using make
+
+In the repository root:
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
+#### Alternatively install dependencies from source
+
  * Clone & build libzmq, czmq, libsphactor & liblo
 ```
 git clone git://github.com/zeromq/libzmq.git
@@ -49,7 +80,7 @@ make check
 sudo make install
 cd ..
 
-git clone git://github.com/sphaero/libsphactor.git
+git clone git://github.com/hku-ect/libsphactor.git
 cd libsphactor
 ./autogen.sh
 ./configure 
@@ -66,26 +97,65 @@ sudo make install
 cd ..
 ```
 
----
+### (Debian/Ubuntu) Linux
 
-### Building Gazebosc
+*(tested on Ubuntu 16.04)*
 
-Once the above dependencies are installed, you are ready to build libsphactor. The process for this is much the same:
-
- * Clone the repo
-```
-git clone http://github.com/sphaero/gazebosc.git
-```
- * Creating an XCode project
-
-To create an xcode project, perform the following commands from the root git folder:
+* First install required dependencies *(don't install liblo on Ubuntu 16.04, see below)*
 
 ```
-mkdir xcodeproj
-cd xcodeproj
-cmake -G Xcode ..
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential libtool cmake \
+    pkg-config autotools-dev autoconf automake \
+    uuid-dev libpcre3-dev libsodium-dev libzmq5-dev \
+    libczmq-dev liblo-dev libsdl2-dev
 ```
-This should generate a valid Xcode project that can run and pass tests.
+
+* Clone & build libsphactor
+
+```
+git clone git://github.com/hku-ect/libsphactor.git
+cd libsphactor
+./autogen.sh
+./configure
+make check
+sudo make install
+cd ..
+```
+
+On Ubuntu 16.04 liblo is broken, install liblo from source:
+
+```
+git clone git://liblo.git.sourceforge.net/gitroot/liblo/liblo
+cd liblo
+./autogen.sh
+./configure 
+make check
+sudo make install
+cd ..
+```
+
+#### Building Gazebosc
+
+Once the above dependencies are installed, you are ready to build Gazebosc:
+
+* Clone the repo and build Gazebosc
+```
+git clone http://github.com/hku-ect/gazebosc.git
+cd gazebosc
+mkdir build
+cd build
+cmake ..
+make
+```
+You'll find the Gazebosc binary in the bin directory, to run:
+```
+cd bin
+./gazebosc
+```
+
+If you want to work on Gazebosc it's easiest to use QtCreator. Just load the CMakeLists.txt as a project in QtCreator and run from there.
 
 ---
 
@@ -93,6 +163,7 @@ This should generate a valid Xcode project that can run and pass tests.
 
 ### GNode inheritance, important bits
 
+*(Also see the QtCreator tutorial below)*
 The first step in creating custom nodes is to inherit from GNode. This means including GNode.h, and calling the GNode explicit constructor when your own node class is being constructed. This should look roughly like this when done from within the header file:
 
 ```
@@ -143,5 +214,102 @@ Throughout the lifetime of the actor, the GNode class will receive events, and p
 
 #### Destruction
 When deleting nodes or clearing sketches, the node instance will be destroyed and its actor stopped.
+
+## QtCreator example
+
+Create a new class in Nodes:
+
+* right click the nodes folder, Add new
+* Select C++ class
+* Enter HelloWorldNomnbvcxzzxcvb8de as the name
+* Enter GNode as the base class
+* Finish the wizard
+
+It will probably ask you to add the source file to the CMakeLists.txt. Do so as follows:
+```
+    ...
+	GNode.h
+	GNode.cpp
+	Nodes/DefaultNodes.h
+	Nodes/UtilityNodes.cpp
+	Nodes/MidiNode.cpp
+	Nodes/UDPSendNode.cpp
+	Nodes/OSCListenerNode.cpp
+    Nodes/HelloWorldNode.h
+    Nodes/HelloWorldNode.cpp
+)
+```
+You'll now have an empty skeleton class. In the .h file make the header file look like this:
+```
+#ifndef HELLOWORLDNODE_H
+#define HELLOWORLDNODE_H
+
+#include "GNode.h"
+
+class HelloWorldNode : public GNode
+{
+public:
+    explicit HelloWorldNode(const char* uuid) : GNode(   "MyCustomNodeName",              // title
+                                                          { {"OSC", NodeSlotOSC} },       // Input slots
+                                                          { {"OSC", NodeSlotOSC} },       // Output slots
+                                                            uuid )                        // uuid pass-through
+    {
+
+    }
+    
+    //  this the method which will be called on an event
+    zmsg_t *ActorMessage( sphactor_event_t *ev );
+};
+
+#endif // HELLOWORLDNODE_H
+```
+
+Open "nodes.cpp" and add this node to the registration block and include it:
+```
+#include "Nodes/HelloWorldNode.h"
+
+...
+
+void RegisterCPPNodes() {
+    ...
+    
+    RegisterNode( "HelloWorldNodeName", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new HelloWorldNode(uuid); });
+    
+    ...
+}
+```
+
+Now we can finalize the implementation in HelloWorldNode.cpp. See the comments in the source:
+```
+#include "HelloWorldNode.h"
+#include <iostream>     //  needed for cout
+#include <lo/lo_cpp.h>  //  needed to construct an OSC message
+
+zmsg_t *
+HelloWorldNode::ActorMessage(sphactor_event_t *ev)
+{
+    //  just print the event fields
+    std::cout << "Hello World Node: name=" << ev->name << " type=" << ev->type << " uuid=" << ev->uuid << "\n";
+
+    //  create a new OSC message
+    lo_message oscmsg = lo_message_new();
+    //  add a string to the message
+    lo_message_add_string(oscmsg, "Hello World");
+
+    //  create a buffer for the message
+    byte* buf = new byte[2048];
+    size_t len = sizeof(buf);
+
+    //  place the osc message in the buffer
+    lo_message_serialise(oscmsg, "hello", buf, &len);
+    lo_message_free(oscmsg);
+
+    //  create a zmsg to return
+    zmsg_t *returnMsg = zmsg_new();
+    //  place the buffer in the zmsg
+    zmsg_pushmem(returnMsg, buf, len);
+    return returnMsg;
+}
+```
 
 ---
