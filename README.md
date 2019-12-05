@@ -4,8 +4,7 @@ OSX/Linux: [![Build Status](https://api.travis-ci.org/aaronvark/gazebosc.png?bra
 
 A node-based implementation to author high-level sphactor node actors. A multi-in-single-out (for now) information hub that outputs OSC. May support different protocols in future that OSC does not handle well (eg. streaming video)
 
-Also includes a UI based on ImGui, but will eventually also support headless running of pre-created sketches.
-
+The UI based on ImGui, but we will eventually also support headless running of pre-created sketches.
 
 ## Building
 
@@ -21,16 +20,48 @@ Dependencies for the build process / dependencies are:
 
    * git, libtool, autoconf, automake, cmake, make, pkg-config, pcre
 
-Building dependencies should be pretty straight forward:
-
 ### OSX
 
 #### Building Dependencies
 
  * Get build dependencies via brew:
 ```
-brew install libtool autoconf automake pkg-config cmake make zeromq sdl2
+brew install libtool autoconf automake pkg-config cmake make zeromq czmq sdl2 liblo
 ```
+
+#### Building Gazebosc
+
+Once the above dependencies are installed, you are ready to build Gazebosc. 
+
+* Clone the repo
+```
+git clone http://github.com/hku-ect/gazebosc.git
+```
+You can now build using cmake/make or generate an Xcode project file.
+
+* Creating an XCode project
+
+To create an xcode project, perform the following commands from the root git folder:
+
+```
+mkdir xcodeproj
+cd xcodeproj
+cmake -G Xcode ..
+```
+This should generate a valid Xcode project that can run and pass tests.
+
+* Build using make
+
+In the repository root:
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
+#### Alternatively install dependencies from source
+
  * Clone & build libzmq, czmq, libsphactor & liblo
 ```
 git clone git://github.com/zeromq/libzmq.git
@@ -49,7 +80,7 @@ make check
 sudo make install
 cd ..
 
-git clone git://github.com/sphaero/libsphactor.git
+git clone git://github.com/hku-ect/libsphactor.git
 cd libsphactor
 ./autogen.sh
 ./configure 
@@ -66,32 +97,11 @@ sudo make install
 cd ..
 ```
 
----
-
-#### Building Gazebosc
-
-Once the above dependencies are installed, you are ready to build Gazebosc. The process for this is much the same:
-
- * Clone the repo
-```
-git clone http://github.com/sphaero/gazebosc.git
-```
- * Creating an XCode project
-
-To create an xcode project, perform the following commands from the root git folder:
-
-```
-mkdir xcodeproj
-cd xcodeproj
-cmake -G Xcode ..
-```
-This should generate a valid Xcode project that can run and pass tests.
-
 ### (Debian/Ubuntu) Linux
 
-*(tested on ubuntu 16.04)*
+*(tested on Ubuntu 16.04)*
 
-First install required dependencies *(don't install liblo on Ubuntu 16.04, see below)*
+* First install required dependencies *(don't install liblo on Ubuntu 16.04, see below)*
 
 ```
 sudo apt-get update
@@ -102,10 +112,10 @@ sudo apt-get install -y \
     libczmq-dev liblo-dev libsdl2-dev
 ```
 
-Clone & build libsphactor
+* Clone & build libsphactor
 
 ```
-git clone git://github.com/sphaero/libsphactor.git
+git clone git://github.com/hku-ect/libsphactor.git
 cd libsphactor
 ./autogen.sh
 ./configure
@@ -130,9 +140,9 @@ cd ..
 
 Once the above dependencies are installed, you are ready to build Gazebosc:
 
- * Clone the repo and build Gazebosc
+* Clone the repo and build Gazebosc
 ```
-git clone http://github.com/sphaero/gazebosc.git
+git clone http://github.com/hku-ect/gazebosc.git
 cd gazebosc
 mkdir build
 cd build
@@ -153,6 +163,7 @@ If you want to work on Gazebosc it's easiest to use QtCreator. Just load the CMa
 
 ### GNode inheritance, important bits
 
+*(Also see the QtCreator tutorial below)*
 The first step in creating custom nodes is to inherit from GNode. This means including GNode.h, and calling the GNode explicit constructor when your own node class is being constructed. This should look roughly like this when done from within the header file:
 
 ```
