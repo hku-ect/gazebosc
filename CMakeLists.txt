@@ -26,6 +26,15 @@ pkg_check_modules(CZMQ REQUIRED libczmq)
 pkg_check_modules(SPH REQUIRED libsphactor)
 pkg_check_modules(LO REQUIRED liblo)
 
+find_package (Python3 REQUIRED COMPONENTS Development)
+if(Python3_FOUND)
+    message ("python3 found")
+    message (${Python3_LIBRARIES})
+    add_definitions(-DPYTHON3_FOUND)
+else()
+    message (FATAL_ERROR "Cannot find Python3")
+endif()
+
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
@@ -39,6 +48,8 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
         execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip)
     endif ()
 endif ()
+
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Nodes NODE_SOURCES)
 
 if (UNIX)
     link_directories(
@@ -77,28 +88,23 @@ if (UNIX)
 
 	GNode.h
 	GNode.cpp
-	Nodes/DefaultNodes.h
-	Nodes/UtilityNodes.cpp
-	Nodes/MidiNode.cpp
-	Nodes/UDPSendNode.cpp
-	Nodes/OSCListenerNode.cpp
-        Nodes/HelloWorldNode.h
-        Nodes/HelloWorldNode.cpp
+        ${NODE_SOURCES}
     )
     target_include_directories(gazebosc PUBLIC
         ${SDL2_INCLUDE_DIRS}
         ${ZMQ_INCLUDE_DIRS}
         ${CZMQ_INCLUDE_DIRS}
+        ${Python3_INCLUDE_DIRS}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
         ${DEP_IMNODES_DIR}
     )
     if (APPLE)
-        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
+        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} ${Python3_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
 	add_definitions(-D__MACOSX_CORE__)
     else()
-        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} -lasound -ldl -lGL)
+        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} ${Python3_LIBRARIES} -lasound -ldl -lGL)
         target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
     endif()
     target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )

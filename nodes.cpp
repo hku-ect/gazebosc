@@ -32,8 +32,9 @@
 #include "GNode.h"
 #include "TestNodes.h"
 #include "Nodes/DefaultNodes.h"
-#include "Nodes/HelloWorldNode.h"
-
+#ifdef PYTHON3_FOUND
+#include "Nodes/PythonNode.h"
+#endif
 
 // List of actor types and constructors
 //  Currently these are all internal dependencies, but we will need to create
@@ -88,7 +89,11 @@ void RegisterCPPNodes() {
     RegisterNode( "Relay", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new RelayNode(uuid); });
     RegisterNode( "OSCListener", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new OSCListenerNode(uuid); });
     RegisterNode( "ManualPulse", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new ManualPulse(uuid); });
-    RegisterNode( "HelloWorldNodeName", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new HelloWorldNode(uuid);});
+#ifdef PYTHON3_FOUND
+    python_init();
+    RegisterNode( "PythonNode", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new PythonNode(uuid);});
+#endif
+
 
     //TODO: Figure out when this needs to happen
     UpdateRegisteredNodesCache();
