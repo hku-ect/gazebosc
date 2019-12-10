@@ -58,7 +58,7 @@ void OSCListenerNode::StartServer( const sphactor_node_t *node ) {
     hint.ai_protocol = IPPROTO_UDP;
     hint.ai_family = zsys_ipv6 () ? AF_INET6 : AF_INET;
     
-    int rc = getaddrinfo (NULL, buf, &hint, &bind_to);
+    int rc = getaddrinfo ("0.0.0.0", buf, &hint, &bind_to);
     assert ( rc == 0 );
     
     if ( bind (udpSock, bind_to->ai_addr, bind_to->ai_addrlen) ) {

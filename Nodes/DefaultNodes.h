@@ -175,7 +175,7 @@ struct OSCListenerNode : GNode
     void ActorStop(const sphactor_node_t *node);
     
     static zmsg_t * MessageReceived(void * socket) {
-        
+        int result = 0;
         char* peer = new char[INET_ADDRSTRLEN];
         zframe_t * frame;
         SOCKET s = *(int*)socket;
@@ -252,9 +252,20 @@ struct OSCListenerNode : GNode
                 }
             }
             else {
+                zsys_info("GOT SOMETHING");
                 // Got single message
                 //  Just throw the byte array to our output...
-                zmsg_append(zmsg, &frame);
+                lo_message msg = lo_message_deserialise(data, size, &result);
+                if (NULL == msg) {
+                    zsys_info("OSC ERROR: Invalid message received");
+                }
+                else {
+                    zframe_t *frame = zframe_new(data, size);
+                    zmsg_append(zmsg, &frame);
+                    
+                    zframe_destroy(&frame);
+                    lo_message_free(msg);
+                }
             }
             
             zframe_destroy(&frame);
