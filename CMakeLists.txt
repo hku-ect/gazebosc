@@ -110,3 +110,9 @@ if (UNIX)
     target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
     target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 endif ()
+add_custom_command(
+    TARGET gazebosc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_SOURCE_DIR}/tester.py
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tester.py)
+
