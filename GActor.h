@@ -1,12 +1,12 @@
 //
-//  GNode.h
+//  GActor.h
 //  gazebosc
 //
 //  Created by aaronvark on 26/09/2019.
 //
 
-#ifndef GNode_h
-#define GNode_h
+#ifndef GActor_h
+#define GActor_h
 
 #include <string>
 #include <vector>
@@ -14,7 +14,7 @@
 #include "ImNodes.h"
 #include "ImNodesEz.h"
 
-/// A structure defining a connection between two slots of two nodes.
+/// A structure defining a connection between two slots of two actors.
 struct Connection
 {
     /// `id` that was passed to BeginNode() of input node.
@@ -40,43 +40,43 @@ struct Connection
     }
 };
 
-enum GNodeSlotTypes
+enum GActorSlotTypes
 {
-    NodeSlotAny = 1,    // ID can not be 0
-    NodeSlotPosition,
-    NodeSlotRotation,
-    NodeSlotMatrix,
-    NodeSlotInt,
-    NodeSlotOSC
+    ActorSlotAny = 1,    // ID can not be 0
+    ActorSlotPosition,
+    ActorSlotRotation,
+    ActorSlotMatrix,
+    ActorSlotInt,
+    ActorSlotOSC
 };
 
-/// A structure holding node state.
-struct GNode
+/// A structure holding actor state.
+struct GActor
 {
-    /// Title which will be displayed at the center-top of the node.
+    /// Title which will be displayed at the center-top of the actor.
     const char* title = nullptr;
     /// uuid string loaded or generated that stores which actor we are
     const char* uuidStr = nullptr;
-    /// Flag indicating that node is selected by the user.
+    /// Flag indicating that actor is selected by the user.
     bool selected = false;
-    /// Node position on the canvas.
+    /// Actor position on the canvas.
     ImVec2 pos{};
-    /// List of node connections.
+    /// List of actor connections.
     std::vector<Connection> connections{};
-    /// A list of input slots current node has.
+    /// A list of input slots current actor has.
     std::vector<ImNodes::Ez::SlotInfo> input_slots{};
-    /// A list of output slots current node has.
+    /// A list of output slots current actor has.
     std::vector<ImNodes::Ez::SlotInfo> output_slots{};
     /// sphactor instance
     sphactor_t *actor = NULL;
     
     // Construction / Destruction
     //  Inheriting classes should call this constructor with correct in/out data
-    explicit GNode(const char* title,
+    explicit GActor(const char* title,
     const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
                    const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr);
     
-    virtual ~GNode();
+    virtual ~GActor();
     
     // UI Functions
     void DeleteConnection(const Connection& connection);
@@ -87,14 +87,14 @@ struct GNode
     virtual void CreateActor();
     virtual void DestroyActor();
     
-    virtual void ActorInit(const sphactor_node_t *node);
-    virtual void ActorStop(const sphactor_node_t *node);
+    virtual void ActorInit(const sphactor_actor_t *actor);
+    virtual void ActorStop(const sphactor_actor_t *actor);
     virtual zmsg_t *ActorCallback();
     virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
     
     static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
     {
-        GNode *self = (GNode *)args;
+        GActor *self = (GActor *)args;
                 
         if ( streq(ev->type, "INIT")) {
             self->ActorInit(ev->node);
@@ -125,8 +125,8 @@ struct GNode
     }
     
     // Serialization functions
-    virtual void SerializeNodeData(zconfig_t *section);
-    virtual void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it);
+    virtual void SerializeActorData(zconfig_t *section);
+    virtual void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it);
 };
 
-#endif /* GNode_h */
+#endif /* GActor_h */

@@ -1,24 +1,24 @@
 //
-//  UtilityNodes.cpp
+//  UtilityActors.cpp
 //  gazebosc
 //
 //  Created by aaronvark on 22/10/2019.
 //
 
-#include "DefaultNodes.h"
+#include "DefaultActors.h"
 #include <sstream>
 
 ///
-/// CountNode
+/// CountActor
 ///
-CountNode::CountNode(const char* uuid) : GNode(   "Count",
-                             { {"OSC", NodeSlotOSC} },    //Input slots
-                             { {"OSC", NodeSlotOSC} }, uuid )// Output slots
+CountActor::CountActor(const char* uuid) : GActor(   "Count",
+                             { {"OSC", ActorSlotOSC} },    //Input slots
+                             { {"OSC", ActorSlotOSC} }, uuid )// Output slots
 {
     
 }
 
-zmsg_t *CountNode::ActorMessage(sphactor_event_t *ev)
+zmsg_t *CountActor::ActorMessage(sphactor_event_t *ev)
 {
     count += 1;
     
@@ -26,25 +26,25 @@ zmsg_t *CountNode::ActorMessage(sphactor_event_t *ev)
     return ev->msg;
 }
 
-void CountNode::Render(float deltaTime) {
+void CountActor::Render(float deltaTime) {
     ImGui::Text("Count: %i", count);
 }
 
-// CountNode
+// CountActor
 
 
 ///
-/// LogNode
+/// LogActor
 ///
 
-LogNode::LogNode(const char* uuid) : GNode(   "Log",
-                             { {"OSC", NodeSlotOSC} },    //Input slot
+LogActor::LogActor(const char* uuid) : GActor(   "Log",
+                             { {"OSC", ActorSlotOSC} },    //Input slot
                              { }, uuid )// Output slotss
 {
     
 }
 
-zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
+zmsg_t *LogActor::ActorMessage(sphactor_event_t *ev)
 {
     static double ONE_HALF_TO_32 = .000000000232831;
     static lo_timetag* timePointer = NULL;
@@ -112,17 +112,17 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
     return NULL;
 }
 
-// LogNode::
+// LogActor
 
 
 ///
-/// PulseNode
+/// PulseActor
 ///
 
-//Most basic form of node that performs its own (threaded) behaviour
-PulseNode::PulseNode(const char* uuid) : GNode(   "Pulse",
+//Most basic form of an actor that performs its own (threaded) behaviour
+PulseActor::PulseActor(const char* uuid) : GActor(   "Pulse",
                                 {  },    //Input slot
-                                { { "OSC", NodeSlotOSC } }, uuid )// Output slotss
+                                { { "OSC", ActorSlotOSC } }, uuid )// Output slotss
 {
     msgBuffer = new char[1024];
     address = new char[32];
@@ -131,17 +131,17 @@ PulseNode::PulseNode(const char* uuid) : GNode(   "Pulse",
     sprintf(address, "/pulse" );
 }
 
-PulseNode::~PulseNode() {
+PulseActor::~PulseActor() {
     delete[] msgBuffer;
     delete[] address;
 }
 
-void PulseNode::CreateActor() {
-    GNode::CreateActor();
+void PulseActor::CreateActor() {
+    GActor::CreateActor();
     SetRate(rate);
 }
 
-void PulseNode::Render(float deltaTime) {
+void PulseActor::Render(float deltaTime) {
     ImGui::SetNextItemWidth(100);
     if ( ImGui::InputInt( "Rate", &rate ) ) {
         SetRate(rate);
@@ -150,7 +150,7 @@ void PulseNode::Render(float deltaTime) {
     ImGui::InputText( "Address", address, 32 );
 }
 
-zmsg_t *PulseNode::ActorCallback() {
+zmsg_t *PulseActor::ActorCallback() {
     lo_message lo = lo_message_new();
     size_t len = sizeof(msgBuffer);
     lo_message_serialise(lo, address, msgBuffer, &len);
@@ -166,17 +166,17 @@ zmsg_t *PulseNode::ActorCallback() {
     return msg;
 }
 
-void PulseNode::SerializeNodeData( zconfig_t *section ) {
+void PulseActor::SerializeActorData( zconfig_t *section ) {
     zconfig_t *zRate = zconfig_new("rate", section);
     zconfig_set_value(zRate, "%i", rate);
     
     zconfig_t *zAddress = zconfig_new("address", section);
     zconfig_set_value(zAddress, "%s", address);
     
-    GNode::SerializeNodeData(section);
+    GActor::SerializeActorData(section);
 }
 
-void PulseNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+void PulseActor::DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
     //pop args from front
     char* strRate = *it;
     it++;
@@ -192,20 +192,20 @@ void PulseNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::ite
     free(strAddress);
     
     //send remaining args (probably just xpos/ypos) to base
-    GNode::DeserializeNodeData(args, it);
+    GActor::DeserializeActorData(args, it);
 }
 
-// PulseNode
+// PulseActor
 
 
 ///
 /// ManualPulse
 ///
 
-//Most basic form of node that performs its own (threaded) behaviour
-ManualPulse::ManualPulse(const char* uuid) : GNode(   "ManualPulse",
+//Most basic form of an actor that performs its own (threaded) behaviour
+ManualPulse::ManualPulse(const char* uuid) : GActor(   "ManualPulse",
                                 {  },    //Input slot
-                                { { "OSC", NodeSlotOSC } }, uuid )// Output slotss
+                                { { "OSC", ActorSlotOSC } }, uuid )// Output slotss
 {
     msgBuffer = new char[1024];
     address = new char[32];
@@ -222,7 +222,7 @@ ManualPulse::~ManualPulse() {
 }
 
 void ManualPulse::CreateActor() {
-    GNode::CreateActor();
+    GActor::CreateActor();
     SetRate(60);
 }
 
@@ -262,17 +262,17 @@ zmsg_t *ManualPulse::ActorCallback() {
     return NULL;
 }
 
-void ManualPulse::SerializeNodeData( zconfig_t *section ) {
+void ManualPulse::SerializeActorData( zconfig_t *section ) {
     zconfig_t *zDelay = zconfig_new("rate", section);
     zconfig_set_value(zDelay, "%f", delay);
     
     zconfig_t *zAddress = zconfig_new("address", section);
     zconfig_set_value(zAddress, "%s", address);
     
-    GNode::SerializeNodeData(section);
+    GActor::SerializeActorData(section);
 }
 
-void ManualPulse::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+void ManualPulse::DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
     //pop args from front
     char* strDelay = *it;
     it++;
@@ -286,7 +286,7 @@ void ManualPulse::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::i
     free(strAddress);
     
     //send remaining args (probably just xpos/ypos) to base
-    GNode::DeserializeNodeData(args, it);
+    GActor::DeserializeActorData(args, it);
 }
 
-// PulseNode
+// ManualPulse

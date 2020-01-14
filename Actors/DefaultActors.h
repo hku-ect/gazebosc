@@ -13,13 +13,13 @@
 #include <imgui.h>
 #include <czmq.h>
 #include <lo/lo_cpp.h>
-#include "GNode.h"
+#include "GActor.h"
 #include <sstream>
 
 
-struct MidiNode : GNode
+struct MidiActor : GActor
 {
-    using GNode::GNode;
+    using GActor::GActor;
     
     int                         midiPort = -1;
     unsigned int                nPorts = 0;
@@ -30,8 +30,8 @@ struct MidiNode : GNode
     char                        *address;
     const char*                 current_item = "Select device...";
     
-    explicit MidiNode( const char* uuid );
-    virtual ~MidiNode();
+    explicit MidiActor( const char* uuid );
+    virtual ~MidiActor();
     
     // Node specific functions
     void Connect();
@@ -44,36 +44,36 @@ struct MidiNode : GNode
     zmsg_t *ActorCallback();
     
     // Serialization overrides
-    void SerializeNodeData( zconfig_t *section );
-    void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
+    void SerializeActorData( zconfig_t *section );
+    void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it );
 };
 
 
-struct CountNode : GNode
+struct CountActor : GActor
 {
-    using GNode::GNode;
+    using GActor::GActor;
 
     int count = 0;
     
-    explicit CountNode(const char* uuid);
+    explicit CountActor(const char* uuid);
     virtual void Render(float deltaTime);
     virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
 };
 
 
-struct LogNode : GNode
+struct LogActor : GActor
 {
-    explicit LogNode(const char* uuid);
+    explicit LogActor(const char* uuid);
     
     virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
 };
 
 
-struct RelayNode : GNode
+struct RelayActor : GActor
 {
-    explicit RelayNode(const char* uuid) : GNode(   "Relay",
-                                 { {"OSC", NodeSlotOSC} },    //Input slot
-                                 { {"OSC", NodeSlotOSC} }, uuid )// Output slotss
+    explicit RelayActor(const char* uuid) : GActor(   "Relay",
+                                 { {"OSC", ActorSlotOSC} },    //Input slot
+                                 { {"OSC", ActorSlotOSC} }, uuid )// Output slotss
     {
        
     }
@@ -81,32 +81,32 @@ struct RelayNode : GNode
 
 
 //Most basic form of node that performs its own (threaded) behaviour
-struct PulseNode : GNode
+struct PulseActor : GActor
 {
-    using GNode::GNode;
+    using GActor::GActor;
     
     char* msgBuffer;
     char* address;
     int rate;
     
-    explicit PulseNode(const char* uuid);
-    virtual ~PulseNode();
+    explicit PulseActor(const char* uuid);
+    virtual ~PulseActor();
     
     void Render(float deltaTime);
     
     void CreateActor();
     zmsg_t *ActorCallback();
     
-    virtual void SerializeNodeData( zconfig_t *section );
-    void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
+    virtual void SerializeActorData( zconfig_t *section );
+    void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it );
 };
 
 
 
 //Sends a message when you click in the UI
-struct ManualPulse : GNode
+struct ManualPulse : GActor
 {
-    using GNode::GNode;
+    using GActor::GActor;
     
     char* msgBuffer;
     char* address;
@@ -122,15 +122,15 @@ struct ManualPulse : GNode
     void CreateActor();
     zmsg_t *ActorCallback();
     
-    virtual void SerializeNodeData( zconfig_t *section );
-    void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
+    virtual void SerializeActorData( zconfig_t *section );
+    void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it );
 };
 
 
 
-struct UDPSendNode : GNode
+struct UDPSendActor : GActor
 {
-    using GNode::GNode;
+    using GActor::GActor;
     
     char *ipAddress;
     int port;
@@ -140,22 +140,22 @@ struct UDPSendNode : GNode
     byte *msgBuffer;
     zframe_t* frame;
     
-    explicit UDPSendNode(const char* uuid);
-    virtual ~UDPSendNode();
+    explicit UDPSendActor(const char* uuid);
+    virtual ~UDPSendActor();
     
     void Render(float deltaTime);
     
     zmsg_t *ActorMessage( sphactor_event_t *ev );
     
-    virtual void SerializeNodeData( zconfig_t *section );
+    virtual void SerializeActorData( zconfig_t *section );
     
-    void DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it );
+    void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it );
 };
 
 
-struct OSCListenerNode : GNode
+struct OSCListenerActor : GActor
 {
-    using GNode::GNode;
+    using GActor::GActor;
     
     int port;
     bool isDirty = true;
@@ -163,16 +163,16 @@ struct OSCListenerNode : GNode
     float timer = 0;
     SOCKET udpSock = -1;
     
-    explicit OSCListenerNode(const char* uuid);
-    virtual ~OSCListenerNode();
+    explicit OSCListenerActor(const char* uuid);
+    virtual ~OSCListenerActor();
     
     void CreateActor();
     
-    void StopAndDestroyServer( const sphactor_node_t* node );
-    void StartServer( const sphactor_node_t* node );
+    void StopAndDestroyServer( const sphactor_actor_t* actor );
+    void StartServer( const sphactor_actor_t* actor );
     
-    void ActorInit(const sphactor_node_t *node);
-    void ActorStop(const sphactor_node_t *node);
+    void ActorInit(const sphactor_actor_t *actor);
+    void ActorStop(const sphactor_actor_t *actor);
     
     static zmsg_t * MessageReceived(void * socket) {
         int result = 0;

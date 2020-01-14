@@ -5,42 +5,42 @@
 //  Created by aaronvark on 22/10/2019.
 //
 
-#include "DefaultNodes.h"
+#include "DefaultActors.h"
 
-OSCListenerNode::OSCListenerNode(const char* uuid) : GNode(   "OSCListener",
+OSCListenerActor::OSCListenerActor(const char* uuid) : GActor(   "OSCListener",
                                 {  },                               // Input slot
-                                { { "OSC", NodeSlotOSC } }, uuid )  // Output slots
+                                { { "OSC", ActorSlotOSC } }, uuid )  // Output slots
 {
     port = 1234;
     isDirty = false;
     //server = NULL;
 }
 
-OSCListenerNode::~OSCListenerNode() {
+OSCListenerActor::~OSCListenerActor() {
     //if ( server != NULL ) {;
     //    lo_server_free(server);
     //}
 }
 
-void OSCListenerNode::CreateActor() {
-    GNode::CreateActor();
+void OSCListenerActor::CreateActor() {
+    GActor::CreateActor();
     SetRate(1);
 }
 
-void OSCListenerNode::ActorInit( const sphactor_node_t *node ) {
-    StartServer(node);
+void OSCListenerActor::ActorInit( const sphactor_actor_t *actor ) {
+    StartServer(actor);
 }
 
-void OSCListenerNode::ActorStop( const sphactor_node_t *node ) {
-    StopAndDestroyServer(node);
+void OSCListenerActor::ActorStop( const sphactor_actor_t *actor ) {
+    StopAndDestroyServer(actor);
 }
 
-void OSCListenerNode::StopAndDestroyServer( const sphactor_node_t *node ) {
-    sphactor_node_poller_remove((sphactor_node_t*)node, (void*)&udpSock);
+void OSCListenerActor::StopAndDestroyServer( const sphactor_actor_t *actor ) {
+    sphactor_actor_poller_remove((sphactor_actor_t*)actor, (void*)&udpSock);
     zsys_udp_close(udpSock);
 }
 
-void OSCListenerNode::StartServer( const sphactor_node_t *node ) {
+void OSCListenerActor::StartServer( const sphactor_actor_t *actor ) {
     
     char* buf = new char[32];
     sprintf( buf, "%i", port);
@@ -68,10 +68,10 @@ void OSCListenerNode::StartServer( const sphactor_node_t *node ) {
     delete[] buf;
     freeaddrinfo (bind_to);
     
-    sphactor_node_poller_add((sphactor_node_t*)node, &udpSock, MessageReceived);
+    sphactor_actor_poller_add((sphactor_actor_t*)actor, &udpSock, MessageReceived);
 }
 
-void OSCListenerNode::Render(float deltaTime) {
+void OSCListenerActor::Render(float deltaTime) {
     ImGui::SetNextItemWidth(100);
     if ( ImGui::InputInt( "Port", &port ) ) {
         isDirty = true;
