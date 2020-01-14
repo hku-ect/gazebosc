@@ -76,20 +76,6 @@ ImGuiTextBuffer& getBuffer(){
 // Main code
 int main(int argc, char** argv)
 {
-    // capture stdout
-    // This approach uses a pipe to prevent multiple writes before reads overlapping
-    memset(huge_string_buf,0,4096);
-    
-    int rc = pipe(out_pipe);
-    assert( rc == 0 );
-    
-    long flags = fcntl(out_pipe[0], F_GETFL);
-    flags |= O_NONBLOCK;
-    fcntl(out_pipe[0], F_SETFL, flags);
-    
-    dup2(out_pipe[1], STDOUT_FILENO);   /* redirect stdout to the pipe */
-    close(out_pipe[1]);
-    
     // Register CPP Node types with sphactor
     RegisterCPPNodes();
 
@@ -128,6 +114,22 @@ int main(int argc, char** argv)
         }
     }
     
+    if (!headless) {
+        // capture stdout
+        // This approach uses a pipe to prevent multiple writes before reads overlapping
+        memset(huge_string_buf,0,4096);
+        
+        int rc = pipe(out_pipe);
+        assert( rc == 0 );
+        
+        long flags = fcntl(out_pipe[0], F_GETFL);
+        flags |= O_NONBLOCK;
+        fcntl(out_pipe[0], F_SETFL, flags);
+        
+        dup2(out_pipe[1], STDOUT_FILENO);   /* redirect stdout to the pipe */
+        close(out_pipe[1]);
+    }
+    
     //TODO: Implement an argument to allow opening a window during a headless run
     if ( headless ) {
         signal(SIGINT, inthand);
@@ -150,7 +152,6 @@ int main(int argc, char** argv)
         zsys_info("VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
         
-        //TODO: blocking loop when running headless...
         // Blocking UI loop
         UILoop(window, io);
         
