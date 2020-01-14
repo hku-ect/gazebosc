@@ -8,8 +8,8 @@
 #include "DefaultNodes.h"
 
 OSCListenerNode::OSCListenerNode(const char* uuid) : GNode(   "OSCListener",
-                                {  },    //Input slot
-                                { { "OSC", NodeSlotOSC } }, uuid )// Output slotss
+                                {  },                               // Input slot
+                                { { "OSC", NodeSlotOSC } }, uuid )  // Output slots
 {
     port = 1234;
     isDirty = false;

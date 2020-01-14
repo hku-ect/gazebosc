@@ -40,7 +40,7 @@ void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 
 void ShowConfigWindow(bool * showLog);
 void ShowLogWindow(ImGuiTextBuffer&);
-void UpdateNodes(float deltaTime);
+int UpdateNodes(float deltaTime, bool * showLog);
 void RegisterCPPNodes();
 bool Load(const char* fileName);
 void Clear();
@@ -76,20 +76,6 @@ ImGuiTextBuffer& getBuffer(){
 // Main code
 int main(int argc, char** argv)
 {
-    // capture stdout
-    // This approach uses a pipe to prevent multiple writes before reads overlapping
-    memset(huge_string_buf,0,4096);
-    
-    int rc = pipe(out_pipe);
-    assert( rc == 0 );
-    
-    long flags = fcntl(out_pipe[0], F_GETFL);
-    flags |= O_NONBLOCK;
-    fcntl(out_pipe[0], F_SETFL, flags);
-    
-    dup2(out_pipe[1], STDOUT_FILENO);   /* redirect stdout to the pipe */
-    close(out_pipe[1]);
-    
     // Register CPP Node types with sphactor
     RegisterCPPNodes();
 
@@ -107,12 +93,12 @@ int main(int argc, char** argv)
                     headless = true;
                 }
                 else {
-                    zsys_info("Headless run error. Sketch file not found.");
+                    zsys_info("Headless run error. Stage file not found.");
                     return -1;
                 }
             }
             else {
-                zsys_info("Headless run error. No sketch file provided.");
+                zsys_info("Headless run error. No stage file provided.");
                 return -1;
             }
         }
@@ -122,10 +108,27 @@ int main(int argc, char** argv)
                 loops = 10000;
             }
             else {
-                zsys_info("Test error. Sketch file not found.");
+                zsys_info("Test error. Stage file not found.");
                 return -1;
             }
         }
+    }
+    
+    if (!headless) {
+        //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
+        // capture stdout
+        // This approach uses a pipe to prevent multiple writes before reads overlapping
+        memset(huge_string_buf,0,4096);
+        
+        int rc = pipe(out_pipe);
+        assert( rc == 0 );
+        
+        long flags = fcntl(out_pipe[0], F_GETFL);
+        flags |= O_NONBLOCK;
+        fcntl(out_pipe[0], F_SETFL, flags);
+        
+        dup2(out_pipe[1], STDOUT_FILENO);   /* redirect stdout to the pipe */
+        close(out_pipe[1]);
     }
     
     //TODO: Implement an argument to allow opening a window during a headless run
@@ -150,7 +153,6 @@ int main(int argc, char** argv)
         zsys_info("VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
         
-        //TODO: blocking loop when running headless...
         // Blocking UI loop
         UILoop(window, io);
         
@@ -275,14 +277,18 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         // Get time since last frame
         deltaTime = SDL_GetTicks() - oldTime;
         oldTime = SDL_GetTicks();
-        UpdateNodes( ((float)deltaTime) / 1000 );
-
+        int rc = UpdateNodes( ((float)deltaTime) / 1000, &logWindow);
+        
+        if ( rc == -1 ) {
+            done = true;
+        }
+        
         // Save/load window
-        size = ImVec2(350,135);
-        ImVec2 pos = ImVec2(w - 400, 50);
-        ImGui::SetNextWindowSize(size);
-        ImGui::SetNextWindowPos(pos);
-        ShowConfigWindow(&logWindow);
+        //size = ImVec2(350,135);
+        //ImVec2 pos = ImVec2(w - 400, 50);
+        //ImGui::SetNextWindowSize(size);
+        //ImGui::SetNextWindowPos(pos);
+        //ShowConfigWindow(&logWindow);
         
         if ( logWindow ) {
             ShowLogWindow(getBuffer());
