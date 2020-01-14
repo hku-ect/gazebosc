@@ -97,7 +97,7 @@ struct GActor
         GActor *self = (GActor *)args;
                 
         if ( streq(ev->type, "INIT")) {
-            self->ActorInit(ev->node);
+            self->ActorInit(ev->actor);
         }
         else
         if ( streq(ev->type, "TIME")) {
@@ -105,7 +105,7 @@ struct GActor
         }
         else
         if ( streq(ev->type, "STOP")) {
-            self->ActorStop(ev->node);
+            self->ActorStop(ev->actor);
         }
         else
         if ( streq(ev->type, "DESTROY")) {
