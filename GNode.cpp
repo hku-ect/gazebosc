@@ -35,7 +35,7 @@ void GNode::CreateActor() {
     
     actor = sphactor_new_by_type(title, this, NULL, uuid);
     sphactor_set_actor_type(actor, title);
-    sphactor_set_verbose(actor, true);
+    //sphactor_set_verbose(actor, false);
 }
 
 void GNode::DestroyActor() {

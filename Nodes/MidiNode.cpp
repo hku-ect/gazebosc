@@ -93,7 +93,7 @@ zmsg_t * MidiNode::ActorCallback()
             if ( nBytes > 0 ) {
                 //TODO: this assumes the message is always 3 bytes...
                 if ( nBytes != 3 ) {
-                    printf("NBYTES NOT 3: %i", nBytes );
+                    printf("NBYTES NOT 3: %i \n", nBytes );
                 }
                 //manually read three bytes
                 byte b1 = message[0];
@@ -181,7 +181,7 @@ void MidiNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iter
     
     if ( !found ) {
         // TODO: Display error messages...
-        zsys_error("Device not found: %s", strPort);
+        printf("Device not found: %s \n", strPort);
     }
     
     free(strPort);

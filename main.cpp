@@ -40,7 +40,7 @@ void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 
 void ShowConfigWindow(bool * showLog);
 void ShowLogWindow(ImGuiTextBuffer&);
-void UpdateNodes(float deltaTime);
+int UpdateNodes(float deltaTime, bool * showLog);
 void RegisterCPPNodes();
 bool Load(const char* fileName);
 void Clear();
@@ -93,12 +93,12 @@ int main(int argc, char** argv)
                     headless = true;
                 }
                 else {
-                    zsys_info("Headless run error. Sketch file not found.");
+                    zsys_info("Headless run error. Stage file not found.");
                     return -1;
                 }
             }
             else {
-                zsys_info("Headless run error. No sketch file provided.");
+                zsys_info("Headless run error. No stage file provided.");
                 return -1;
             }
         }
@@ -108,13 +108,14 @@ int main(int argc, char** argv)
                 loops = 10000;
             }
             else {
-                zsys_info("Test error. Sketch file not found.");
+                zsys_info("Test error. Stage file not found.");
                 return -1;
             }
         }
     }
     
     if (!headless) {
+        //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
         // capture stdout
         // This approach uses a pipe to prevent multiple writes before reads overlapping
         memset(huge_string_buf,0,4096);
@@ -276,14 +277,18 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         // Get time since last frame
         deltaTime = SDL_GetTicks() - oldTime;
         oldTime = SDL_GetTicks();
-        UpdateNodes( ((float)deltaTime) / 1000 );
-
+        int rc = UpdateNodes( ((float)deltaTime) / 1000, &logWindow);
+        
+        if ( rc == -1 ) {
+            done = true;
+        }
+        
         // Save/load window
-        size = ImVec2(350,135);
-        ImVec2 pos = ImVec2(w - 400, 50);
-        ImGui::SetNextWindowSize(size);
-        ImGui::SetNextWindowPos(pos);
-        ShowConfigWindow(&logWindow);
+        //size = ImVec2(350,135);
+        //ImVec2 pos = ImVec2(w - 400, 50);
+        //ImGui::SetNextWindowSize(size);
+        //ImGui::SetNextWindowPos(pos);
+        //ShowConfigWindow(&logWindow);
         
         if ( logWindow ) {
             ShowLogWindow(getBuffer());

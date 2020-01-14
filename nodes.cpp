@@ -36,6 +36,16 @@
 #include "Nodes/PythonNode.h"
 #endif
 
+//enum for menu actions
+enum MenuAction
+{
+    MenuAction_Save = 0,
+    MenuAction_Load,
+    MenuAction_Clear,
+    MenuAction_Exit,
+    MenuAction_None
+};
+
 // List of actor types and constructors
 //  Currently these are all internal dependencies, but we will need to create
 //   a "generic node" class for types defined outside of this codebase.
@@ -43,7 +53,7 @@ ImVector<char*> actor_types;
 std::map<std::string, GNode*(*)(const char*)> type_constructors;
 std::vector<GNode*> nodes;
 
-void Save( const char* configFile );
+bool Save( const char* configFile );
 bool Load( const char* configFile );
 void Clear();
 GNode* Find( const char* endpoint );
@@ -101,11 +111,11 @@ void RegisterCPPNodes() {
 
 void ShowConfigWindow(bool * showLog) {
     static char* configFile = new char[64];
-
+    
     //creates window
-    ImGui::Begin("Sketch Settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove );
+    ImGui::Begin("Stage Settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove );
 
-    ImGui::Text("Save/load sketch");
+    ImGui::Text("Save/load stage");
 
     ImGui::InputText("Filename", configFile, 128);
     
@@ -165,8 +175,121 @@ void ShowLogWindow(ImGuiTextBuffer& buffer) {
     ImGui::PopID();
 }
 
-void UpdateNodes(float deltaTime)
+int RenderMenuBar( bool * showLog ) {
+    static char* configFile = new char[64];
+    static int keyFocus = 0;
+    MenuAction action = MenuAction_None;
+    
+    if ( keyFocus > 0 ) keyFocus--;
+    
+    ImGui::BeginMainMenuBar();
+    
+    if ( ImGui::BeginMenu("File") ) {
+        if ( ImGui::MenuItem("Save") ) {
+            action = MenuAction_Save;
+        }
+        if ( ImGui::MenuItem("Load") ) {
+            //TODO: support checking if changes were made
+            action = MenuAction_Load;
+        }
+        ImGui::Separator();
+        ImGui::Separator();
+        if ( ImGui::MenuItem("Exit") ) {
+            //TODO: support checking if changes were made
+            action = MenuAction_Exit;
+        }
+        
+        ImGui::EndMenu();
+    }
+    
+    if ( ImGui::BeginMenu("Stage") ) {
+        if ( ImGui::MenuItem("Clear") ) {
+            action = MenuAction_Clear;
+        }
+        ImGui::EndMenu();
+    }
+    
+    if ( ImGui::BeginMenu("Tools") ) {
+        if ( ImGui::MenuItem("Toggle Console") ) {
+            *showLog = !(*showLog);
+        }
+        ImGui::EndMenu();
+    }
+    
+    //TODO: Display stage status (new, loaded, changed)
+    ImGui::Separator();
+    ImGui::Separator();
+    
+    if ( configFile[0] == 0 ) {
+        ImGui::TextColored( ImVec4(.7,.9,.7,1), "   Editing: New Stage");
+    }
+    else {
+        ImGui::TextColored( ImVec4(.7,.9,.7,1), "   Editing: %s", configFile);
+    }
+    
+    ImGui::EndMainMenuBar();
+    
+    // Handle MenuActions
+    if ( action == MenuAction_Load) {
+        ImGui::OpenPopup("MenuAction_Load");
+        keyFocus = 2;
+    }
+    else if ( action == MenuAction_Save ) {
+        if ( configFile[0] == 0 ) {
+            ImGui::OpenPopup("MenuAction_Save");
+            keyFocus = 2;
+        }
+        else {
+            Save(configFile);
+            ImGui::CloseCurrentPopup();
+        }
+    }
+    else if ( action == MenuAction_Clear ) {
+        Clear();
+        memset(configFile,0,64);
+    }
+    else if ( action == MenuAction_Exit ) {
+        return -1;
+    }
+    
+    if ( ImGui::BeginPopup("MenuAction_Load")) {
+        ImGui::Text("Load stage");
+        
+        if ( keyFocus > 0 )
+            ImGui::SetKeyboardFocusHere();
+        ImGui::InputText("Filename", configFile, 128);
+        
+        if (ImGui::Button("Load")) {
+            Load(configFile);
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::EndPopup();
+    }
+    
+    if ( ImGui::BeginPopup("MenuAction_Save")) {
+        ImGui::Text("Save stage");
+        
+        if ( keyFocus > 0 )
+            ImGui::SetKeyboardFocusHere();
+        ImGui::InputText("Filename", configFile, 128);
+        
+        if (ImGui::Button("Save")) {
+            if ( !Save(configFile) ) {
+                memset(configFile,0,64);
+            }
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::EndPopup();
+    }
+    
+    return 0;
+}
+
+int UpdateNodes(float deltaTime, bool * showLog)
 {
+    int rc = 0;
     // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
     static ImNodes::CanvasState canvas{};
     
@@ -174,8 +297,10 @@ void UpdateNodes(float deltaTime)
     
     ImGui::SetNextWindowPos(ImVec2(0,0));
     
-    if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse))
+    if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar ))
     {
+        rc = RenderMenuBar(showLog);
+        
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
         ImNodes::BeginCanvas(&canvas);
         for (auto it = nodes.begin(); it != nodes.end();)
@@ -288,9 +413,13 @@ void UpdateNodes(float deltaTime)
         ImNodes::EndCanvas();
     }
     ImGui::End();
+    
+    return rc;
 }
 
-void Save( const char* configFile ) {
+bool Save( const char* configFile ) {
+    if ( nodes.size() == 0 ) return false;
+    
     zconfig_t* config = sphactor_zconfig_new("root");
     for (auto it = nodes.begin(); it != nodes.end(); it++)
     {
@@ -319,6 +448,8 @@ void Save( const char* configFile ) {
         }
     }
     zconfig_save(config, configFile);
+    
+    return true;
 }
 
 bool Load( const char* configFile ) {
@@ -328,7 +459,7 @@ bool Load( const char* configFile ) {
     
     zconfig_t* configNodes = zconfig_locate(root, "actors");
     
-    // Clear current sketch
+    // Clear current stage
     //TODO: Maybe ask if people want to save first?
     Clear();
     

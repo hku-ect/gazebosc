@@ -58,7 +58,6 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
     byte *msgBuffer;
     zframe_t* frame;
     
-    //zsys_info("Log: ");
     do {
         frame = zmsg_pop(ev->msg);
         if ( frame ) {
@@ -72,7 +71,7 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
             assert( result == 0 );
             
             // first part of bytes is the osc address
-            zsys_info("OSCLog: %s", msgBuffer);
+            printf("OSCLog: %s \n", msgBuffer);
             
             // parse individual arguments
             int count = lo_message_get_argc(lo);
@@ -83,21 +82,21 @@ zmsg_t *LogNode::ActorMessage(sphactor_event_t *ev)
             for ( int i = 0; i < count; ++i ) {
                 switch(types[i]) {
                     case 's':
-                        zsys_info(" String: %s ", &argv[i]->S);
+                        printf(" String: %s \n", &argv[i]->S);
                         break;
                     case 'i':
-                        zsys_info(" Int: %i ", argv[i]->i);
+                        printf(" Int: %i \n", argv[i]->i);
                         break;
                     case 'f':
-                        zsys_info(" Float: %f ", argv[i]->f);
+                        printf(" Float: %f \n", argv[i]->f);
                         break;
                     case 't':
                         time = argv[i]->t;
                         // fraction is a measure of 1/2^32nd
-                        zsys_info(" Timestamp: %f ", ( time.sec - startTime.sec ) + time.frac * ONE_HALF_TO_32 );
+                        printf(" Timestamp: %f \n", ( time.sec - startTime.sec ) + time.frac * ONE_HALF_TO_32 );
                         break;
                     default:
-                        zsys_info(" Unhandled type: %c ", types[i]);
+                        printf(" Unhandled type: %c \n", types[i]);
                         break;
                 }
             }
