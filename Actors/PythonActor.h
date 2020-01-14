@@ -2,17 +2,17 @@
 #define PYTHONNODE_H
 
 #include <string>
-#include "GNode.h"
+#include "GActor.h"
 #include "Python.h"
 
 void python_init();
 
-class PythonNode : public GNode
+class PythonActor : public GActor
 {
 public:
-    explicit PythonNode(const char* uuid) : GNode(   "PythonNode",              // title
-                                                          { {"OSC", NodeSlotOSC} },       // Input slots
-                                                          { {"OSC", NodeSlotOSC} },       // Output slots
+    explicit PythonActor(const char* uuid) : GActor(   "Python",              // title
+                                                          { {"OSC", ActorSlotOSC} },       // Input slots
+                                                          { {"OSC", ActorSlotOSC} },       // Output slots
                                                             uuid )                        // uuid pass-through
     {
 
@@ -20,7 +20,7 @@ public:
 
     int UpdatePythonFile();
 
-    void ActorInit( const sphactor_node_t *node );
+    void ActorInit( const sphactor_actor_t *actor );
     zmsg_t *ActorMessage( sphactor_event_t *ev );
     //zmsg_t *ActorCallback( );
     //void ActorStop(const sphactor_node_t *node);

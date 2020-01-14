@@ -29,11 +29,10 @@
 #include <imgui.h>
 #include "ImNodesEz.h"
 #include "libsphactor.h"
-#include "GNode.h"
-#include "TestNodes.h"
-#include "Nodes/DefaultNodes.h"
+#include "GActor.h"
+#include "Actors/DefaultActors.h"
 #ifdef PYTHON3_FOUND
-#include "Nodes/PythonNode.h"
+#include "Actors/PythonActor.h"
 #endif
 
 //enum for menu actions
@@ -50,22 +49,22 @@ enum MenuAction
 //  Currently these are all internal dependencies, but we will need to create
 //   a "generic node" class for types defined outside of this codebase.
 ImVector<char*> actor_types;
-std::map<std::string, GNode*(*)(const char*)> type_constructors;
-std::vector<GNode*> nodes;
+std::map<std::string, GActor*(*)(const char*)> type_constructors;
+std::vector<GActor*> actors;
 
 bool Save( const char* configFile );
 bool Load( const char* configFile );
 void Clear();
-GNode* Find( const char* endpoint );
+GActor* Find( const char* endpoint );
 
-typedef GNode* (*gnode_constructor_fn)(const char*);
+typedef GActor* (*gactor_constructor_fn)(const char*);
 
-void RegisterNode( const char* type, sphactor_handler_fn func, gnode_constructor_fn constructor ) {
+void RegisterActor( const char* type, sphactor_handler_fn func, gactor_constructor_fn constructor ) {
     sphactor_register(type, func);
     type_constructors[type] = constructor;
 }
 
-void UpdateRegisteredNodesCache() {
+void UpdateRegisteredActorsCache() {
     zlist_t* list = sphactor_get_registered();
     actor_types.clear();
     
@@ -76,37 +75,37 @@ void UpdateRegisteredNodesCache() {
     }
 }
 
-GNode* CreateFromType( const char* typeStr, const char* uuidStr ) {
+GActor* CreateFromType( const char* typeStr, const char* uuidStr ) {
     auto typeIterator = type_constructors.find(typeStr);
     if ( typeIterator != type_constructors.end() ) {
         return type_constructors[typeStr](uuidStr);
     }
     else {
-        //TODO: Implement base node class
-        zsys_error("Unknown node type encountered: %s -> TODO: implement generic base node", typeStr);
-        return new RelayNode(uuidStr);
+        //TODO: Implement base actor class
+        zsys_error("Unknown actor type encountered: %s -> TODO: implement generic base actor", typeStr);
+        return new RelayActor(uuidStr);
     }
 }
 
-void RegisterCPPNodes() {
+void RegisterCPPActors() {
     
-    // When implementing new nodes, this is the only place you need to add them
-    RegisterNode( "Log", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new LogNode(uuid); });
-    RegisterNode( "Midi", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new MidiNode(uuid); });
-    RegisterNode( "Count", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new CountNode(uuid); });
-    RegisterNode( "UDPSend", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new UDPSendNode(uuid); });
-    RegisterNode( "Pulse", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new PulseNode(uuid); });
-    RegisterNode( "Relay", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new RelayNode(uuid); });
-    RegisterNode( "OSCListener", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new OSCListenerNode(uuid); });
-    RegisterNode( "ManualPulse", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new ManualPulse(uuid); });
+    // When implementing new actors, this is the only place you need to add them
+    RegisterActor( "Log", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new LogActor(uuid); });
+    RegisterActor( "Midi", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new MidiActor(uuid); });
+    RegisterActor( "Count", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new CountActor(uuid); });
+    RegisterActor( "UDPSend", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new UDPSendActor(uuid); });
+    RegisterActor( "Pulse", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new PulseActor(uuid); });
+    RegisterActor( "Relay", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new RelayActor(uuid); });
+    RegisterActor( "OSCListener", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new OSCListenerActor(uuid); });
+    RegisterActor( "ManualPulse", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new ManualPulse(uuid); });
 #ifdef PYTHON3_FOUND
     python_init();
-    RegisterNode( "PythonNode", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new PythonNode(uuid);});
+    RegisterActor( "Python", GActor::_actor_handler, [](const char * uuid) -> GActor* { return new PythonActor(uuid);});
 #endif
 
 
     //TODO: Figure out when this needs to happen
-    UpdateRegisteredNodesCache();
+    UpdateRegisteredActorsCache();
 }
 
 void ShowConfigWindow(bool * showLog) {
@@ -287,7 +286,7 @@ int RenderMenuBar( bool * showLog ) {
     return 0;
 }
 
-int UpdateNodes(float deltaTime, bool * showLog)
+int UpdateActors(float deltaTime, bool * showLog)
 {
     int rc = 0;
     // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
@@ -303,21 +302,21 @@ int UpdateNodes(float deltaTime, bool * showLog)
         
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
         ImNodes::BeginCanvas(&canvas);
-        for (auto it = nodes.begin(); it != nodes.end();)
+        for (auto it = actors.begin(); it != actors.end();)
         {
-            GNode* node = *it;
+            GActor* actor = *it;
 
             // Start rendering node
-            if (ImNodes::Ez::BeginNode(node, node->title, &node->pos, &node->selected))
+            if (ImNodes::Ez::BeginNode(actor, actor->title, &actor->pos, &actor->selected))
             {
                 // Render input nodes first (order is important)
-                ImNodes::Ez::InputSlots(node->input_slots.data(), node->input_slots.size());
+                ImNodes::Ez::InputSlots(actor->input_slots.data(), actor->input_slots.size());
 
                 // Custom node content may go here
-                node->Render(deltaTime);
+                actor->Render(deltaTime);
 
-                // Render output nodes first (order is important)
-                ImNodes::Ez::OutputSlots(node->output_slots.data(), node->output_slots.size());
+                // Render output slots second (order is important)
+                ImNodes::Ez::OutputSlots(actor->output_slots.data(), actor->output_slots.size());
 
                 // Store new connections when they are created
                 Connection new_connection;
@@ -326,19 +325,19 @@ int UpdateNodes(float deltaTime, bool * showLog)
                 {
                     assert(new_connection.input_node);
                     assert(new_connection.output_node);
-                    ((GNode*) new_connection.input_node)->connections.push_back(new_connection);
-                    ((GNode*) new_connection.output_node)->connections.push_back(new_connection);
-                    sphactor_connect( ((GNode*) new_connection.input_node)->actor,
-                                      sphactor_endpoint( ((GNode*) new_connection.output_node)->actor ) );
+                    ((GActor*) new_connection.input_node)->connections.push_back(new_connection);
+                    ((GActor*) new_connection.output_node)->connections.push_back(new_connection);
+                    sphactor_ask_connect( ((GActor*) new_connection.input_node)->actor,
+                                      sphactor_ask_endpoint( ((GActor*) new_connection.output_node)->actor ) );
                 }
 
-                // Render output connections of this node
-                for (const Connection& connection : node->connections)
+                // Render output connections of this actor
+                for (const Connection& connection : actor->connections)
                 {
                     // Node contains all it's connections (both from output and to input slots). This means that multiple
                     // nodes will have same connection. We render only output connections and ensure that each connection
                     // will be rendered once.
-                    if (connection.output_node != node)
+                    if (connection.output_node != actor)
                         continue;
 
                     if (!ImNodes::Connection(connection.input_node, connection.input_slot, connection.output_node,
@@ -346,11 +345,11 @@ int UpdateNodes(float deltaTime, bool * showLog)
                     {
                         assert(connection.input_node);
                         assert(connection.output_node);
-                        sphactor_disconnect( ((GNode*) connection.input_node)->actor,
-                                          sphactor_endpoint( ((GNode*) connection.output_node)->actor ) );
+                        sphactor_ask_disconnect( ((GActor*) connection.input_node)->actor,
+                                          sphactor_ask_endpoint( ((GActor*) connection.output_node)->actor ) );
                         // Remove deleted connections
-                        ((GNode*) connection.input_node)->DeleteConnection(connection);
-                        ((GNode*) connection.output_node)->DeleteConnection(connection);
+                        ((GActor*) connection.input_node)->DeleteConnection(connection);
+                        ((GActor*) connection.output_node)->DeleteConnection(connection);
                     }
                 }
             }
@@ -358,24 +357,24 @@ int UpdateNodes(float deltaTime, bool * showLog)
             ImNodes::Ez::EndNode();
             
             bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || ( ImGui::IsKeyPressedMap(ImGuiKey_Backspace) && ImGui::GetActiveID() == 0 );
-            if (node->selected && del)
+            if (actor->selected && del)
             {
-                // Loop and delete connections of nodes connected to us
-                for (auto& connection : node->connections)
+                // Loop and delete connections of actors connected to us
+                for (auto& connection : actor->connections)
                 {
-                    if (connection.output_node == node) {
-                        ((GNode*) connection.input_node)->DeleteConnection(connection);
+                    if (connection.output_node == actor) {
+                        ((GActor*) connection.input_node)->DeleteConnection(connection);
                     }
                     else {
-                        ((GNode*) connection.output_node)->DeleteConnection(connection);
+                        ((GActor*) connection.output_node)->DeleteConnection(connection);
                     }
                 }
                 // Delete all our connections separately
-                node->connections.clear();
-                node->DestroyActor();
+                actor->connections.clear();
+                actor->DestroyActor();
                 
-                delete node;
-                it = nodes.erase(it);
+                delete actor;
+                it = actors.erase(it);
             }
             else
                 ++it;
@@ -394,10 +393,10 @@ int UpdateNodes(float deltaTime, bool * showLog)
             {
                 if (ImGui::MenuItem(desc))
                 {
-                    GNode* node = CreateFromType(desc, nullptr);
-                    node->CreateActor();
-                    nodes.push_back(node);
-                    ImNodes::AutoPositionNode(nodes.back());
+                    GActor* actor = CreateFromType(desc, nullptr);
+                    actor->CreateActor();
+                    actors.push_back(actor);
+                    ImNodes::AutoPositionNode(actors.back());
                 }
             }
             
@@ -418,33 +417,33 @@ int UpdateNodes(float deltaTime, bool * showLog)
 }
 
 bool Save( const char* configFile ) {
-    if ( nodes.size() == 0 ) return false;
+    if ( actors.size() == 0 ) return false;
     
     zconfig_t* config = sphactor_zconfig_new("root");
-    for (auto it = nodes.begin(); it != nodes.end(); it++)
+    for (auto it = actors.begin(); it != actors.end(); it++)
     {
-        GNode* node = *it;
-        zconfig_t* nodeSection = sphactor_zconfig_append(node->actor, config);
+        GActor* actor = *it;
+        zconfig_t* actorSection = sphactor_zconfig_append(actor->actor, config);
         
-        // Add custom node data to section
-        node->SerializeNodeData(nodeSection);
+        // Add custom actor data to section
+        actor->SerializeActorData(actorSection);
 
         zconfig_t* connections = zconfig_locate(config, "connections");
         if ( connections == nullptr ) {
             connections = zconfig_new("connections", config);
         }
         
-        for (const Connection& connection : node->connections)
+        for (const Connection& connection : actor->connections)
         {
             //only store connections once
-            if ( node != connection.output_node ) continue;
+            if ( actor != connection.output_node ) continue;
             
             zconfig_t* item = zconfig_new( "con", connections );
             
-            GNode *out = (GNode*)connection.output_node;
-            GNode *in = (GNode*)connection.input_node;
+            GActor *out = (GActor*)connection.output_node;
+            GActor *in = (GActor*)connection.input_node;
             
-            zconfig_set_value(item,"%s,%s", sphactor_endpoint(out->actor), sphactor_endpoint(in->actor));
+            zconfig_set_value(item,"%s,%s", sphactor_ask_endpoint(out->actor), sphactor_ask_endpoint(in->actor));
         }
     }
     zconfig_save(config, configFile);
@@ -457,26 +456,26 @@ bool Load( const char* configFile ) {
     
     if ( root == nullptr ) return false;
     
-    zconfig_t* configNodes = zconfig_locate(root, "actors");
+    zconfig_t* configActors = zconfig_locate(root, "actors");
     
     // Clear current stage
     //TODO: Maybe ask if people want to save first?
     Clear();
     
-    // Get and loop all nodes
-    zconfig_t* node = zconfig_locate(configNodes, "actor");
-    while( node != nullptr )
+    // Get and loop all actors
+    zconfig_t* actor = zconfig_locate(configActors, "actor");
+    while( actor != nullptr )
     {
-        zconfig_t* uuid = zconfig_locate(node, "uuid");
-        zconfig_t* type = zconfig_locate(node, "type");
-        zconfig_t* endpoint = zconfig_locate(node, "endpoint");
+        zconfig_t* uuid = zconfig_locate(actor, "uuid");
+        zconfig_t* type = zconfig_locate(actor, "type");
+        zconfig_t* endpoint = zconfig_locate(actor, "endpoint");
         
         char *uuidStr = zconfig_value(uuid);
         char *typeStr = zconfig_value(type);
         char *endpointStr = zconfig_value(endpoint);
         
         // We're assuming the endpoint is the last thing added by the sphactor actor
-        //  from there we ready until we receive null and send that to the high-level node
+        //  from there we ready until we receive null and send that to the high-level actor
         ImVector<char*> *args = new ImVector<char*>();
         zconfig_t *arg = zconfig_next(endpoint);
         while ( arg != nullptr ) {
@@ -484,15 +483,15 @@ bool Load( const char* configFile ) {
             arg = zconfig_next(arg);
         }
         
-        GNode *gNode = CreateFromType(typeStr, uuidStr);
-        gNode->CreateActor();
+        GActor *gActor = CreateFromType(typeStr, uuidStr);
+        gActor->CreateActor();
         
         auto it = args->begin();
-        gNode->DeserializeNodeData(args, it);
+        gActor->DeserializeActorData(args, it);
         
-        nodes.push_back(gNode);
+        actors.push_back(gActor);
         
-        node = zconfig_next(node);
+        actor = zconfig_next(actor);
         
         free(uuidStr);
         free(typeStr);
@@ -523,27 +522,27 @@ bool Load( const char* configFile ) {
         pch = strtok (NULL, ",");
         sprintf(input, "%s", pch);
         
-        // Loop nodes and find output actor
-        for (auto it = nodes.begin(); it != nodes.end();)
+        // Loop actors and find output actor
+        for (auto it = actors.begin(); it != actors.end();)
         {
-            GNode* node = *it;
+            GActor* actor = *it;
             
-            // We're the output node, so we recreate the connection
-            if (streq(sphactor_endpoint(node->actor), output)) {
+            // We're the output side, so we recreate the connection
+            if (streq(sphactor_ask_endpoint(actor->actor), output)) {
                 Connection connection;
-                GNode* inputNode = Find(input);
-                assert(inputNode);
+                GActor* inputActor = Find(input);
+                assert(inputActor);
                 
-                connection.output_node = node;
-                connection.input_node = inputNode;
+                connection.output_node = actor;
+                connection.input_node = inputActor;
                 //TODO: Fix OSC type assumption -> part of the connection list?
                 connection.input_slot = "OSC";
                 connection.output_slot = "OSC";
                 
-                node->connections.push_back(connection);
-                inputNode->connections.push_back(connection);
+                actor->connections.push_back(connection);
+                inputActor->connections.push_back(connection);
                 
-                sphactor_connect( inputNode->actor, sphactor_endpoint(node->actor) );
+                sphactor_ask_connect( inputActor->actor, sphactor_ask_endpoint(actor->actor) );
                 break;
             }
             
@@ -562,37 +561,37 @@ bool Load( const char* configFile ) {
 
 void Clear() {
     //delete all connections
-    for (auto it = nodes.begin(); it != nodes.end();)
+    for (auto it = actors.begin(); it != actors.end();)
     {
-        GNode* node = *it;
+        GActor* actor = *it;
         
-        for (auto& connection : node->connections)
+        for (auto& connection : actor->connections)
         {
             //delete them once
-            if (connection.output_node == node) {
-                ((GNode*) connection.input_node)->DeleteConnection(connection);
+            if (connection.output_node == actor) {
+                ((GActor*) connection.input_node)->DeleteConnection(connection);
             }
         }
-        node->connections.clear();
+        actor->connections.clear();
         it++;
     }
     
-    //delete all nodes
-    for (auto it = nodes.begin(); it != nodes.end();)
+    //delete all actors
+    for (auto it = actors.begin(); it != actors.end();)
     {
-        GNode* node = *it;
-        node->DestroyActor();
-        delete node;
-        it = nodes.erase(it);
+        GActor* actor = *it;
+        actor->DestroyActor();
+        delete actor;
+        it = actors.erase(it);
     }
 }
 
-GNode* Find( const char* endpoint ) {
-    for (auto it = nodes.begin(); it != nodes.end();)
+GActor* Find( const char* endpoint ) {
+    for (auto it = actors.begin(); it != actors.end();)
     {
-        GNode* node = *it;
-        if ( streq( sphactor_endpoint(node->actor), endpoint)) {
-            return node;
+        GActor* actor = *it;
+        if ( streq( sphactor_ask_endpoint(actor->actor), endpoint)) {
+            return actor;
         }
         
         it++;

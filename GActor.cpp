@@ -1,13 +1,13 @@
 //
-//  GNode.cpp
+//  GActor.cpp
 //  gazebosc
 //
 //  Created by aaronvark on 22/10/2019.
 //
 
-#include "GNode.h"
+#include "GActor.h"
 
-GNode::GNode(const char* title,
+GActor::GActor(const char* title,
     const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
     const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr)
 {
@@ -17,12 +17,12 @@ GNode::GNode(const char* title,
     this->output_slots = output_slots;
 }
 
-GNode::~GNode()
+GActor::~GActor()
 {
     
 }
 
-void GNode::CreateActor() {
+void GActor::CreateActor() {
     if ( actor != NULL ) {
         DestroyActor();
     }
@@ -34,19 +34,19 @@ void GNode::CreateActor() {
     }
     
     actor = sphactor_new_by_type(title, this, NULL, uuid);
-    sphactor_set_actor_type(actor, title);
+    sphactor_ask_set_actor_type(actor, title);
     //sphactor_set_verbose(actor, false);
 }
 
-void GNode::DestroyActor() {
+void GActor::DestroyActor() {
     sphactor_destroy(&this->actor);
     this->actor = NULL;
 }
 
 // Front-end functions
 
-/// Deletes connection from this node.
-void GNode::DeleteConnection(const Connection& connection)
+/// Deletes connection from this actor.
+void GActor::DeleteConnection(const Connection& connection)
 {
     for (auto it = connections.begin(); it != connections.end(); ++it)
     {
@@ -58,13 +58,13 @@ void GNode::DeleteConnection(const Connection& connection)
     }
 }
 
-void GNode::Render(float deltaTime) {
+void GActor::Render(float deltaTime) {
     
 }
 
 // Back-end thread functions
 
-void GNode::SetRate( int rate ) {
+void GActor::SetRate( int rate ) {
     rate = 1000/rate;
     zstr_sendm(sphactor_socket(this->actor), "SET TIMEOUT");
     char* strRate = new char[64];
@@ -73,31 +73,31 @@ void GNode::SetRate( int rate ) {
     delete[] strRate;
 }
 
-void GNode::ActorInit( const sphactor_node_t *node )
+void GActor::ActorInit( const sphactor_actor_t *actor )
 {
     
 }
 
-void GNode::ActorStop( const sphactor_node_t *node )
+void GActor::ActorStop( const sphactor_actor_t *actor )
 {
     
 }
 
-zmsg_t *GNode::ActorCallback()
+zmsg_t *GActor::ActorCallback()
 {
     return nullptr;
 }
 
-zmsg_t *GNode::ActorMessage(sphactor_event_t *ev)
+zmsg_t *GActor::ActorMessage(sphactor_event_t *ev)
 {
     assert( ev->msg );
     return ev->msg;
 }
 
 // Serialization functions
-//  Make sure when overriding these to always call the GNode version
+//  Make sure when overriding these to always call the GActor version
 
-void GNode::SerializeNodeData(zconfig_t *section) {
+void GActor::SerializeActorData(zconfig_t *section) {
     zconfig_t *xpos = zconfig_new("xpos", section);
     zconfig_set_value(xpos, "%f", pos.x);
     
@@ -105,7 +105,7 @@ void GNode::SerializeNodeData(zconfig_t *section) {
     zconfig_set_value(ypos, "%f", pos.y);
 }
 
-void GNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it) {
+void GActor::DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it) {
     char* xpos = *it;
     it++;
     char* ypos = *it;

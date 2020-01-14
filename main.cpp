@@ -40,8 +40,8 @@ void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 
 void ShowConfigWindow(bool * showLog);
 void ShowLogWindow(ImGuiTextBuffer&);
-int UpdateNodes(float deltaTime, bool * showLog);
-void RegisterCPPNodes();
+int UpdateActors(float deltaTime, bool * showLog);
+void RegisterCPPActors();
 bool Load(const char* fileName);
 void Clear();
 
@@ -76,8 +76,8 @@ ImGuiTextBuffer& getBuffer(){
 // Main code
 int main(int argc, char** argv)
 {
-    // Register CPP Node types with sphactor
-    RegisterCPPNodes();
+    // Register CPP Actor types with sphactor
+    RegisterCPPActors();
 
     // Argument capture
     bool headless = false;
@@ -277,7 +277,7 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         // Get time since last frame
         deltaTime = SDL_GetTicks() - oldTime;
         oldTime = SDL_GetTicks();
-        int rc = UpdateNodes( ((float)deltaTime) / 1000, &logWindow);
+        int rc = UpdateActors( ((float)deltaTime) / 1000, &logWindow);
         
         if ( rc == -1 ) {
             done = true;

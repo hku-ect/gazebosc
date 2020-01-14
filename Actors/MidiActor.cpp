@@ -1,16 +1,16 @@
 //
-//  MidiNode.cpp
+//  MidiActor.cpp
 //  gazebosc
 //
 //  Created by aaronvark on 22/10/2019.
 //
 
-#include "DefaultNodes.h"
+#include "DefaultActors.h"
 
-MidiNode::MidiNode( const char* uuid ) : GNode( "Midi",
+MidiActor::MidiActor( const char* uuid ) : GActor( "Midi",
                                 { },    //no input slots
                                 {
-                                    {"OSC", NodeSlotOSC}  // Output slots
+                                    {"OSC", ActorSlotOSC}  // Output slots
                                 }, uuid )
 {
     msgBuffer = new char[1024];
@@ -44,7 +44,7 @@ MidiNode::MidiNode( const char* uuid ) : GNode( "Midi",
     }
 }
     
-MidiNode::~MidiNode() {
+MidiActor::~MidiActor() {
     
     if ( midiin != NULL )
     {
@@ -57,12 +57,12 @@ MidiNode::~MidiNode() {
     delete[] activePort;
 }
 
-void MidiNode::CreateActor() {
-    GNode::CreateActor();
+void MidiActor::CreateActor() {
+    GActor::CreateActor();
     SetRate(60);
 }
 
-void  MidiNode::Connect() {
+void  MidiActor::Connect() {
     if ( midiin->isPortOpen()) {
         midiin->closePort();
     }
@@ -77,7 +77,7 @@ void  MidiNode::Connect() {
     }
 }
 
-zmsg_t * MidiNode::ActorCallback()
+zmsg_t * MidiActor::ActorCallback()
 {
     static double stamp;
     static int nBytes;
@@ -126,7 +126,7 @@ zmsg_t * MidiNode::ActorCallback()
     return nullptr;
 }
 
-void MidiNode::Render(float deltaTime) {
+void MidiActor::Render(float deltaTime) {
     ImGui::SetNextItemWidth(200);
     
     if ( ImGui::BeginCombo("", current_item) ) {
@@ -146,10 +146,10 @@ void MidiNode::Render(float deltaTime) {
         ImGui::EndCombo();
     }
     
-    GNode::Render(deltaTime);
+    GActor::Render(deltaTime);
 }
 
-void MidiNode::SerializeNodeData( zconfig_t *section ) {
+void MidiActor::SerializeActorData( zconfig_t *section ) {
     zconfig_t *device = zconfig_new("device", section);
     if ( midiPort != -1 ) {
         zconfig_set_value(device, "%s", portNames.at(midiPort).c_str());
@@ -157,10 +157,10 @@ void MidiNode::SerializeNodeData( zconfig_t *section ) {
     else {
         zconfig_set_value(device, "(null)");
     }
-    GNode::SerializeNodeData(section);
+    GActor::SerializeActorData(section);
 }
 
-void MidiNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+void MidiActor::DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
     //pop args from front
     char* strPort = *it;
     it++;
@@ -187,5 +187,5 @@ void MidiNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iter
     free(strPort);
     
     //send remaining args (probably just xpos/ypos) to base
-    GNode::DeserializeNodeData(args, it);
+    GActor::DeserializeActorData(args, it);
 }

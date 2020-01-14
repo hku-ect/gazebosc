@@ -1,21 +1,21 @@
 //
-//  ClientNode.cpp
+//  ClientActor.cpp
 //  gazebosc
 //
 //  Created by aaronvark on 22/10/2019.
 //
 
-#include "DefaultNodes.h"
+#include "DefaultActors.h"
 
-UDPSendNode::UDPSendNode(const char* uuid) : GNode(   "UDPSend",
-                                { { "OSC", NodeSlotOSC } },    //Input slot
+UDPSendActor::UDPSendActor(const char* uuid) : GActor(   "UDPSend",
+                                { { "OSC", ActorSlotOSC } },    //Input slot
                                 { }, uuid )// Output slotss
 {
     ipAddress = new char[64];
     port = 1234;
 }
 
-UDPSendNode::~UDPSendNode() {
+UDPSendActor::~UDPSendActor() {
     delete[] ipAddress;
     
     if ( address != NULL ) {
@@ -24,7 +24,7 @@ UDPSendNode::~UDPSendNode() {
     }
 }
 
-void UDPSendNode::Render(float deltaTime) {
+void UDPSendActor::Render(float deltaTime) {
     ImGui::SetNextItemWidth(150);
     if ( ImGui::InputText("IP Address", ipAddress, 64) ) {
         isDirty = true;
@@ -35,7 +35,7 @@ void UDPSendNode::Render(float deltaTime) {
     }
 }
 
-zmsg_t *UDPSendNode::ActorMessage( sphactor_event_t *ev )
+zmsg_t *UDPSendActor::ActorMessage( sphactor_event_t *ev )
 {
     // If port/ip information changed, update our target address
     if ( isDirty ) {
@@ -94,17 +94,17 @@ zmsg_t *UDPSendNode::ActorMessage( sphactor_event_t *ev )
     return nullptr;
 }
 
-void UDPSendNode::SerializeNodeData( zconfig_t *section ) {
+void UDPSendActor::SerializeActorData( zconfig_t *section ) {
     zconfig_t *zIP = zconfig_new("ipAddress", section);
     zconfig_set_value(zIP, "%s", ipAddress);
     
     zconfig_t *zPort = zconfig_new("port", section);
     zconfig_set_value(zPort, "%i", port);
     
-    GNode::SerializeNodeData(section);
+    GActor::SerializeActorData(section);
 }
 
-void UDPSendNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+void UDPSendActor::DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
     //pop args from front
     char* strIp = *it;
     it++;
@@ -120,5 +120,5 @@ void UDPSendNode::DeserializeNodeData( ImVector<char*> *args, ImVector<char*>::i
     free(strPort);
     
     //send remaining args (probably just xpos/ypos) to base
-    GNode::DeserializeNodeData(args, it);
+    GActor::DeserializeActorData(args, it);
 }

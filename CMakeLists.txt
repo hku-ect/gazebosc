@@ -49,7 +49,7 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     endif ()
 endif ()
 
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Nodes NODE_SOURCES)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
 
 if (UNIX)
     link_directories(
@@ -84,11 +84,11 @@ if (UNIX)
 	rtmidi_c.h
         rtmidi_c.cpp
 	
-        nodes.cpp
+        stage.cpp
 
-	GNode.h
-	GNode.cpp
-        ${NODE_SOURCES}
+	GActor.h
+	GActor.cpp
+        ${ACTOR_SOURCES}
     )
     target_include_directories(gazebosc PUBLIC
         ${SDL2_INCLUDE_DIRS}

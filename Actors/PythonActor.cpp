@@ -1,5 +1,5 @@
 #ifdef PYTHON3_FOUND
-#include "PythonNode.h"
+#include "PythonActor.h"
 #include <iostream>
 #include <lo/lo_cpp.h>
 #include "pyzmsg.h"
@@ -29,7 +29,7 @@ python_init()
 }
 
 int
-PythonNode::UpdatePythonFile()
+PythonActor::UpdatePythonFile()
 {
     //  Acquire the GIL
     PyGILState_STATE gstate;
@@ -84,7 +84,7 @@ PythonNode::UpdatePythonFile()
     return 0;
 }
 void
-PythonNode::ActorInit( const sphactor_node_t *node )
+PythonActor::ActorInit( const sphactor_actor_t *actor )
 {
     this->UpdatePythonFile();
 }
@@ -174,9 +174,9 @@ py_class_actor(sphactor_event_t *ev, void *args)
 }
 
 zmsg_t *
-PythonNode::ActorMessage(sphactor_event_t *ev)
+PythonActor::ActorMessage(sphactor_event_t *ev)
 {
-    std::cout << "Python Node: name=" << ev->name << " type=" << ev->type << " uuid=" << ev->uuid << "\n";
+    std::cout << "Python Actor: name=" << ev->name << " type=" << ev->type << " uuid=" << ev->uuid << "\n";
 
     return py_class_actor(ev, this->pClassInstance);
     /*
