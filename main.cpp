@@ -127,7 +127,7 @@ int main(int argc, char** argv)
         flags |= O_NONBLOCK;
         fcntl(out_pipe[0], F_SETFL, flags);
         
-        dup2(out_pipe[1], STDOUT_FILENO);   /* redirect stdout to the pipe */
+        dup2(out_pipe[1], STDOUT_FILENO);
         close(out_pipe[1]);
     }
     

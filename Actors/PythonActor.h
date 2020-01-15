@@ -15,17 +15,30 @@ public:
                                                           { {"OSC", ActorSlotOSC} },       // Output slots
                                                             uuid )                        // uuid pass-through
     {
-
+        if ( filename == nullptr ) {
+            filename = new char[32];
+            sprintf(filename, "tester");
+            this->UpdatePythonFile();
+        }
+    }
+    
+    virtual ~PythonActor() {
+        delete[] filename;
     }
 
     int UpdatePythonFile();
 
     void ActorInit( const sphactor_actor_t *actor );
     zmsg_t *ActorMessage( sphactor_event_t *ev );
-    //zmsg_t *ActorCallback( );
-    //void ActorStop(const sphactor_node_t *node);
+    
+    // Serialization overrides
+    void SerializeActorData( zconfig_t *section );
+    void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it );
+    
+    // UI overrides
+    void Render(float deltaTime);
 
-    std::string filename = "tester";
+    char * filename = nullptr;
     PyObject *pClassInstance;
 };
 
