@@ -107,7 +107,7 @@ install:
   - cd -
 
   # libsphactor
-  - git clone --depth=1 --branch=master https://github.com/sphaero/libsphactor
+  - git clone --depth=1 --branch=master https://github.com/hku-ect/libsphactor
   - cd libsphactor
   - ./autogen.sh
   - ./configure

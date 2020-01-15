@@ -17,7 +17,7 @@ python_init()
                     "import os\n"
                     "print(os.getcwd())\n"
                     "sys.path.append(os.getcwd())\n"
-                    "sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
+                    //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
                     "print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n");
 
     //  import the internal wrapper module
@@ -37,12 +37,13 @@ PythonActor::UpdatePythonFile()
 
     //  import our python file
     PyObject *pClass, *pModule, *pName;
-    pName = PyUnicode_DecodeFSDefault( filename.c_str() );
+    pName = PyUnicode_DecodeFSDefault( filename );
     if ( pName == NULL )
     {
         if ( PyErr_Occurred() )
             PyErr_Print();
-        zsys_error("error loading %s", filename.c_str());
+        zsys_error("error loading %s", filename);
+        PyGILState_Release(gstate);
         return 1;
     }
 
@@ -52,18 +53,19 @@ PythonActor::UpdatePythonFile()
     {
         if ( PyErr_Occurred() )
             PyErr_Print();
-        zsys_error("error importing %s", filename.c_str());
-
+        zsys_error("error importing %s", filename);
+        PyGILState_Release(gstate);
         return 2;
     }
 
     //  get the class with the same name as the filename
-    pClass = PyObject_GetAttrString(pModule, "tester" );
+    pClass = PyObject_GetAttrString(pModule, filename );
     if (pClass == NULL )
     {
         if (PyErr_Occurred())
             PyErr_Print();
         zsys_error("pClass is NULL");
+        PyGILState_Release(gstate);
         return 3;
     }
 
@@ -74,19 +76,22 @@ PythonActor::UpdatePythonFile()
         if (PyErr_Occurred())
             PyErr_Print();
         zsys_error("pClassInstance is NULL");
+        PyGILState_Release(gstate);
         return 4;
     }
 
     //  this is our last Python API call before threads jump in,
     //  thus we need to release the GIL
     // Release the GIL again as we are ready with Python
+    zsys_info("Successfully loaded %s", filename);
     PyGILState_Release(gstate);
     return 0;
 }
+
 void
 PythonActor::ActorInit( const sphactor_actor_t *actor )
 {
-    this->UpdatePythonFile();
+    
 }
 
 zmsg_t *
@@ -193,6 +198,35 @@ PythonActor::ActorMessage(sphactor_event_t *ev)
     zmsg_pushmem(returnMsg, buf, len);
     return returnMsg;
     */
+}
+
+void PythonActor::SerializeActorData( zconfig_t *section ) {
+    zconfig_t *file = zconfig_new("module", section);
+    zconfig_set_value(file, "%s", filename);
+    GActor::SerializeActorData(section);
+}
+
+void PythonActor::DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it ) {
+    //pop args from front
+    char* strFile = *it;
+    it++;
+    
+    // strcopy
+    sprintf(filename, "%s", strFile);
+    this->UpdatePythonFile();
+    
+    free(strFile);
+    
+    //send remaining args (probably just xpos/ypos) to base
+    GActor::DeserializeActorData(args, it);
+}
+
+void PythonActor::Render(float deltaTime) {
+    ImGui::SetNextItemWidth(100);
+    ImGui::InputText( "module", filename, 32 );
+    if ( ImGui::Button( "Reload" ) ) {
+        this->UpdatePythonFile();
+    }
 }
 
 #endif
