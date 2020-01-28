@@ -7,6 +7,7 @@
 void
 python_init()
 {
+    Py_UnbufferedStdioFlag = 1;
     //  add internal wrapper to available modules
     PyImport_AppendInittab("sph", PyInit_PyZmsg);
     Py_Initialize();
