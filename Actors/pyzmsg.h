@@ -71,6 +71,22 @@ PyZmsg_popstr(PyZmsgObject *self, PyObject *Py_UNUSED(ignored) )
     if ( msg ) return PyUnicode_FromString(msg);
     //PyErr_SetString(PyExc_TypeError,
     //                        "No more strings in zmsg");
+    
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject *
+PyZmsg_pop(PyZmsgObject *self, PyObject *Py_UNUSED(ignored) )
+{
+    zframe_t* frame = zmsg_pop(self->msg);
+    // todo: do we need to cleanup?
+    byte * bytes = zframe_data(frame);
+    int size = zframe_size(frame);
+    if ( frame ) return PyBytes_FromStringAndSize((const char*)bytes, size);
+    //PyErr_SetString(PyExc_TypeError,
+    //                        "No more strings in zmsg");
+    
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -87,6 +103,9 @@ static PyMethodDef PyZmsg_methods[] = {
     },
     {"popstr", (PyCFunction) PyZmsg_popstr, METH_NOARGS,
      "Pop frame off front of message, return as fresh string. If there were no more frames in the message, returns NULL."
+    },
+    {"pop", (PyCFunction) PyZmsg_pop, METH_NOARGS,
+     "Pop frame off front of message, return as bytes. If there were no more frames in the message, returns NULL."
     },
     {NULL}  /* Sentinel */
 };
