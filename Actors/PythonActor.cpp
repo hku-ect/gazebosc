@@ -16,10 +16,11 @@ python_init()
     PyRun_SimpleString(
                     "import sys\n"
                     "import os\n"
-                    "print(os.getcwd())\n"
+                    //"print(os.getcwd())\n"
                     "sys.path.append(os.getcwd())\n"
                     //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
-                    "print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n");
+                    //"print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n"
+                       );
 
     //  import the internal wrapper module
     PyObject *imp = PyImport_ImportModule("sph");
@@ -98,7 +99,7 @@ PythonActor::ActorInit( const sphactor_actor_t *actor )
 zmsg_t *
 py_class_actor(sphactor_event_t *ev, void *args)
 {
-    zsys_info("Hello from py_class_actor wrapper: type=%s", ev->type);
+    //zsys_info("Hello from py_class_actor wrapper: type=%s", ev->type);
     //  This is not compatible with subinterpreters!
     //  https://docs.python.org/3/c-api/init.html#c.PyGILState_Ensure
     //  Acquire the GIL
@@ -182,7 +183,7 @@ py_class_actor(sphactor_event_t *ev, void *args)
 zmsg_t *
 PythonActor::ActorMessage(sphactor_event_t *ev)
 {
-    std::cout << "Python Actor: name=" << ev->name << " type=" << ev->type << " uuid=" << ev->uuid << "\n";
+    //std::cout << "Python Actor: name=" << ev->name << " type=" << ev->type << " uuid=" << ev->uuid << "\n";
 
     return py_class_actor(ev, this->pClassInstance);
     /*
