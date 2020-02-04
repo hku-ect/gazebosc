@@ -1,4 +1,4 @@
-OSX/Linux: [![Build Status](https://api.travis-ci.org/aaronvark/gazebosc.png?branch=master)](https://travis-ci.org/aaronvark/gazebosc)
+OSX/Linux: [![Build Status](https://api.travis-ci.org/hku-ect/gazebosc.png?branch=master)](https://travis-ci.org/hku-ect/gazebosc)
 
 # GazebOSC
 
