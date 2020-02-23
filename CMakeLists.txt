@@ -19,11 +19,11 @@ set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
 
+add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
+add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
+add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2)
 pkg_check_modules(ZMQ REQUIRED libzmq)
-pkg_check_modules(CZMQ REQUIRED libczmq)
-pkg_check_modules(SPH REQUIRED libsphactor)
 pkg_check_modules(LO REQUIRED liblo)
 
 find_package (Python3 REQUIRED COMPONENTS Development)
@@ -91,9 +91,10 @@ if (UNIX)
         ${ACTOR_SOURCES}
     )
     target_include_directories(gazebosc PUBLIC
-        ${SDL2_INCLUDE_DIRS}
+        SDL2-static
         ${ZMQ_INCLUDE_DIRS}
-        ${CZMQ_INCLUDE_DIRS}
+        czmq-static
+        sphactor-static
         ${Python3_INCLUDE_DIRS}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
@@ -101,10 +102,24 @@ if (UNIX)
         ${DEP_IMNODES_DIR}
     )
     if (APPLE)
-        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} ${Python3_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
+        target_link_libraries(gazebosc PUBLIC 
+            SDL2-static 
+            ${ZMQ_LIBRARIES} 
+            czmq=static 
+            sphactor-static 
+            ${LO_LIBRARIES} 
+            ${Python3_LIBRARIES} 
+            -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
 	add_definitions(-D__MACOSX_CORE__)
     else()
-        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} ${Python3_LIBRARIES} -lasound -ldl -lGL)
+        target_link_libraries(gazebosc PUBLIC 
+            SDL2-static 
+            ${ZMQ_LIBRARIES} 
+            czmq-static
+            sphactor-static
+            ${LO_LIBRARIES} 
+            ${Python3_LIBRARIES} 
+            -lasound -ldl -lGL -lGLEW)
         target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
     endif()
     target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
