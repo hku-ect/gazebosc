@@ -20,6 +20,9 @@ set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
 
 add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
+# overrides to prevent the Findczmq.cmake script to fail
+set(CZMQ_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/)
+set(CZMQ_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/include/)
 add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
 find_package(PkgConfig REQUIRED)
