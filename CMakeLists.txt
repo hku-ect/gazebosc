@@ -94,6 +94,7 @@ if (UNIX)
         ${ACTOR_SOURCES}
     )
     target_include_directories(gazebosc PUBLIC
+        ${ZMQ_INCLUDE_DIRS}
         ${Python3_INCLUDE_DIRS}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
