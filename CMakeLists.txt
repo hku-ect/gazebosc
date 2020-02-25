@@ -94,10 +94,6 @@ if (UNIX)
         ${ACTOR_SOURCES}
     )
     target_include_directories(gazebosc PUBLIC
-        SDL2-static
-        ${ZMQ_INCLUDE_DIRS}
-        czmq-static
-        sphactor-static
         ${Python3_INCLUDE_DIRS}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
@@ -107,21 +103,21 @@ if (UNIX)
     if (APPLE)
         target_link_libraries(gazebosc PUBLIC 
             SDL2-static 
-            ${ZMQ_LIBRARIES} 
-            czmq=static 
+            czmq-static 
             sphactor-static 
+            ${ZMQ_LIBRARIES} 
             ${LO_LIBRARIES} 
             ${Python3_LIBRARIES} 
             -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
 	add_definitions(-D__MACOSX_CORE__)
     else()
         target_link_libraries(gazebosc PUBLIC 
-            SDL2-static 
-            ${ZMQ_LIBRARIES} 
+            SDL2-static
             czmq-static
             sphactor-static
-            ${LO_LIBRARIES} 
-            ${Python3_LIBRARIES} 
+            ${ZMQ_LIBRARIES}
+            ${LO_LIBRARIES}
+            ${Python3_LIBRARIES}
             -lasound -ldl -lGL -lGLEW)
         target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
     endif()
