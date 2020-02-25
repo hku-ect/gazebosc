@@ -1,0 +1,9 @@
+[submodule "ext/czmq"]
+	path = ext/czmq
+	url = https://github.com/zeromq/czmq.git
+[submodule "ext/libsphactor"]
+	path = ext/libsphactor
+	url = https://github.com/hku-ect/libsphactor.git
+[submodule "ext/SDL-mirror"]
+	path = ext/SDL-mirror
+	url = https://github.com/spurious/SDL-mirror.git
