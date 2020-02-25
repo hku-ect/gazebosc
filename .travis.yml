@@ -39,8 +39,6 @@ addons:
     packages:
     - git
     - libzmq3-dev
-    - libczmq-dev
-    - libsdl2-dev
 
 matrix:
   include:
@@ -57,8 +55,6 @@ matrix:
         packages:
         - git
         - libzmq3-dev
-        - libczmq-dev
-        - libsdl2-dev
   - env: BUILD_TYPE=valgrind
     os: linux
     addons:
@@ -67,8 +63,6 @@ matrix:
         - valgrind
         - git
         - libzmq3-dev
-        - libczmq-dev
-        - libsdl2-dev
   - env: BUILD_TYPE=default ADDRESS_SANITIZER=enabled
     os: linux
     addons:
@@ -76,16 +70,11 @@ matrix:
         packages:
         - git
         - libzmq3-dev
-        - libczmq-dev
-        - libsdl2-dev
 
 before_install:
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "valgrind" ] ; then brew install valgrind ; fi
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
-
-# OSX pre-built dependencies
-- if [ "$TRAVIS_OS_NAME" == "osx" ] ; then brew install sdl2 ; fi
 
 install:
   - git submodule update --init --recursive
@@ -93,22 +82,6 @@ install:
   # libzmq
   - git clone --depth=1 --branch=master https://github.com/zeromq/libzmq
   - cd libzmq
-  - ./autogen.sh
-  - ./configure
-  - sudo make install
-  - cd -
-
-  # czmq
-  - git clone --depth=1 --branch=master https://github.com/zeromq/czmq
-  - cd czmq
-  - ./autogen.sh
-  - ./configure
-  - sudo make install
-  - cd -
-
-  # libsphactor
-  - git clone --depth=1 --branch=master https://github.com/hku-ect/libsphactor
-  - cd libsphactor
   - ./autogen.sh
   - ./configure
   - sudo make install
