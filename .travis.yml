@@ -56,6 +56,7 @@ matrix:
         packages:
         - git
         - libzmq3-dev
+        - mesa-common-dev
   - env: BUILD_TYPE=valgrind
     os: linux
     addons:
@@ -64,6 +65,7 @@ matrix:
         - valgrind
         - git
         - libzmq3-dev
+        - mesa-common-dev
   - env: BUILD_TYPE=default ADDRESS_SANITIZER=enabled
     os: linux
     addons:
@@ -71,6 +73,7 @@ matrix:
         packages:
         - git
         - libzmq3-dev
+        - mesa-common-dev
 
 before_install:
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi
