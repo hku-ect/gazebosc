@@ -39,6 +39,7 @@ addons:
     packages:
     - git
     - libzmq3-dev
+    - mesa-common-dev
 
 matrix:
   include:
