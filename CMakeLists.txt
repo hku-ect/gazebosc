@@ -15,27 +15,52 @@
 cmake_minimum_required(VERSION 3.1)
 project(gazebosc)
 
+##  Test availability of git and fetch submodules if needed
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+    # Update submodules as needed
+    option(GIT_SUBMODULE "Check submodules during build" ON)
+    if(GIT_SUBMODULE)
+        message(STATUS "Submodule update")
+        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            RESULT_VARIABLE GIT_SUBMOD_RESULT)
+        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+            message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+        endif()
+    endif()
+endif()
+
+if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/czmq/CMakeLists.txt")
+    message(FATAL_ERROR "The submodules in the ext directory are not available! GIT_SUBMODULE was turned off or failed. Please update submodules using "git submodule update --init --recursive" and try again.")
+endif()
+## End getting the submodules
+
 set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
 
+## External libraries in ext/
 add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
 # overrides to prevent the Findczmq.cmake script to fail
 set(CZMQ_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/)
 set(CZMQ_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/include/)
 add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
+
+## External system libraries through pkg-config
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZMQ REQUIRED libzmq)
 pkg_check_modules(LO REQUIRED liblo)
 
+# Find Python3
 find_package (Python3 REQUIRED COMPONENTS Development)
 if(Python3_FOUND)
     message ("python3 found")
     message (${Python3_LIBRARIES})
     add_definitions(-DPYTHON3_FOUND)
 else()
-    message (FATAL_ERROR "Cannot find Python3")
+    message (FATAL_ERROR "Cannot find Python3, make sure the development packages of Python are available on the system")
 endif()
 
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
