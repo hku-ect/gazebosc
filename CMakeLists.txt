@@ -106,16 +106,13 @@ if (UNIX)
         ${DEP_IMNODES_DIR}/ImNodes.cpp
         ${DEP_IMNODES_DIR}/ImNodesEz.h
         ${DEP_IMNODES_DIR}/ImNodesEz.cpp
-
-	RtMidi.h
+        RtMidi.h
         RtMidi.cpp
-	rtmidi_c.h
+        rtmidi_c.h
         rtmidi_c.cpp
-	
         stage.cpp
-
-	GActor.h
-	GActor.cpp
+	    GActor.h
+	    GActor.cpp
         ${ACTOR_SOURCES}
     )
     target_include_directories(gazebosc PUBLIC
@@ -155,4 +152,5 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_SOURCE_DIR}/tester.py
             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tester.py)
+
 
