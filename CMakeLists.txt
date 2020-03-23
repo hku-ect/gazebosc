@@ -15,24 +15,52 @@
 cmake_minimum_required(VERSION 3.1)
 project(gazebosc)
 
+##  Test availability of git and fetch submodules if needed
+find_package(Git QUIET)
+if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+    # Update submodules as needed
+    option(GIT_SUBMODULE "Check submodules during build" ON)
+    if(GIT_SUBMODULE)
+        message(STATUS "Submodule update")
+        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            RESULT_VARIABLE GIT_SUBMOD_RESULT)
+        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+            message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+        endif()
+    endif()
+endif()
+
+if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/czmq/CMakeLists.txt")
+    message(FATAL_ERROR "The submodules in the ext directory are not available! GIT_SUBMODULE was turned off or failed. Please update submodules using "git submodule update --init --recursive" and try again.")
+endif()
+## End getting the submodules
+
 set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
 
+## External libraries in ext/
+add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
+# overrides to prevent the Findczmq.cmake script to fail
+set(CZMQ_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/)
+set(CZMQ_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/include/)
+add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
+add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
+
+## External system libraries through pkg-config
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2)
 pkg_check_modules(ZMQ REQUIRED libzmq)
-pkg_check_modules(CZMQ REQUIRED libczmq)
-pkg_check_modules(SPH REQUIRED libsphactor)
 pkg_check_modules(LO REQUIRED liblo)
 
+# Find Python3
 find_package (Python3 REQUIRED COMPONENTS Development)
 if(Python3_FOUND)
     message ("python3 found")
     message (${Python3_LIBRARIES})
     add_definitions(-DPYTHON3_FOUND)
 else()
-    message (FATAL_ERROR "Cannot find Python3")
+    message (FATAL_ERROR "Cannot find Python3, make sure the development packages of Python are available on the system")
 endif()
 
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -78,22 +106,17 @@ if (UNIX)
         ${DEP_IMNODES_DIR}/ImNodes.cpp
         ${DEP_IMNODES_DIR}/ImNodesEz.h
         ${DEP_IMNODES_DIR}/ImNodesEz.cpp
-
-	RtMidi.h
+        RtMidi.h
         RtMidi.cpp
-	rtmidi_c.h
+        rtmidi_c.h
         rtmidi_c.cpp
-	
         stage.cpp
-
-	GActor.h
-	GActor.cpp
+	    GActor.h
+	    GActor.cpp
         ${ACTOR_SOURCES}
     )
     target_include_directories(gazebosc PUBLIC
-        ${SDL2_INCLUDE_DIRS}
         ${ZMQ_INCLUDE_DIRS}
-        ${CZMQ_INCLUDE_DIRS}
         ${Python3_INCLUDE_DIRS}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
@@ -101,10 +124,24 @@ if (UNIX)
         ${DEP_IMNODES_DIR}
     )
     if (APPLE)
-        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} ${Python3_LIBRARIES} -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
+        target_link_libraries(gazebosc PUBLIC 
+            SDL2-static 
+            czmq-static 
+            sphactor-static 
+            ${ZMQ_LIBRARIES} 
+            ${LO_LIBRARIES} 
+            ${Python3_LIBRARIES} 
+            -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
 	add_definitions(-D__MACOSX_CORE__)
     else()
-        target_link_libraries(gazebosc PUBLIC ${SDL2_LIBRARIES} ${ZMQ_LIBRARIES} ${CZMQ_LIBRARIES} ${SPH_LIBRARIES} ${LO_LIBRARIES} ${Python3_LIBRARIES} -lasound -ldl -lGL)
+        target_link_libraries(gazebosc PUBLIC 
+            SDL2-static
+            czmq-static
+            sphactor-static
+            ${ZMQ_LIBRARIES}
+            ${LO_LIBRARIES}
+            ${Python3_LIBRARIES}
+            -lasound -ldl -lGL -lGLEW)
         target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
     endif()
     target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
@@ -115,4 +152,5 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_SOURCE_DIR}/tester.py
             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tester.py)
+
 
