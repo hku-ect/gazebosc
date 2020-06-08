@@ -43,10 +43,12 @@ set(DEP_IMNODES_DIR ".")
 
 ## External libraries in ext/
 add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
-# overrides to prevent the Findczmq.cmake script to fail
 add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/liblo/cmake" EXCLUDE_FROM_ALL)
+
+# Find OpenGL
+find_package(OpenGL REQUIRED)
 
 ########################################################################
 # LIBZMQ dependency
@@ -91,79 +93,80 @@ endif ()
 
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
 
+add_executable(gazebosc
+    main.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imconfig.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_draw.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_widgets.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_internal.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_rectpack.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_textedit.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_truetype.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.c
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.h
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/glcorearb.h
+    ${DEP_IMNODES_DIR}/ImNodes.h
+    ${DEP_IMNODES_DIR}/ImNodes.cpp
+    ${DEP_IMNODES_DIR}/ImNodesEz.h
+    ${DEP_IMNODES_DIR}/ImNodesEz.cpp
+    RtMidi.h
+    RtMidi.cpp
+    rtmidi_c.h
+    rtmidi_c.cpp
+    stage.cpp
+        GActor.h
+        GActor.cpp
+    ${ACTOR_SOURCES}
+)
+target_include_directories(gazebosc PUBLIC
+    ${OPENGL_INCLUDE_DIR}
+    ${ZMQ_INCLUDE_DIRS}
+    ${Python3_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
+    ${DEP_IMNODES_DIR}
+)
+
+target_link_libraries(gazebosc PUBLIC
+    SDL2-static
+    lo_shared
+    czmq-static
+    sphactor-static
+    ${ZMQ_LIBRARIES}
+    ${LO_LIBRARIES}
+    ${Python3_LIBRARIES}
+    ${OPENGL_LIBRARIES}
+)
 if (UNIX)
     link_directories(
         /usr/local/lib/
     )
-    add_executable(gazebosc 
-       	main.cpp
-
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imconfig.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_draw.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_widgets.cpp
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_internal.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_rectpack.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_textedit.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_truetype.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.c
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.h
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/glcorearb.h
-        ${DEP_IMNODES_DIR}/ImNodes.h
-        ${DEP_IMNODES_DIR}/ImNodes.cpp
-        ${DEP_IMNODES_DIR}/ImNodesEz.h
-        ${DEP_IMNODES_DIR}/ImNodesEz.cpp
-        RtMidi.h
-        RtMidi.cpp
-        rtmidi_c.h
-        rtmidi_c.cpp
-        stage.cpp
-	    GActor.h
-	    GActor.cpp
-        ${ACTOR_SOURCES}
-    )
-    target_include_directories(gazebosc PUBLIC
-        ${ZMQ_INCLUDE_DIRS}
-        ${Python3_INCLUDE_DIRS}
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
-        ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
-        ${DEP_IMNODES_DIR}
-    )
     if (APPLE)
-        target_link_libraries(gazebosc PUBLIC 
-            SDL2-static
-            lo-shared
-            czmq-static 
-            sphactor-static 
-            ${ZMQ_LIBRARIES} 
-            ${LO_LIBRARIES} 
-            ${Python3_LIBRARIES} 
-            -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
-	add_definitions(-D__MACOSX_CORE__)
+        target_link_libraries(gazebosc PUBLIC
+            -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio"
+                )
+        add_definitions(-D__MACOSX_CORE__)
     else()
-        target_link_libraries(gazebosc PUBLIC 
-            SDL2-static
-            lo_shared
-            czmq-static
-            sphactor-static
-            ${ZMQ_LIBRARIES}
-            ${Python3_LIBRARIES}
-            -lasound -ldl -lGL -lGLEW)
-        target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
+        target_link_libraries(gazebosc PUBLIC
+            -lasound -ldl
+        )
+    target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
     endif()
     target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
     target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 endif ()
-add_custom_command(
-    TARGET gazebosc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_SOURCE_DIR}/tester.py
-            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tester.py)
+if (MSVC)
 
-
+endif()
+#add_custom_command(
+#    TARGET gazebosc POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy
+#            ${CMAKE_SOURCE_DIR}/tester.py
+#            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tester.py)
