@@ -7,3 +7,6 @@
 [submodule "ext/SDL-mirror"]
 	path = ext/SDL-mirror
 	url = https://github.com/spurious/SDL-mirror.git
+[submodule "ext/liblo"]
+	path = ext/liblo
+	url = https://github.com/radarsat1/liblo.git

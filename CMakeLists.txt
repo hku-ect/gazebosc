@@ -14,6 +14,7 @@
 
 cmake_minimum_required(VERSION 3.1)
 project(gazebosc)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}")
 
 ##  Test availability of git and fetch submodules if needed
 find_package(Git QUIET)
@@ -32,7 +33,7 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 endif()
 
 if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/czmq/CMakeLists.txt")
-    message(FATAL_ERROR "The submodules in the ext directory are not available! GIT_SUBMODULE was turned off or failed. Please update submodules using "git submodule update --init --recursive" and try again.")
+    message(FATAL_ERROR "The submodules in the ext directory are not available! GIT_SUBMODULE was turned off or failed. Please update submodules using \"git submodule update --init --recursive\" and try again.")
 endif()
 ## End getting the submodules
 
@@ -43,15 +44,26 @@ set(DEP_IMNODES_DIR ".")
 ## External libraries in ext/
 add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
 # overrides to prevent the Findczmq.cmake script to fail
-set(CZMQ_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/)
-set(CZMQ_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/include/)
 add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
+add_subdirectory("ext/liblo/cmake" EXCLUDE_FROM_ALL)
 
-## External system libraries through pkg-config
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(ZMQ REQUIRED libzmq)
-pkg_check_modules(LO REQUIRED liblo)
+########################################################################
+# LIBZMQ dependency
+########################################################################
+find_package(libzmq REQUIRED)
+IF (LIBZMQ_FOUND)
+    include_directories(${LIBZMQ_INCLUDE_DIRS})
+    list(APPEND MORE_LIBRARIES ${LIBZMQ_LIBRARIES})
+  IF (PC_LIBZMQ_FOUND)
+      set(pkg_config_names_private "${pkg_config_names_private} libzmq")
+      list(APPEND OPTIONAL_LIBRARIES_STATIC ${PC_LIBZMQ_STATIC_LDFLAGS})
+  ELSE (PC_LIBZMQ_FOUND)
+      set(pkg_config_libs_private "${pkg_config_libs_private} -lzmq")
+  ENDIF (PC_LIBZMQ_FOUND)
+ELSE (LIBZMQ_FOUND)
+    message( FATAL_ERROR "libzmq not found." )
+ENDIF (LIBZMQ_FOUND)
 
 # Find Python3
 find_package (Python3 REQUIRED COMPONENTS Development)
@@ -125,7 +137,8 @@ if (UNIX)
     )
     if (APPLE)
         target_link_libraries(gazebosc PUBLIC 
-            SDL2-static 
+            SDL2-static
+            lo-shared
             czmq-static 
             sphactor-static 
             ${ZMQ_LIBRARIES} 
@@ -136,10 +149,10 @@ if (UNIX)
     else()
         target_link_libraries(gazebosc PUBLIC 
             SDL2-static
+            lo_shared
             czmq-static
             sphactor-static
             ${ZMQ_LIBRARIES}
-            ${LO_LIBRARIES}
             ${Python3_LIBRARIES}
             -lasound -ldl -lGL -lGLEW)
         target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
