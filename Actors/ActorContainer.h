@@ -54,16 +54,26 @@ struct ActorContainer {
       }
   }
 
-  //TODO: read latest report and serialize that?
-  void SerializeActorData(zconfig_t *section)
-  {
+  //TODO: Add custom report data to this?
+  void SerializeActorData(zconfig_t *section) {
+      zconfig_t *xpos = zconfig_new("xpos", section);
+      zconfig_set_value(xpos, "%f", pos.x);
 
+      zconfig_t *ypos = zconfig_new("ypos", section);
+      zconfig_set_value(ypos, "%f", pos.y);
   }
 
-  //TODO: deserialize latest report and re-apply to local state? perhaps through a function?
-  void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it)
-  {
+  void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it) {
+      char* xpos = *it;
+      it++;
+      char* ypos = *it;
+      it++;
 
+      pos.x = atof(xpos);
+      pos.y = atof(ypos);
+
+      free(xpos);
+      free(ypos);
   }
 };
 
