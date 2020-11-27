@@ -19,22 +19,23 @@ GActor::GActor(const char* title,
 
 GActor::~GActor()
 {
-    
+
 }
 
 void GActor::CreateActor() {
     if ( actor != NULL ) {
         DestroyActor();
     }
-    
+
     zuuid_t *uuid = NULL;
     if ( uuidStr != nullptr ) {
         uuid = zuuid_new();
         zuuid_set_str(uuid, uuidStr);
     }
-    
-    actor = sphactor_new_by_type(title, this, NULL, uuid);
-    sphactor_ask_set_actor_type(actor, title);
+
+    //TODO: in progress
+    //actor = sphactor_new_by_type(title, this, NULL, uuid);
+    //sphactor_ask_set_actor_type(actor, title);
     //sphactor_set_verbose(actor, false);
 }
 
@@ -59,7 +60,7 @@ void GActor::DeleteConnection(const Connection& connection)
 }
 
 void GActor::Render(float deltaTime) {
-    
+
 }
 
 // Back-end thread functions
@@ -75,12 +76,12 @@ void GActor::SetRate( int rate ) {
 
 void GActor::ActorInit( const sphactor_actor_t *actor )
 {
-    
+
 }
 
 void GActor::ActorStop( const sphactor_actor_t *actor )
 {
-    
+
 }
 
 zmsg_t *GActor::ActorCallback()
@@ -100,7 +101,7 @@ zmsg_t *GActor::ActorMessage(sphactor_event_t *ev)
 void GActor::SerializeActorData(zconfig_t *section) {
     zconfig_t *xpos = zconfig_new("xpos", section);
     zconfig_set_value(xpos, "%f", pos.x);
-    
+
     zconfig_t *ypos = zconfig_new("ypos", section);
     zconfig_set_value(ypos, "%f", pos.y);
 }
@@ -110,10 +111,10 @@ void GActor::DeserializeActorData( ImVector<char*> *args, ImVector<char*>::itera
     it++;
     char* ypos = *it;
     it++;
-    
+
     pos.x = atof(xpos);
     pos.y = atof(ypos);
-    
+
     free(xpos);
     free(ypos);
 }

@@ -69,33 +69,33 @@ struct GActor
     std::vector<ImNodes::Ez::SlotInfo> output_slots{};
     /// sphactor instance
     sphactor_t *actor = NULL;
-    
+
     // Construction / Destruction
     //  Inheriting classes should call this constructor with correct in/out data
     explicit GActor(const char* title,
     const std::vector<ImNodes::Ez::SlotInfo>&& input_slots,
                    const std::vector<ImNodes::Ez::SlotInfo>&& output_slots, const char* uuidStr);
-    
+
     virtual ~GActor();
-    
+
     // UI Functions
     void DeleteConnection(const Connection& connection);
     virtual void Render(float deltaTime);
-    
+
     // Sphactor thread functions
     void SetRate( int rate );
     virtual void CreateActor();
     virtual void DestroyActor();
-    
+
     virtual void ActorInit(const sphactor_actor_t *actor);
     virtual void ActorStop(const sphactor_actor_t *actor);
     virtual zmsg_t *ActorCallback();
     virtual zmsg_t *ActorMessage(sphactor_event_t *ev);
-    
+
     static zmsg_t *_actor_handler(sphactor_event_t *ev, void *args)
     {
         GActor *self = (GActor *)args;
-                
+
         if ( streq(ev->type, "INIT")) {
             self->ActorInit(ev->actor);
         }
@@ -119,11 +119,11 @@ struct GActor
         else {
             zsys_warning("EVENT TYPE: %s \n", ev->type);
         }
-        
-        
+
+
         return nullptr;
     }
-    
+
     // Serialization functions
     virtual void SerializeActorData(zconfig_t *section);
     virtual void DeserializeActorData( ImVector<char*> *args, ImVector<char*>::iterator it);
