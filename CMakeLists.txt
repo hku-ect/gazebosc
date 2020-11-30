@@ -110,13 +110,12 @@ if (UNIX)
         ${DEP_IMNODES_DIR}/ImNodes.cpp
         ${DEP_IMNODES_DIR}/ImNodesEz.h
         ${DEP_IMNODES_DIR}/ImNodesEz.cpp
+        ActorContainer.h
         RtMidi.h
         RtMidi.cpp
         rtmidi_c.h
         rtmidi_c.cpp
         stage.cpp
-	      GActor.h
-	      GActor.cpp
         ${ACTOR_SOURCES}
     )
     target_include_directories(gazebosc PUBLIC

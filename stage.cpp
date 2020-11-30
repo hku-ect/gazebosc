@@ -29,9 +29,8 @@
 #include <imgui.h>
 #include "ImNodesEz.h"
 #include "libsphactor.h"
-#include "GActor.h"
+#include "ActorContainer.h"
 #include "Actors/actors.h"
-#include "Actors/ActorContainer.h"
 
 //enum for menu actions
 enum MenuAction

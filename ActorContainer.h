@@ -2,7 +2,46 @@
 #define ACTORCONTAINER_H
 
 #include "libsphactor.h"
-#include "GActor.h"
+#include <string>
+#include <vector>
+#include "ImNodes.h"
+#include "ImNodesEz.h"
+
+/// A structure defining a connection between two slots of two actors.
+struct Connection
+{
+    /// `id` that was passed to BeginNode() of input node.
+    void* input_node = nullptr;
+    /// Descriptor of input slot.
+    const char* input_slot = nullptr;
+    /// `id` that was passed to BeginNode() of output node.
+    void* output_node = nullptr;
+    /// Descriptor of output slot.
+    const char* output_slot = nullptr;
+
+    bool operator==(const Connection& other) const
+    {
+        return input_node == other.input_node &&
+               input_slot == other.input_slot &&
+               output_node == other.output_node &&
+               output_slot == other.output_slot;
+    }
+
+    bool operator!=(const Connection& other) const
+    {
+        return !operator ==(other);
+    }
+};
+
+enum GActorSlotTypes
+{
+    ActorSlotAny = 1,    // ID can not be 0
+    ActorSlotPosition,
+    ActorSlotRotation,
+    ActorSlotMatrix,
+    ActorSlotInt,
+    ActorSlotOSC
+};
 
 struct ActorContainer {
   /// Title which will be displayed at the center-top of the actor.
