@@ -82,6 +82,7 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
 endif ()
 
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
+file (GLOB ACTOR_HEADERS Actors/*.h)
 
 if (UNIX)
     link_directories(
@@ -110,13 +111,15 @@ if (UNIX)
         ${DEP_IMNODES_DIR}/ImNodes.cpp
         ${DEP_IMNODES_DIR}/ImNodesEz.h
         ${DEP_IMNODES_DIR}/ImNodesEz.cpp
-        ActorContainer.h
         RtMidi.h
         RtMidi.cpp
         rtmidi_c.h
         rtmidi_c.cpp
         stage.cpp
+        ActorContainer.h
+        actors.h
         ${ACTOR_SOURCES}
+        ${ACTOR_HEADERS}
     )
     target_include_directories(gazebosc PUBLIC
         ${ZMQ_INCLUDE_DIRS}
