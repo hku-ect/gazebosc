@@ -160,6 +160,7 @@ struct ActorContainer {
                 if ( value < min ) value = min;
                 if ( value > max ) value = max;
             }
+
             zconfig_set_value(zvalue, "%i", value);
             if (zapiv)
             {
@@ -310,7 +311,6 @@ struct ActorContainer {
                             else
                                 zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), atoi(valueStr));
                         }
-
                         data = zconfig_next(data);
                         it++;
                     }
