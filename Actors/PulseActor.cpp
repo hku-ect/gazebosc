@@ -7,9 +7,11 @@ const char * pulseCapabilities =
                                 "        name = \"rate\"\n"
                                 "        type = \"int\"\n"
                                 "        value = \"60\"\n"
-                                "        min = \"1\"\n"
-                                "        max = \"1000\"\n"
+                                "        min = \"0\"\n"
+                                "        max = \"10000\"\n"
                                 "        step = \"1\"\n"
+                                "        api_call = \"SET TIMEOUT\"\n"
+                                "        api_value = \"i\"\n"           // optional picture format used in zsock_send
                                 "    data\n"
                                 "        name = \"someFloat\"\n"
                                 "        type = \"float\"\n"
