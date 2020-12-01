@@ -16,20 +16,20 @@ cmake_minimum_required(VERSION 3.1)
 project(gazebosc)
 
 ##  Test availability of git and fetch submodules if needed
-find_package(Git QUIET)
-if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
-    # Update submodules as needed
-    option(GIT_SUBMODULE "Check submodules during build" ON)
-    if(GIT_SUBMODULE)
-        message(STATUS "Submodule update")
-        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            RESULT_VARIABLE GIT_SUBMOD_RESULT)
-        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
-            message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
-        endif()
-    endif()
-endif()
+#find_package(Git QUIET)
+#if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
+#    # Update submodules as needed
+#    option(GIT_SUBMODULE "Check submodules during build" ON)
+#    if(GIT_SUBMODULE)
+#        message(STATUS "Submodule update")
+#        execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
+#            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#            RESULT_VARIABLE GIT_SUBMOD_RESULT)
+#        if(NOT GIT_SUBMOD_RESULT EQUAL "0")
+#            message(FATAL_ERROR "git submodule update --init failed with ${GIT_SUBMOD_RESULT}, please checkout submodules")
+#        endif()
+#    endif()
+#endif()
 
 if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/czmq/CMakeLists.txt")
     message(FATAL_ERROR "The submodules in the ext directory are not available! GIT_SUBMODULE was turned off or failed. Please update submodules using "git submodule update --init --recursive" and try again.")
@@ -39,6 +39,10 @@ endif()
 set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
+
+## Definitions for draft API's of submodules
+add_definitions(-DZMQ_BUILD_DRAFT_API=1)
+add_definitions(-DCZMQ_BUILD_DRAFT_API=1)
 
 ## External libraries in ext/
 add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
@@ -78,12 +82,13 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
 endif ()
 
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
+file (GLOB ACTOR_HEADERS Actors/*.h)
 
 if (UNIX)
     link_directories(
         /usr/local/lib/
     )
-    add_executable(gazebosc 
+    add_executable(gazebosc
        	main.cpp
 
         ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.cpp
@@ -111,9 +116,10 @@ if (UNIX)
         rtmidi_c.h
         rtmidi_c.cpp
         stage.cpp
-	    GActor.h
-	    GActor.cpp
+        ActorContainer.h
+        actors.h
         ${ACTOR_SOURCES}
+        ${ACTOR_HEADERS}
     )
     target_include_directories(gazebosc PUBLIC
         ${ZMQ_INCLUDE_DIRS}
@@ -124,17 +130,17 @@ if (UNIX)
         ${DEP_IMNODES_DIR}
     )
     if (APPLE)
-        target_link_libraries(gazebosc PUBLIC 
-            SDL2-static 
-            czmq-static 
-            sphactor-static 
-            ${ZMQ_LIBRARIES} 
-            ${LO_LIBRARIES} 
-            ${Python3_LIBRARIES} 
+        target_link_libraries(gazebosc PUBLIC
+            SDL2-static
+            czmq-static
+            sphactor-static
+            ${ZMQ_LIBRARIES}
+            ${LO_LIBRARIES}
+            ${Python3_LIBRARIES}
             -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
 	add_definitions(-D__MACOSX_CORE__)
     else()
-        target_link_libraries(gazebosc PUBLIC 
+        target_link_libraries(gazebosc PUBLIC
             SDL2-static
             czmq-static
             sphactor-static
@@ -152,5 +158,3 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_SOURCE_DIR}/tester.py
             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tester.py)
-
-

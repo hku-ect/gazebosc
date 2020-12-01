@@ -41,9 +41,10 @@ void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
 void ShowConfigWindow(bool * showLog);
 void ShowLogWindow(ImGuiTextBuffer&);
 int UpdateActors(float deltaTime, bool * showLog);
-void RegisterCPPActors();
 bool Load(const char* fileName);
 void Clear();
+
+void RegisterActors();
 
 volatile sig_atomic_t stop;
 void inthand(int signum) {
@@ -63,21 +64,21 @@ int out_pipe[2];
 
 ImGuiTextBuffer& getBuffer(){
     static ImGuiTextBuffer sLogBuffer; // static log buffer for logger channel
-    
+
     read(out_pipe[0], huge_string_buf, 4096);
     if ( strlen( huge_string_buf ) > 0 ) {
         sLogBuffer.appendf("%s", huge_string_buf);
         memset(huge_string_buf,0,4096);
     }
-    
+
     return sLogBuffer;
 }
 
 // Main code
 int main(int argc, char** argv)
 {
-    // Register CPP Actor types with sphactor
-    RegisterCPPActors();
+    //TODO: Register actors through new system
+    RegisterActors();
 
     // Argument capture
     bool headless = false;
@@ -113,28 +114,28 @@ int main(int argc, char** argv)
             }
         }
     }
-    
+
     if (!headless) {
         //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
         // capture stdout
         // This approach uses a pipe to prevent multiple writes before reads overlapping
         memset(huge_string_buf,0,4096);
-        
+
         int rc = pipe(out_pipe);
         assert( rc == 0 );
-        
+
         long flags = fcntl(out_pipe[0], F_GETFL);
         flags |= O_NONBLOCK;
         fcntl(out_pipe[0], F_SETFL, flags);
-        
+
         dup2(out_pipe[1], STDOUT_FILENO);
         close(out_pipe[1]);
     }
-    
+
     //TODO: Implement an argument to allow opening a window during a headless run
     if ( headless ) {
         signal(SIGINT, inthand);
-        
+
         while (!stop) {
             if ( loops != -1 ) {
                 std::this_thread::sleep_for (std::chrono::milliseconds(1));
@@ -149,17 +150,17 @@ int main(int argc, char** argv)
         if ( result != 0 ) {
             return result;
         }
-        
+
         zsys_info("VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
-        
+
         // Blocking UI loop
         UILoop(window, io);
-        
+
         // Cleanup
         Cleanup(window, &gl_context);
     }
-    
+
     Clear();
     sphactor_dispose();
 
@@ -202,7 +203,7 @@ int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_v
     *gl_context = SDL_GL_CreateContext(*window);
     SDL_GL_MakeCurrent(*window, *gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
-    
+
     // Initialize OpenGL loader
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
     bool err = gl3wInit() != 0;
@@ -218,7 +219,7 @@ int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_v
         fprintf(stderr, "Failed to initialize OpenGL loader!\n");
         return 1;
     }
-    
+
     return 0;
 }
 
@@ -234,13 +235,13 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     // Setup Platform/Renderer bindings
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
-    
+
     return io;
 }
 
 void UILoop( SDL_Window* window, ImGuiIO& io ) {
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    
+
     // Main loop
     bool done = false;
     unsigned int deltaTime, oldTime;
@@ -269,31 +270,31 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
 
         //main window
         //  this will be our main workspace
-        
+
         SDL_GetWindowSize(window, &w, &h);
         ImVec2 size = ImVec2(w,h);
         ImGui::SetNextWindowSize(size);
-        
+
         // Get time since last frame
         deltaTime = SDL_GetTicks() - oldTime;
         oldTime = SDL_GetTicks();
         int rc = UpdateActors( ((float)deltaTime) / 1000, &logWindow);
-        
+
         if ( rc == -1 ) {
             done = true;
         }
-        
+
         // Save/load window
         //size = ImVec2(350,135);
         //ImVec2 pos = ImVec2(w - 400, 50);
         //ImGui::SetNextWindowSize(size);
         //ImGui::SetNextWindowPos(pos);
         //ShowConfigWindow(&logWindow);
-        
+
         if ( logWindow ) {
             ShowLogWindow(getBuffer());
         }
-        
+
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -308,7 +309,7 @@ void Cleanup( SDL_Window* window, SDL_GLContext* gl_context) {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
-    
+
     SDL_GL_DeleteContext(*gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
