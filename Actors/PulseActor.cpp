@@ -29,31 +29,31 @@ const char * pulseCapabilities =
                                 "        type = \"OSC\"\n";
 
 zmsg_t * PulseActor( sphactor_event_t *ev, void* args ) {
-  if ( streq(ev->type, "INIT")) {
-    zsys_info("PULSE ACTOR INIT");
+    if ( streq(ev->type, "INIT")) {
+        zsys_info("PULSE ACTOR INIT");
 
-    Pulse * pulse = (Pulse*) args;
-    assert(pulse);
+        Pulse * pulse = (Pulse*) args;
+        assert(pulse);
 
-    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pulseCapabilities));
+        sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pulseCapabilities));
 
-    zsys_info("Rate: %i", pulse->rate);
-    //TODO: can/should we set rate from here?
+        zsys_info("Rate: %i", pulse->rate);
+        //TODO: can/should we set rate from here?
 
-    return ev->msg;
-  }
-  else
-  if ( streq(ev->type, "TIME")) {
-    zosc_t * osc = zosc_create("/pulse", "s", "PULSE");
+        return ev->msg;
+    }
+    else
+    if ( streq(ev->type, "TIME")) {
+        zosc_t * osc = zosc_create("/pulse", "s", "PULSE");
 
-    zmsg_t *msg = zmsg_new();
-    zframe_t *frame = zframe_new(zosc_data(osc), zosc_size(osc));
-    zmsg_append(msg, &frame);
+        zmsg_t *msg = zmsg_new();
+        zframe_t *frame = zframe_new(zosc_data(osc), zosc_size(osc));
+        zmsg_append(msg, &frame);
 
-    //TODO: figure out if this needs to be destroyed here...
-    zframe_destroy(&frame);
+        //TODO: figure out if this needs to be destroyed here...
+        zframe_destroy(&frame);
 
-    return msg;
-  }
-  else return ev->msg;
+        return msg;
+    }
+    else return ev->msg;
 }
