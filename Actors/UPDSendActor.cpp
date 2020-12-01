@@ -27,7 +27,9 @@ zmsg_t* UDPSendActor( sphactor_event_t *ev, void* args ) {
                 // Forward as-is, this should already be an OSC message...
                 //zsys_info("Sending");
                 int rc = zsys_udp_send(self->udpSock, self->frame, (sockaddr_in*)self->bind_to->ai_addr, INET_ADDRSTRLEN );
-                assert(rc==0);
+                if ( rc != 0 ) {
+                    zsys_info("error when sending, rc: %i", rc );
+                }
 
                 //TODO: Add to bundle (NOT SUPPORTED?)
                 //if ( bundle == NULL ) {

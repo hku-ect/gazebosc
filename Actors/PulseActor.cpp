@@ -1,12 +1,38 @@
 #include "libsphactor.h"
 #include "PulseActor.h"
 
+zconfig_t * pulseCapabilities = zconfig_str_load("capabilities\n"
+                                "    data\n"
+                                "        name = \"rate\"\n"
+                                "        type = \"int\"\n"
+                                "        value = \"60\"\n"
+                                "        min = \"1\"\n"
+                                "        max = \"1000\"\n"
+                                "        step = \"1\"\n"
+                                "    data\n"
+                                "        name = \"someFloat\"\n"
+                                "        type = \"float\"\n"
+                                "        value = \"1.0\"\n"
+                                "        min = \"0\"\n"
+                                "        max = \"10\"\n"
+                                "        step = \"0\"\n"
+                                "    data\n"
+                                "        name = \"someText\"\n"
+                                "        type = \"string\"\n"
+                                "        value = \"Hello world!\"\n"
+                                "        max = \"64\"\n"
+                                "    outputs\n"
+                                "        output\n"
+                                "            type = \"OSC\"\n");
+
 zmsg_t * PulseActor( sphactor_event_t *ev, void* args ) {
   if ( streq(ev->type, "INIT")) {
     zsys_info("PULSE ACTOR INIT");
 
     Pulse * pulse = (Pulse*) args;
     assert(pulse);
+
+    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, pulseCapabilities);
 
     zsys_info("Rate: %i", pulse->rate);
     //TODO: can/should we set rate from here?

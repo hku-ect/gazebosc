@@ -6,6 +6,7 @@
 #include <vector>
 #include "ImNodes.h"
 #include "ImNodesEz.h"
+#include <czmq.h>
 
 /// A structure defining a connection between two slots of two actors.
 struct Connection
@@ -44,6 +45,8 @@ enum GActorSlotTypes
 };
 
 struct ActorContainer {
+  /// Default value UI strings will have if no maximum is set
+  const int MAX_STR_DEFAULT = 256;
   /// Title which will be displayed at the center-top of the actor.
   const char* title = nullptr;
   /// Flag indicating that actor is selected by the user.
@@ -53,16 +56,20 @@ struct ActorContainer {
   /// List of actor connections.
   std::vector<Connection> connections{};
   /// A list of input slots current actor has.
-  std::vector<ImNodes::Ez::SlotInfo> input_slots{ { "OSC", ActorSlotOSC } };
+  std::vector<ImNodes::Ez::SlotInfo> input_slots{};
   /// A list of output slots current actor has.
-  std::vector<ImNodes::Ez::SlotInfo> output_slots{ { "OSC", ActorSlotOSC } };
+  std::vector<ImNodes::Ez::SlotInfo> output_slots{};
 
   sphactor_t *actor;
+  zconfig_t *capabilities;
 
   ActorContainer(sphactor_t *actor) {
     this->actor = actor;
     this->title = sphactor_ask_actor_type(actor);
-    //HACK
+    this->capabilities = sphactor_ask_capability(actor);
+
+    //TODO: Perform this based on capabilities?
+    //          Move to the instance constructor?
     sphactor_ask_set_timeout(actor, 16);
   }
 
@@ -71,7 +78,118 @@ struct ActorContainer {
   }
 
   void Render(float deltaTime) {
+    //loop through each data element in capabilities
+    zconfig_t *root = zconfig_locate(this->capabilities, "capabilities");
+    assert(root);
+    zconfig_t *data = zconfig_locate(root, "data");
+    while( data != NULL ) {
+        zconfig_t *name = zconfig_locate(data, "name");
+        zconfig_t *type = zconfig_locate(data, "type");
+        assert(name);
+        assert(type);
 
+        char* nameStr = zconfig_value(name);
+        char* typeStr = zconfig_value(type);
+        if ( streq(typeStr, "int")) {
+            RenderInt( nameStr, data );
+        }
+        else if ( streq(typeStr, "float")) {
+            RenderFloat( nameStr, data );
+        }
+        else if ( streq(typeStr, "string")) {
+            RenderString( nameStr, data );
+        }
+
+        data = zconfig_next(data);
+    }
+  }
+
+  void RenderInt(const char* name, zconfig_t *data) {
+    int value;
+    int min = 0, max = 0, step = 0;
+
+    zconfig_t * zvalue = zconfig_locate(data, "value");
+    assert(zvalue);
+
+    zconfig_t * zmin = zconfig_locate(data, "min");
+    zconfig_t * zmax = zconfig_locate(data, "max");
+    zconfig_t * zstep = zconfig_locate(data, "step");
+
+    ReadInt( &value, zvalue);
+    ReadInt( &min, zmin);
+    ReadInt( &max, zmax);
+    ReadInt( &step, zstep);
+
+    ImGui::SetNextItemWidth(100);
+    if ( ImGui::InputInt( name, &value, step) ) {
+        if ( min != max ) {
+            if ( value < min ) value = min;
+            if ( value > max ) value = max;
+        }
+        zconfig_set_value(zvalue, "%i", value);
+    }
+  }
+
+  void RenderFloat(const char* name, zconfig_t *data) {
+      float value;
+      float min = 0, max = 0, step = 0;
+
+      zconfig_t * zvalue = zconfig_locate(data, "value");
+      assert(zvalue);
+
+      zconfig_t * zmin = zconfig_locate(data, "min");
+      zconfig_t * zmax = zconfig_locate(data, "max");
+      zconfig_t * zstep = zconfig_locate(data, "step");
+
+      ReadFloat( &value, zvalue);
+      ReadFloat( &min, zmin);
+      ReadFloat( &max, zmax);
+      ReadFloat( &step, zstep);
+
+      ImGui::SetNextItemWidth(100);
+      if ( min != max ) {
+          if ( ImGui::SliderFloat( name, &value, min, max) ) {
+              zconfig_set_value(zvalue, "%f", value);
+          }
+      }
+      else {
+          if ( ImGui::InputFloat( name, &value, min, max) ) {
+              zconfig_set_value(zvalue, "%f", value);
+          }
+      }
+  }
+
+  void RenderString(const char* name, zconfig_t *data) {
+    int max = MAX_STR_DEFAULT;
+
+    zconfig_t * zvalue = zconfig_locate(data, "value");
+    assert(zvalue);
+    zconfig_t * zmax = zconfig_locate(data, "max");
+
+    ReadInt( &max, zmax );
+
+    char* buf = new char[MAX_STR_DEFAULT];
+    const char* zvalueStr = zconfig_value(zvalue);
+    strcpy(buf, zvalueStr);
+
+    ImGui::SetNextItemWidth(200);
+    if ( ImGui::InputText(name, buf, max ) ) {
+        zconfig_set_value(zvalue, "%s", buf);
+    }
+
+    free(buf);
+  }
+
+  void ReadInt( int *value, zconfig_t * data) {
+    if ( data != NULL ) {
+        *value = atoi(zconfig_value(data));
+    }
+  }
+
+  void ReadFloat( float *value, zconfig_t * data) {
+    if ( data != NULL ) {
+        *value = atof(zconfig_value(data));
+    }
   }
 
   void CreateActor() {
