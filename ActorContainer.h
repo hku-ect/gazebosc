@@ -66,8 +66,8 @@ struct ActorContainer {
   ActorContainer(sphactor_t *actor) {
     this->actor = actor;
     this->title = sphactor_ask_actor_type(actor);
-    zconfig_t * temp = sphactor_ask_capability(actor);
-    this->capabilities = zconfig_dup(temp);
+    this->capabilities = zconfig_dup(sphactor_ask_capability(actor));
+
     ParseConnections();
 
     //TODO: Perform this based on capabilities?
@@ -76,7 +76,7 @@ struct ActorContainer {
   }
 
   ~ActorContainer() {
-
+    zconfig_destroy(&this->capabilities);
   }
 
   void ParseConnections() {
