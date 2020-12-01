@@ -1,6 +1,11 @@
 #include "libsphactor.h"
 #include "UDPSendActor.h"
 
+const char * udpSendCapabilities =
+                                "inputs\n"
+                                "    input\n"
+                                "        type = \"OSC\"\n";
+
 zmsg_t* UDPSendActor( sphactor_event_t *ev, void* args ) {
     //handle various actor messages to interact with instance
     UDPSend* self = (UDPSend*) args;
@@ -8,6 +13,7 @@ zmsg_t* UDPSendActor( sphactor_event_t *ev, void* args ) {
 
     if ( streq(ev->type, "INIT")) {
         self->CreateSocket(ev->actor);
+        sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(udpSendCapabilities));
     }
     else if ( streq(ev->type, "STOP")) {
         self->DestroySocket(ev->actor);

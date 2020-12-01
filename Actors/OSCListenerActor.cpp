@@ -1,5 +1,10 @@
 #include "OSCListenerActor.h"
 
+const char * oscListenerCapabilities =
+                                "outputs\n"
+                                "    output\n"
+                                "        type = \"OSC\"\n";
+
 zmsg_t* OSCListenerActor( sphactor_event_t *ev, void* args ) {
 
     OSCListener *self = (OSCListener*)args;
@@ -8,6 +13,7 @@ zmsg_t* OSCListenerActor( sphactor_event_t *ev, void* args ) {
     if ( streq(ev->type, "INIT")) {
         //zsys_info("INIT");
         self->StartServer(ev->actor);
+        sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(oscListenerCapabilities));
     }
     else if ( streq(ev->type, "STOP")) {
         //zsys_info("STOP");

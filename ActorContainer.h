@@ -66,7 +66,9 @@ struct ActorContainer {
   ActorContainer(sphactor_t *actor) {
     this->actor = actor;
     this->title = sphactor_ask_actor_type(actor);
-    this->capabilities = sphactor_ask_capability(actor);
+    zconfig_t * temp = sphactor_ask_capability(actor);
+    this->capabilities = zconfig_dup(temp);
+    ParseConnections();
 
     //TODO: Perform this based on capabilities?
     //          Move to the instance constructor?
@@ -77,10 +79,43 @@ struct ActorContainer {
 
   }
 
+  void ParseConnections() {
+    if ( this->capabilities == NULL ) return;
+
+    zconfig_t *inputs = zconfig_locate(this->capabilities, "inputs");
+    zconfig_t *outputs = zconfig_locate(this->capabilities, "outputs");
+
+    Parse(inputs, "input", &input_slots);
+    Parse(outputs, "output", &output_slots);
+  }
+
+  void Parse(zconfig_t * config, const char* node, std::vector<ImNodes::Ez::SlotInfo> *list ) {
+    if ( config == NULL ) return;
+
+    zconfig_t *localNode = zconfig_locate( config, node);
+    while ( localNode != NULL ) {
+        zconfig_t *type = zconfig_locate(localNode, "type");
+        assert(type);
+
+        char* typeStr = zconfig_value(type);
+        if ( streq(typeStr, "OSC")) {
+            list->push_back({ "OSC", ActorSlotOSC });
+        }
+        else {
+            zsys_error("Unsupported %s: %s", node, typeStr);
+        }
+
+        localNode = zconfig_next(localNode);
+    }
+  }
+
   void Render(float deltaTime) {
     //loop through each data element in capabilities
+    if ( this->capabilities == NULL ) return;
+
     zconfig_t *root = zconfig_locate(this->capabilities, "capabilities");
-    assert(root);
+    if ( root == NULL ) return;
+
     zconfig_t *data = zconfig_locate(root, "data");
     while( data != NULL ) {
         zconfig_t *name = zconfig_locate(data, "name");

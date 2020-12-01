@@ -1,6 +1,14 @@
 #include "libsphactor.h"
 
+const char * logCapabilities = "inputs\n"
+                                "    input\n"
+                                "        type = \"OSC\"\n";
+
 zmsg_t * LogActor( sphactor_event_t *ev, void* args ) {
+  if ( streq(ev->type, "INIT")) {
+      sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(logCapabilities));
+  }
+  else
   if ( streq(ev->type, "SOCK")) {
     if ( ev->msg == NULL ) return NULL;
 
@@ -24,6 +32,6 @@ zmsg_t * LogActor( sphactor_event_t *ev, void* args ) {
 
     return NULL;
   }
-  else
+
   return ev->msg;
 }
