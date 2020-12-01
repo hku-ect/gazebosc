@@ -302,6 +302,19 @@ struct ActorContainer {
                         zconfig_t *value = zconfig_locate(data,"value");
                         char* valueStr = *it;
                         zconfig_set_value(value, valueStr);
+
+                        zconfig_t *zapic = zconfig_locate(data, "api_call");
+                        if ( zapic ) {
+                            zconfig_t *zapiv = zconfig_locate(data, "api_value");
+                            if (zapiv)
+                            {
+                                std::string pic = "s";
+                                pic += zconfig_value(zapiv);
+                                zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), atoi(valueStr));
+                            }
+                            else
+                                zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), atoi(valueStr));
+                        }
                         data = zconfig_next(data);
                         it++;
                     }
