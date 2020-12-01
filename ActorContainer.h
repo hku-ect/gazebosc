@@ -144,7 +144,10 @@ struct ActorContainer {
     int min = 0, max = 0, step = 0;
 
     zconfig_t * zvalue = zconfig_locate(data, "value");
+    zconfig_t * zapic = zconfig_locate(data, "api_call");
+    zconfig_t * zapiv = zconfig_locate(data, "api_value");
     assert(zvalue);
+    assert(zapic);
 
     zconfig_t * zmin = zconfig_locate(data, "min");
     zconfig_t * zmax = zconfig_locate(data, "max");
@@ -162,6 +165,14 @@ struct ActorContainer {
             if ( value > max ) value = max;
         }
         zconfig_set_value(zvalue, "%i", value);
+        if (zapiv)
+        {
+            std::string pic = "s";
+            pic += zconfig_value(zapiv);
+            zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), value);
+        }
+        else
+            zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), value);
     }
   }
 
