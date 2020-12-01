@@ -66,9 +66,7 @@ void UpdateRegisteredActorsCache() {
 
 void RegisterActors() {
   sphactor_register( "Log", &LogActor, NULL, NULL );
-  sphactor_register( "OSCListener", &OSCListenerActor, &OSCListener::ConstructOSCListener, NULL );
   sphactor_register( "Pulse", &PulseActor, &Pulse::ConstructPulse, NULL);
-  sphactor_register( "UDPSend", &UDPSendActor, &UDPSend::ConstructUDPSend, NULL );
 
   UpdateRegisteredActorsCache();
 }
