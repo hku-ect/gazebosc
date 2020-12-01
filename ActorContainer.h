@@ -69,10 +69,6 @@ struct ActorContainer {
         this->capabilities = zconfig_dup(sphactor_ask_capability(actor));
 
         ParseConnections();
-
-        //TODO: Perform this based on capabilities?
-        //          Move to the instance constructor?
-        sphactor_ask_set_timeout(actor, 16);
     }
 
     ~ActorContainer() {
@@ -144,7 +140,10 @@ struct ActorContainer {
         int min = 0, max = 0, step = 0;
 
         zconfig_t * zvalue = zconfig_locate(data, "value");
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+        zconfig_t * zapiv = zconfig_locate(data, "api_value");
         assert(zvalue);
+        assert(zapic);
 
         zconfig_t * zmin = zconfig_locate(data, "min");
         zconfig_t * zmax = zconfig_locate(data, "max");
@@ -162,6 +161,14 @@ struct ActorContainer {
                 if ( value > max ) value = max;
             }
             zconfig_set_value(zvalue, "%i", value);
+            if (zapiv)
+            {
+                std::string pic = "s";
+                pic += zconfig_value(zapiv);
+                zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), value);
+            }
+            else
+                zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), value);
         }
     }
 
@@ -290,6 +297,20 @@ struct ActorContainer {
                         zconfig_t *value = zconfig_locate(data,"value");
                         char* valueStr = *it;
                         zconfig_set_value(value, valueStr);
+
+                        zconfig_t *zapic = zconfig_locate(data, "api_call");
+                        if ( zapic ) {
+                            zconfig_t *zapiv = zconfig_locate(data, "api_value");
+                            if (zapiv)
+                            {
+                                std::string pic = "s";
+                                pic += zconfig_value(zapiv);
+                                zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), atoi(valueStr));
+                            }
+                            else
+                                zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), atoi(valueStr));
+                        }
+
                         data = zconfig_next(data);
                         it++;
                     }
