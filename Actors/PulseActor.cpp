@@ -30,15 +30,10 @@ const char * pulseCapabilities =
 
 zmsg_t * PulseActor( sphactor_event_t *ev, void* args ) {
     if ( streq(ev->type, "INIT")) {
-        zsys_info("PULSE ACTOR INIT");
-
         Pulse * pulse = (Pulse*) args;
         assert(pulse);
 
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pulseCapabilities));
-
-        zsys_info("Rate: %i", pulse->rate);
-        //TODO: can/should we set rate from here?
 
         return ev->msg;
     }
@@ -50,7 +45,6 @@ zmsg_t * PulseActor( sphactor_event_t *ev, void* args ) {
         zframe_t *frame = zframe_new(zosc_data(osc), zosc_size(osc));
         zmsg_append(msg, &frame);
 
-        //TODO: figure out if this needs to be destroyed here...
         zframe_destroy(&frame);
 
         return msg;

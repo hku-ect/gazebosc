@@ -69,10 +69,8 @@ struct ActorContainer {
         this->capabilities = zconfig_dup(sphactor_ask_capability(actor));
 
         ParseConnections();
-
-        //TODO: Perform this based on capabilities?
-        //          Move to the instance constructor?
-        sphactor_ask_set_timeout(actor, 16);
+        //TODO: figure out why this doesn't work
+        InitializeCapabilities();
     }
 
     ~ActorContainer() {
@@ -87,6 +85,32 @@ struct ActorContainer {
 
         Parse(inputs, "input", &input_slots);
         Parse(outputs, "output", &output_slots);
+    }
+
+    void InitializeCapabilities() {
+        if ( this->capabilities == NULL ) return;
+
+        zconfig_t *root = zconfig_locate(this->capabilities, "capabilities");
+        if ( root == NULL ) return;
+
+        zconfig_t *data = zconfig_locate(root, "data");
+        while( data != NULL ) {
+            zconfig_t *zapic = zconfig_locate(data, "api_call");
+            if ( zapic ) {
+                zconfig_t *zapiv = zconfig_locate(data, "api_value");
+                zconfig_t *value = zconfig_locate(data, "value");
+                zsys_info("SENDING SOMETHING");
+                if (zapiv)
+                {
+                    std::string pic = "s";
+                    pic += zconfig_value(zapiv);
+                    zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), value);
+                }
+                else
+                    zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), value);
+            }
+            data = zconfig_next(data);
+        }
     }
 
     void Parse(zconfig_t * config, const char* node, std::vector<ImNodes::Ez::SlotInfo> *list ) {
