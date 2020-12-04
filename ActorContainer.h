@@ -262,6 +262,7 @@ struct ActorContainer {
         zconfig_t * zapic = zconfig_locate(data, "api_call");
         zconfig_t * zapiv = zconfig_locate(data, "api_value");
         assert(zvalue);
+        assert(zapic);
 
         zconfig_t * zmin = zconfig_locate(data, "min");
         zconfig_t * zmax = zconfig_locate(data, "max");
