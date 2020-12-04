@@ -4,10 +4,10 @@
 const char * pulseCapabilities =
                                 "capabilities\n"
                                 "    data\n"
-                                "        name = \"rate\"\n"
+                                "        name = \"timeout (ms)\"\n"
                                 "        type = \"int\"\n"
                                 "        value = \"60\"\n"
-                                "        min = \"0\"\n"
+                                "        min = \"5\"\n"
                                 "        max = \"10000\"\n"
                                 "        step = \"1\"\n"
                                 "        api_call = \"SET TIMEOUT\"\n"
@@ -49,5 +49,5 @@ zmsg_t * PulseActor( sphactor_event_t *ev, void* args ) {
 
         return msg;
     }
-    else return ev->msg;
+    else return nullptr;
 }
