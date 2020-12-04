@@ -99,7 +99,6 @@ struct ActorContainer {
             if ( zapic ) {
                 zconfig_t *zapiv = zconfig_locate(data, "api_value");
                 zconfig_t *value = zconfig_locate(data, "value");
-                zsys_info("SENDING SOMETHING");
                 if (zapiv)
                 {
                     std::string pic = "s";
@@ -134,6 +133,8 @@ struct ActorContainer {
     }
 
     void Render(float deltaTime) {
+        RenderCustomReport();
+
         //loop through each data element in capabilities
         if ( this->capabilities == NULL ) return;
 
@@ -161,6 +162,106 @@ struct ActorContainer {
 
             data = zconfig_next(data);
         }
+    }
+
+    void RenderCustomReport() {
+        const int LABEL_WIDTH = 25;
+        const int VALUE_WIDTH = 50;
+
+        sphactor_report_t * report = sphactor_report(actor);
+        assert(report);
+        zosc_t * customData = sphactor_report_custom(report);
+        if ( customData ) {
+            // Large buffer for unknown size strings
+            char* strBuf = new char[1024];
+            char* dataBuf = new char[1024];
+            const char* address = zosc_address(customData);
+            const char* format = zosc_format(customData);
+
+            size_t len = zosc_size(customData);
+            const byte* bytes = zosc_data(customData);
+            int position = 0;
+
+            position += strlen(address) * sizeof(char) + 2; //\n,
+            position += strlen(format) * sizeof(char) + 1; //\n
+
+            ImGui::Text(address);
+
+            // not tightly packed until the actual data starts...
+
+
+            for( int i = 0; i < strlen(format); i += 2 ) {
+                SolvePadding(&position);
+
+                //read name until null terminator
+                strcpy(strBuf, (char*)bytes+position);
+                position += strlen(strBuf) * sizeof(char) + 1; //\n
+
+                SolvePadding(&position);
+
+                ImGui::BeginGroup();
+                ImGui::SetNextItemWidth(LABEL_WIDTH);
+                ImGui::Text("%s:", strBuf);
+                ImGui::SameLine();
+                ImGui::SetNextItemWidth(VALUE_WIDTH);
+
+                switch(format[i+1]) {
+                    case 's': {
+                        strcpy(dataBuf, (char*)bytes+position);
+                        position += strlen(dataBuf) * sizeof(char) + 1; //\n
+                        ImGui::Text(dataBuf);
+                    } break;
+                    case 'c': {
+                        char value;
+                        RenderValue<char>( &value, bytes, &position);
+                        ImGui::Text("%s", value);
+                    } break;
+                    case 'i': {
+                        int32_t value;
+                        RenderValue<int32_t>( &value, bytes, &position);
+                        ImGui::Text("%i", value);
+                    } break;
+                    case 'h': {
+                        int64_t value;
+                        RenderValue<int64_t>( &value, bytes, &position);
+                        ImGui::Text("%lli", value);
+                    } break;
+                    case 'f': {
+                        float value;
+                        RenderValue<float>( &value, bytes, &position);
+                        ImGui::Text("%f", value);
+                    } break;
+                    case 'd': {
+                        double value;
+                        RenderValue<double>( &value, bytes, &position);
+                        ImGui::Text("%f", value);
+                    } break;
+                    case 'F': {
+                        ImGui::Text("FALSE");
+                    } break;
+                    case 'T': {
+                        ImGui::Text("TRUE");
+                    } break;
+                }
+
+                ImGui::EndGroup();
+            }
+
+            free(strBuf);
+            free(dataBuf);
+        }
+    }
+
+    void SolvePadding( int* position ) {
+        if ( *position % 4 != 0 ) {
+            *position += 4 - *position % 4;
+        }
+    }
+
+    template<typename T>
+    void RenderValue(T *value, const byte * bytes, int *position) {
+        memcpy(value, bytes+*position, sizeof(T));
+        *position += sizeof(T);
     }
 
     void RenderInt(const char* name, zconfig_t *data) {
