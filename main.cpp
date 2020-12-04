@@ -65,7 +65,7 @@ int out_pipe[2];
 ImGuiTextBuffer& getBuffer(){
     static ImGuiTextBuffer sLogBuffer; // static log buffer for logger channel
 
-    read(out_pipe[0], huge_string_buf, 4096);
+    //read(out_pipe[0], huge_string_buf, 4096);
     if ( strlen( huge_string_buf ) > 0 ) {
         sLogBuffer.appendf("%s", huge_string_buf);
         memset(huge_string_buf,0,4096);
@@ -115,6 +115,7 @@ int main(int argc, char** argv)
         }
     }
 
+    /*
     if (!headless) {
         //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
         // capture stdout
@@ -129,8 +130,9 @@ int main(int argc, char** argv)
         fcntl(out_pipe[0], F_SETFL, flags);
 
         dup2(out_pipe[1], STDOUT_FILENO);
-        close(out_pipe[1]);
+        close(out_pipe[1]);  
     }
+    */
 
     //TODO: Implement an argument to allow opening a window during a headless run
     if ( headless ) {

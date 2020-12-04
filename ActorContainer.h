@@ -202,7 +202,7 @@ struct ActorContainer {
                         case 'c': {
                             char value;
                             zosc_pop_char(customData, &value);
-                            ImGui::Text("%s", value);
+                            ImGui::Text("%c", value);
                         } break;
                         case 'i': {
                             int32_t value;
