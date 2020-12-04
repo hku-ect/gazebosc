@@ -32,7 +32,7 @@ project(gazebosc)
 #endif()
 
 if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/czmq/CMakeLists.txt")
-    message(FATAL_ERROR "The submodules in the ext directory are not available! GIT_SUBMODULE was turned off or failed. Please update submodules using "git submodule update --init --recursive" and try again.")
+    message(FATAL_ERROR "The submodules in the ext directory are not available! GIT_SUBMODULE was turned off or failed. Please update submodules using \"git submodule update --init --recursive\" and try again.")
 endif()
 ## End getting the submodules
 
@@ -41,6 +41,7 @@ set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
 
 ## Definitions for draft API's of submodules
+set(ENABLE_DRAFTS ON CACHE BOOL "enable zmq projects draft apis" FORCE)
 add_definitions(-DZMQ_BUILD_DRAFT_API=1)
 add_definitions(-DCZMQ_BUILD_DRAFT_API=1)
 
