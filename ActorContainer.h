@@ -172,83 +172,73 @@ struct ActorContainer {
         assert(report);
         zosc_t * customData = sphactor_report_custom(report);
         if ( customData ) {
-            // Large buffer for unknown size strings
-            char* strBuf = new char[1024];
-            char* dataBuf = new char[1024];
             const char* address = zosc_address(customData);
-            const char* format = zosc_format(customData);
-
-            size_t len = zosc_size(customData);
-            const byte* bytes = zosc_data(customData);
-            int position = 0;
-
-            position += strlen(address) * sizeof(char) + 2; //\n,
-            position += strlen(format) * sizeof(char) + 1; //\n
-
             ImGui::Text(address);
 
-            // not tightly packed until the actual data starts...
+            char type = '0';
+            const void *data = zosc_first(customData, &type);
+            bool name = true;
+            while( data ) {
+                if ( name ) {
+                    //expecting a name string for each piece of data
+                    assert(type == 's');
 
+                    char* nameStr;
+                    zosc_pop_string(customData, &nameStr);
 
-            for( int i = 0; i < strlen(format); i += 2 ) {
-                SolvePadding(&position);
+                    ImGui::BeginGroup();
+                    ImGui::SetNextItemWidth(LABEL_WIDTH);
+                    ImGui::Text("%s:", nameStr);
+                    ImGui::SameLine();
+                    ImGui::SetNextItemWidth(VALUE_WIDTH);
+                }
+                else {
+                    switch(type) {
+                        case 's': {
+                            char* value;
+                            zosc_pop_string(customData, &value);
+                            ImGui::Text(value);
+                        } break;
+                        case 'c': {
+                            char value;
+                            zosc_pop_char(customData, &value);
+                            ImGui::Text("%s", value);
+                        } break;
+                        case 'i': {
+                            int32_t value;
+                            zosc_pop_int32(customData, &value);
+                            ImGui::Text("%i", value);
+                        } break;
+                        case 'h': {
+                            int64_t value;
+                            zosc_pop_int64(customData, &value);
+                            ImGui::Text("%lli", value);
+                        } break;
+                        case 'f': {
+                            float value;
+                            zosc_pop_float(customData, &value);
+                            ImGui::Text("%f", value);
+                        } break;
+                        case 'd': {
+                            double value;
+                            zosc_pop_double(customData, &value);
+                            ImGui::Text("%f", value);
+                        } break;
+                        case 'F': {
+                            ImGui::Text("FALSE");
+                        } break;
+                        case 'T': {
+                            ImGui::Text("TRUE");
+                        } break;
+                    }
 
-                //read name until null terminator
-                strcpy(strBuf, (char*)bytes+position);
-                position += strlen(strBuf) * sizeof(char) + 1; //\n
-
-                SolvePadding(&position);
-
-                ImGui::BeginGroup();
-                ImGui::SetNextItemWidth(LABEL_WIDTH);
-                ImGui::Text("%s:", strBuf);
-                ImGui::SameLine();
-                ImGui::SetNextItemWidth(VALUE_WIDTH);
-
-                switch(format[i+1]) {
-                    case 's': {
-                        strcpy(dataBuf, (char*)bytes+position);
-                        position += strlen(dataBuf) * sizeof(char) + 1; //\n
-                        ImGui::Text(dataBuf);
-                    } break;
-                    case 'c': {
-                        char value;
-                        RenderValue<char>( &value, bytes, &position);
-                        ImGui::Text("%s", value);
-                    } break;
-                    case 'i': {
-                        int32_t value;
-                        RenderValue<int32_t>( &value, bytes, &position);
-                        ImGui::Text("%i", value);
-                    } break;
-                    case 'h': {
-                        int64_t value;
-                        RenderValue<int64_t>( &value, bytes, &position);
-                        ImGui::Text("%lli", value);
-                    } break;
-                    case 'f': {
-                        float value;
-                        RenderValue<float>( &value, bytes, &position);
-                        ImGui::Text("%f", value);
-                    } break;
-                    case 'd': {
-                        double value;
-                        RenderValue<double>( &value, bytes, &position);
-                        ImGui::Text("%f", value);
-                    } break;
-                    case 'F': {
-                        ImGui::Text("FALSE");
-                    } break;
-                    case 'T': {
-                        ImGui::Text("TRUE");
-                    } break;
+                    ImGui::EndGroup();
                 }
 
-                ImGui::EndGroup();
+                //flip expecting name or value
+                name = !name;
+                data = zosc_next(customData, &type);
             }
-
-            free(strBuf);
-            free(dataBuf);
         }
     }
 
