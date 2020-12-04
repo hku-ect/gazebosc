@@ -65,10 +65,11 @@ void UpdateRegisteredActorsCache() {
 }
 
 void RegisterActors() {
-  sphactor_register( "Log", &LogActor, NULL, NULL );
-  sphactor_register( "Pulse", &PulseActor, &Pulse::ConstructPulse, NULL);
+    sphactor_register( "Count", &CountActor, &Count::ConstructCount, NULL );
+    sphactor_register( "Log", &LogActor, NULL, NULL );
+    sphactor_register( "Pulse", &PulseActor, &Pulse::ConstructPulse, NULL);
 
-  UpdateRegisteredActorsCache();
+    UpdateRegisteredActorsCache();
 }
 
 //TODO: REWRITE
