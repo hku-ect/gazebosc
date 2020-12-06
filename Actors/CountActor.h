@@ -1,12 +1,11 @@
 #ifndef COUNTACTOR_H
 #define COUNTACTOR_H
+#include "libsphactor.h"
 
 struct Count {
     int msgCount;
 
-    static void *ConstructCount( void* args ) {
-        return new Count();
-    }
+    zmsg_t *handleMsg( sphactor_event_t *ev );
 
     Count() {
         msgCount = 0;
