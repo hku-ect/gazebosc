@@ -4,12 +4,10 @@
 struct Pulse {
     int rate;
 
-    static void *ConstructPulse( void* args ) {
-        return new Pulse(60);
-    }
+    zmsg_t * handleMsg( sphactor_event_t *ev );
 
-    Pulse( int rate ) {
-        this->rate = rate;
+    Pulse() {
+        this->rate = 16; //60 fps default
     }
 };
 

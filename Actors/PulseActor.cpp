@@ -4,7 +4,7 @@
 const char * pulseCapabilities =
                                 "capabilities\n"
                                 "    data\n"
-                                "        name = \"timeout (ms)\"\n"
+                                "        name = \"timeout\"\n"
                                 "        type = \"int\"\n"
                                 "        value = \"60\"\n"
                                 "        min = \"1\"\n"
@@ -28,13 +28,9 @@ const char * pulseCapabilities =
                                 "    output\n"
                                 "        type = \"OSC\"\n";
 
-zmsg_t * PulseActor( sphactor_event_t *ev, void* args ) {
+zmsg_t * Pulse::handleMsg( sphactor_event_t *ev ) {
     if ( streq(ev->type, "INIT")) {
-        Pulse * pulse = (Pulse*) args;
-        assert(pulse);
-
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pulseCapabilities));
-
         return ev->msg;
     }
     else
