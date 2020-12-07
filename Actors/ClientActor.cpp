@@ -45,8 +45,6 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
         if ( ev->msg == NULL ) return NULL;
         if ( this->dgrams == NULL ) return ev->msg;
 
-
-
         byte *msgBuffer;
         zframe_t* frame;
 
@@ -61,7 +59,7 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
                 //zosc_t * oscMsg = zosc_frommem( (char*)msgBuffer, len);
                 int rc = zsock_send( dgrams, "b", msgBuffer, len);//zosc_data(oscMsg), zosc_size(oscMsg));
                 if ( rc != 0 ) {
-                    zsys_info("Error sending zosc message to: %s", this->host.c_str());
+                    zsys_info("Error sending zosc message to: %s, %i", this->host.c_str(), rc);
                 }
             }
         } while (frame != NULL );

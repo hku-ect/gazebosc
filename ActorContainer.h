@@ -215,7 +215,7 @@ struct ActorContainer {
         zosc_t * customData = sphactor_report_custom(report);
         if ( customData ) {
             const char* address = zosc_address(customData);
-            ImGui::Text(address);
+            ImGui::Text("%s", address);
 
             char type = '0';
             const void *data = zosc_first(customData, &type);
