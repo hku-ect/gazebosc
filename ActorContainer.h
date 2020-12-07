@@ -95,21 +95,63 @@ struct ActorContainer {
 
         zconfig_t *data = zconfig_locate(root, "data");
         while( data != NULL ) {
-            zconfig_t *zapic = zconfig_locate(data, "api_call");
-            if ( zapic ) {
-                zconfig_t *zapiv = zconfig_locate(data, "api_value");
-                zconfig_t *value = zconfig_locate(data, "value");
-                if (zapiv)
-                {
-                    std::string pic = "s";
-                    pic += zconfig_value(zapiv);
-                    zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), value);
-                }
-                else
-                    zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), value);
-            }
+            HandleAPICalls(data);
             data = zconfig_next(data);
         }
+    }
+
+    void HandleAPICalls(zconfig_t * data) {
+        zconfig_t *zapic = zconfig_locate(data, "api_call");
+        if ( zapic ) {
+            zconfig_t *zapiv = zconfig_locate(data, "api_value");
+            zconfig_t *zvalue = zconfig_locate(data, "value");
+
+            if (zapiv)
+            {
+                char * zapivStr = zconfig_value(zapiv);
+                char type = zapivStr[0];
+                switch( type ) {
+                    case 'i':
+                        int ival;
+                        ReadInt(&ival, zvalue);
+                        SendAPI<int>(zapic, zapiv, zvalue, &ival);
+                    break;
+                    case 'f':
+                        float fval;
+                        ReadFloat(&fval, zvalue);
+                        SendAPI<float>(zapic, zapiv, zvalue, &fval);
+                    break;
+                    case 's':
+                        char* buf = new char[MAX_STR_DEFAULT];
+                        const char* zvalueStr = zconfig_value(zvalue);
+                        strcpy(buf, zvalueStr);
+                        SendAPI<char*>(zapic, zapiv, zvalue, &buf);
+                        zstr_free(&buf);
+                    break;
+                }
+            }
+            else {
+                //assume int
+                int ival;
+                ReadInt(&ival, zvalue);
+                zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), ival);
+            }
+        }
+    }
+
+    template<typename T>
+    void SendAPI(zconfig_t *zapic, zconfig_t *zapiv, zconfig_t *zvalue, T * value) {
+        if ( !zapic ) return;
+
+        if (zapiv)
+        {
+            std::string pic = "s";
+            pic += zconfig_value(zapiv);
+            //zsys_info("Sending: %s", pic.c_str());
+            zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), *value);
+        }
+        else
+            zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), *value);
     }
 
     void Parse(zconfig_t * config, const char* node, std::vector<ImNodes::Ez::SlotInfo> *list ) {
@@ -262,7 +304,6 @@ struct ActorContainer {
         zconfig_t * zapic = zconfig_locate(data, "api_call");
         zconfig_t * zapiv = zconfig_locate(data, "api_value");
         assert(zvalue);
-        assert(zapic);
 
         zconfig_t * zmin = zconfig_locate(data, "min");
         zconfig_t * zmax = zconfig_locate(data, "max");
@@ -281,14 +322,7 @@ struct ActorContainer {
             }
 
             zconfig_set_value(zvalue, "%i", value);
-            if (zapiv)
-            {
-                std::string pic = "s";
-                pic += zconfig_value(zapiv);
-                zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), value);
-            }
-            else
-                zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), value);
+            SendAPI<int>(zapic, zapiv, zvalue, &value);
         }
     }
 
@@ -297,6 +331,8 @@ struct ActorContainer {
         float min = 0, max = 0, step = 0;
 
         zconfig_t * zvalue = zconfig_locate(data, "value");
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+        zconfig_t * zapiv = zconfig_locate(data, "api_value");
         assert(zvalue);
 
         zconfig_t * zmin = zconfig_locate(data, "min");
@@ -312,11 +348,13 @@ struct ActorContainer {
         if ( min != max ) {
             if ( ImGui::SliderFloat( name, &value, min, max) ) {
                 zconfig_set_value(zvalue, "%f", value);
+                SendAPI<float>(zapic, zapiv, zvalue, &value);
             }
         }
         else {
             if ( ImGui::InputFloat( name, &value, min, max) ) {
                 zconfig_set_value(zvalue, "%f", value);
+                SendAPI<float>(zapic, zapiv, zvalue, &value);
             }
         }
     }
@@ -325,6 +363,8 @@ struct ActorContainer {
         int max = MAX_STR_DEFAULT;
 
         zconfig_t * zvalue = zconfig_locate(data, "value");
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+        zconfig_t * zapiv = zconfig_locate(data, "api_value");
         assert(zvalue);
 
         zconfig_t * zmax = zconfig_locate(data, "max");
@@ -338,6 +378,7 @@ struct ActorContainer {
         ImGui::SetNextItemWidth(200);
         if ( ImGui::InputText(name, buf, max ) ) {
             zconfig_set_value(zvalue, "%s", buf);
+            SendAPI<char*>(zapic, zapiv, zvalue, &buf);
         }
 
         free(buf);
@@ -415,22 +456,7 @@ struct ActorContainer {
                 if ( root ) {
                     zconfig_t *data = zconfig_locate(root, "data");
                     while ( data && it != args->end() ) {
-                        zconfig_t *value = zconfig_locate(data,"value");
-                        char* valueStr = *it;
-                        zconfig_set_value(value, valueStr);
-
-                        zconfig_t *zapic = zconfig_locate(data, "api_call");
-                        if ( zapic ) {
-                            zconfig_t *zapiv = zconfig_locate(data, "api_value");
-                            if (zapiv)
-                            {
-                                std::string pic = "s";
-                                pic += zconfig_value(zapiv);
-                                zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), atoi(valueStr));
-                            }
-                            else
-                                zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), atoi(valueStr));
-                        }
+                        HandleAPICalls(data);
                         data = zconfig_next(data);
                         it++;
                     }

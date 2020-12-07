@@ -16,7 +16,6 @@ Count::handleMsg( sphactor_event_t *ev ) {
     }
     else if ( streq(ev->type, "SOCK")) {
         this->msgCount++;
-        zsys_info("SOCK EVENT %i", this->msgCount);
         zosc_t * msg = zosc_create("/report", "ssscsishsf",
                                                 "Some Text", "12345678",
                                                 "Some Char", 'q',     //TODO: FIX
