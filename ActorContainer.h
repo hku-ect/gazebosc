@@ -376,7 +376,7 @@ struct ActorContainer {
         strcpy(buf, zvalueStr);
 
         ImGui::SetNextItemWidth(200);
-        if ( ImGui::InputText(name, buf, max ) ) {
+        if ( ImGui::InputText(name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
             zconfig_set_value(zvalue, "%s", buf);
             SendAPI<char*>(zapic, zapiv, zvalue, &buf);
         }
@@ -456,6 +456,10 @@ struct ActorContainer {
                 if ( root ) {
                     zconfig_t *data = zconfig_locate(root, "data");
                     while ( data && it != args->end() ) {
+                        zconfig_t *value = zconfig_locate(data,"value");
+                        char* valueStr = *it;
+                        zconfig_set_value(value, valueStr);
+
                         HandleAPICalls(data);
                         data = zconfig_next(data);
                         it++;

@@ -42,7 +42,33 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
         return ev->msg;
     }
     else if ( streq(ev->type, "SOCK") ) {
-        //TODO: send input message out over this->dgrams
+        if ( ev->msg == NULL ) return NULL;
+        if ( this->dgrams == NULL ) return ev->msg;
+
+
+
+        byte *msgBuffer;
+        zframe_t* frame;
+
+        do {
+        frame = zmsg_pop(ev->msg);
+            if ( frame ) {
+                //parse zosc_t msg
+                msgBuffer = zframe_data(frame);
+                size_t len = zframe_size(frame);
+
+                //TODO: figure out if we can send this directly from the zframe_data or not...
+                //zosc_t * oscMsg = zosc_frommem( (char*)msgBuffer, len);
+                int rc = zsock_send( dgrams, "b", msgBuffer, len);//zosc_data(oscMsg), zosc_size(oscMsg));
+                if ( rc != 0 ) {
+                    zsys_info("Error sending zosc message to: %s", this->host.c_str());
+                }
+            }
+        } while (frame != NULL );
+
+        zmsg_destroy(&ev->msg);
+
+        return NULL;
     }
     else if ( streq(ev->type, "API")) {
         //pop msg for command
@@ -57,7 +83,10 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
 
                 this->port = port;
                 std::string url = ("udp://" + this->host + ":" + this->port);
-                this->dgrams = zsock_new_dgram(url.c_str());
+                this->dgrams = zsock_new_dgram (url.c_str());
+                if ( this->dgrams != NULL ) {
+                    zsys_info("Could not create dgram: %s", url.c_str());
+                }
 
                 zsys_info("SET PORT: %s", url.c_str());
 
@@ -72,13 +101,12 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
                 this->host = host_addr;
 
                 std::string url = ("udp://" + this->host + ":" + this->port);
-                this->dgrams = zsock_new_dgram(url.c_str());
-
-                if ( this->dgrams == NULL ) {
+                this->dgrams = zsock_new_dgram (url.c_str());
+                if ( this->dgrams != NULL ) {
                     zsys_info("Could not create dgram: %s", url.c_str());
                 }
 
-                zsys_info("SET HOST: %s", host_addr);
+                zsys_info("SET HOST: %s", url.c_str());
 
                 zstr_free(&host_addr);
             }
