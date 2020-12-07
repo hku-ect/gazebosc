@@ -26,8 +26,26 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         //init capabilities
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natnetCapabilities));
     }
+    /*
+     * Application will hang if done here when closing application entirely...
+     * Even if you have destroyed client actors in between... very odd...
+     * */
+    else if ( streq(ev->type, "DESTROY") ) {
+        zsys_info("Handling Destroy");
+        //TODO: Fix zsys_shutdown crash when destroying dgrams along the way...
+        if ( this->dgrams != NULL ) {
+            //zsock_destroy(&this->dgrams);
+            this->dgrams = NULL;
+        }
+        if ( this->dgramr != NULL ) {
+            //zsock_destroy(&this->dgramr);
+            this->dgramr = NULL;
+        }
+
+        return ev->msg;
+    }
     else if ( streq(ev->type, "SOCK") ) {
-        //TODO: what is this? redirected msg from dgram socket?
+        //TODO: ?
     }
     else if ( streq(ev->type, "API")) {
         //pop msg for command
@@ -60,7 +78,8 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
 
                 char * host_addr = zmsg_popstr(ev->msg);
 
-                std::string url = host_addr;
+                std::string url = "udp://";
+                url += host_addr;
                 url += ":1511";
                 this->dgrams = zsock_new_dgram(url.c_str());
 

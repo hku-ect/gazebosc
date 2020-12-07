@@ -4,7 +4,8 @@
 #include "libsphactor.h"
 
 struct NatNet {
-    // receive datagram
+    // receive / send datagrams
+    // TODO: implement ofxNatNet?
     zsock_t* dgramr = NULL;
     zsock_t* dgrams = NULL;
 
