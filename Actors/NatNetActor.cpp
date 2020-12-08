@@ -25,8 +25,17 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     if ( streq(ev->type, "INIT") ) {
         //init capabilities
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natnetCapabilities));
+
         //TODO: Check receive port in NatNet specifications
-        this->dgrams = zsock_new_dgram("udp://*:1511");
+        //receive socket on port 1511
+        this->dgramr = zsock_new_dgram("udp://*:1511");
+        dgram_fd = zsock_fd(this->dgramr);
+
+        //send socket on any
+        this->dgrams = zsock_new_dgram("udp://*:*");
+        assert( this->dgramr && this->dgrams );
+        int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, this->dgramr );
+        assert(rc == 0);
     }
     /*
      * Application will hang if done here when closing application entirely...
@@ -39,7 +48,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
             this->dgrams = NULL;
         }
         if ( this->dgramr != NULL ) {
-            //sphactor_actor_poller_remove(ev->actor, this->dgramr );
+            sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, this->dgramr);
             zsock_destroy(&this->dgramr);
             this->dgramr = NULL;
         }
@@ -48,45 +57,65 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     }
     else if ( streq(ev->type, "SOCK") ) {
         //TODO: ?
+        zsys_info("GOT SOCK");
     }
     else if ( streq(ev->type, "API")) {
         //pop msg for command
         char * cmd = zmsg_popstr(ev->msg);
         if (cmd) {
             if ( streq(cmd, "SET HOST") ) {
-                if ( this->dgrams != NULL ) {
-                    //TODO: poller remove in new form
-                    zsock_destroy(&this->dgrams);
-                }
-
                 char * host_addr = zmsg_popstr(ev->msg);
-
-                std::string url = "udp://";
-                url += host_addr;
-                url += ":1511";
-                this->dgrams = zsock_new_dgram(url.c_str());
-
-                if ( this->dgrams != NULL ) {
-                    //TODO: poller add in new format
-                    //sphactor_actor_poller_add(ev->actor, this->dgramr );
-                }
-                else {
-                    zsys_info("Could not connect to host: %s", url.c_str());
-                }
-
-                zsys_info("SET HOST: %s", host_addr);
+                this->host = host_addr;
+                std::string url = "udp://" + this->host + "1510";
+                zsys_info("SET HOST: %s", url.c_str());
                 zstr_free(&host_addr);
             }
 
             zstr_free(&cmd);
         }
-        else if ( streq(ev->type, "FDSOCK" ) )
-        {
-            //TODO: Read data from our socket...
-            //return zmsg_recv( self->sock );
-        }
 
         zmsg_destroy(&ev->msg);
+
+        return NULL;
+    }
+    else if ( streq(ev->type, "FDSOCK" ) )
+    {
+        zsys_info("GOT FDSOCK");
+
+        //TODO: Read data from our socket...
+        assert(ev->msg);
+        zframe_t *frame = zmsg_pop(ev->msg);
+        if (zframe_size(frame) == sizeof( void *) )
+        {
+            void *p = *(void **)zframe_data(frame);
+            zsock_t* sock = (zsock_t*) zsock_resolve( p );
+            if ( sock )
+            {
+                byte* msg;
+                size_t len;
+
+                //zsock_recv(sock, "b", &msg, &len );
+
+                zmsg_t * zmsg = zmsg_recv(sock);
+                assert(zmsg);
+
+                char* source = zmsg_popstr(zmsg);
+                zstr_free(&source);
+
+                zframe_t * oscFrame = zmsg_pop(zmsg);
+                assert(oscFrame);
+
+                //repackage and return as new message
+                zmsg_t* oscMsg = zmsg_new();
+                zmsg_add(oscMsg, oscFrame);
+                return oscMsg;
+            }
+        }
+        else
+            zsys_error("args is not a zsock instance");
+
+        zmsg_destroy(&ev->msg);
+        zframe_destroy(&frame);
 
         return NULL;
     }
