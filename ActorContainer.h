@@ -239,7 +239,7 @@ struct ActorContainer {
                         case 's': {
                             char* value;
                             zosc_pop_string(customData, &value);
-                            ImGui::Text(value);
+                            ImGui::Text("%s", value);
                         } break;
                         case 'c': {
                             char value;
@@ -315,7 +315,7 @@ struct ActorContainer {
         ReadInt( &step, zstep);
 
         ImGui::SetNextItemWidth(100);
-        if ( ImGui::InputInt( name, &value, step) ) {
+        if ( ImGui::InputInt( name, &value, step, 100,ImGuiInputTextFlags_EnterReturnsTrue ) ) {
             if ( min != max ) {
                 if ( value < min ) value = min;
                 if ( value > max ) value = max;
@@ -458,7 +458,7 @@ struct ActorContainer {
                     while ( data && it != args->end() ) {
                         zconfig_t *value = zconfig_locate(data,"value");
                         char* valueStr = *it;
-                        zconfig_set_value(value, valueStr);
+                        zconfig_set_value(value, "%s", valueStr);
 
                         HandleAPICalls(data);
                         data = zconfig_next(data);

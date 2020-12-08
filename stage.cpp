@@ -66,7 +66,7 @@ void UpdateRegisteredActorsCache() {
 
 void RegisterActors() {
     //TODO: Rename this actor...
-    sphactor_register<Client>( "Client" );
+    sphactor_register<Client>( "OSC Out" );
     sphactor_register<Count>( "Count" );
     sphactor_register( "Log", &LogActor, NULL, NULL );
     sphactor_register<NatNet>( "NatNet" );
