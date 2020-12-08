@@ -22,10 +22,10 @@ const char * clientCapabilities =
                                 "        type = \"OSC\"\n";
 
 zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
-
     if ( streq(ev->type, "INIT") ) {
         //init capabilities
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(clientCapabilities));
+        this->dgrams = zsock_new_dgram("udp://*:*");
     }
     /*
      * Application will hang if done here when closing application entirely...
@@ -35,7 +35,7 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
         zsys_info("Handling Destroy");
         //TODO: Fix zsys_shutdown crash when destroying dgrams along the way...
         if ( this->dgrams != NULL ) {
-            //zsock_destroy(&this->dgrams);
+            zsock_destroy(&this->dgrams);
             this->dgrams = NULL;
         }
 
@@ -51,15 +51,17 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
         do {
         frame = zmsg_pop(ev->msg);
             if ( frame ) {
-                //parse zosc_t msg
                 msgBuffer = zframe_data(frame);
                 size_t len = zframe_size(frame);
 
-                //TODO: figure out if we can send this directly from the zframe_data or not...
-                //zosc_t * oscMsg = zosc_frommem( (char*)msgBuffer, len);
-                int rc = zsock_send( dgrams, "b", msgBuffer, len);//zosc_data(oscMsg), zosc_size(oscMsg));
+                std::string url = this->host+":"+this->port;
+                zstr_sendm(dgrams, url.c_str());
+                int rc = zsock_send(dgrams,  "b", msgBuffer, len);
                 if ( rc != 0 ) {
-                    zsys_info("Error sending zosc message to: %s, %i", this->host.c_str(), rc);
+                    zsys_info("Error sending zosc message to: %s, %i", url.c_str(), rc);
+                }
+                else {
+                    zsys_info( "Sent message to %s", url.c_str());
                 }
             }
         } while (frame != NULL );
@@ -73,39 +75,17 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
         char * cmd = zmsg_popstr(ev->msg);
         if (cmd) {
             if ( streq(cmd, "SET PORT") ) {
-                if ( this->dgrams != NULL ) {
-                    zsock_destroy(&this->dgrams);
-                }
-
                 char * port = zmsg_popstr(ev->msg);
-
                 this->port = port;
                 std::string url = ("udp://" + this->host + ":" + this->port);
-                this->dgrams = zsock_new_dgram (url.c_str());
-                if ( this->dgrams != NULL ) {
-                    zsys_info("Could not create dgram: %s", url.c_str());
-                }
-
                 zsys_info("SET PORT: %s", url.c_str());
-
                 zstr_free(&port);
             }
             else if ( streq(cmd, "SET HOST") ) {
-                if ( this->dgrams != NULL ) {
-                    zsock_destroy(&this->dgrams);
-                }
-
                 char * host_addr = zmsg_popstr(ev->msg);
                 this->host = host_addr;
-
                 std::string url = ("udp://" + this->host + ":" + this->port);
-                this->dgrams = zsock_new_dgram (url.c_str());
-                if ( this->dgrams != NULL ) {
-                    zsys_info("Could not create dgram: %s", url.c_str());
-                }
-
                 zsys_info("SET HOST: %s", url.c_str());
-
                 zstr_free(&host_addr);
             }
 
