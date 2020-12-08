@@ -7,7 +7,7 @@ struct Pulse {
     zmsg_t * handleMsg( sphactor_event_t *ev );
 
     Pulse() {
-        this->rate = 16; //60 fps default
+
     }
 };
 
