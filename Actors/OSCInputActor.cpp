@@ -1,7 +1,3 @@
-//
-// Created by Aaron Oostdijk on 08/12/2020.
-//
-
 #include "OSCInputActor.h"
 
 const char * oscInputCapabilities =
@@ -22,6 +18,12 @@ zmsg_t * OSCInput::handleMsg( sphactor_event_t *ev )
 {
     if ( streq(ev->type, "INIT")) {
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(oscInputCapabilities));
+    }
+    else if ( streq( ev->type, "DESTROY")) {
+        if ( this->dgramr ) {
+            sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, this->dgramr);
+            zsock_destroy(&this->dgramr);
+        }
     }
     else if ( streq( ev->type, "API")) {
         char * cmd = zmsg_popstr(ev->msg);
@@ -58,7 +60,6 @@ zmsg_t * OSCInput::handleMsg( sphactor_event_t *ev )
     else if ( streq( ev->type, "FDSOCK")) {
         zsys_info("GOT FDSOCK");
 
-        //TODO: Read data from our socket...
         assert(ev->msg);
         zframe_t *frame = zmsg_pop(ev->msg);
         if (zframe_size(frame) == sizeof( void *) )
@@ -70,7 +71,8 @@ zmsg_t * OSCInput::handleMsg( sphactor_event_t *ev )
                 zmsg_t * zmsg = zmsg_recv(sock);
                 assert(zmsg);
 
-                //TODO: is this always the case?
+                // Is this always the case?
+                //  -> works when sending OSC message from Unity, so I assume it is
                 char* source = zmsg_popstr(zmsg);
                 zstr_free(&source);
 

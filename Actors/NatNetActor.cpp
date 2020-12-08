@@ -9,16 +9,9 @@ const char * natnetCapabilities =
                                 "        value = \"192.168.0.1\"\n"
                                 "        api_call = \"SET HOST\"\n"
                                 "        api_value = \"s\"\n"           // optional picture format used in zsock_send
-                                //"    data\n"
-                                //"        name = \"receive port\"\n"
-                                //"        type = \"int\"\n"
-                                //"        value = \"6200\"\n"
-                                //"        min = \"1\"\n"
-                                //"        max = \"10000\"\n"
-                                //"        api_call = \"SET PORT\"\n"
-                                //"        api_value = \"i\"\n"           // optional picture format used in zsock_send
                                 "outputs\n"
                                 "    output\n"
+                                //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
                                 "        type = \"OSC\"\n";
 
 zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
@@ -29,13 +22,13 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         //TODO: Check receive port in NatNet specifications
         //receive socket on port 1511
         this->dgramr = zsock_new_dgram("udp://*:1511");
-        dgram_fd = zsock_fd(this->dgramr);
+        assert( this->dgramr );
+        int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, this->dgramr );
+        assert(rc == 0);
 
         //send socket on any
         this->dgrams = zsock_new_dgram("udp://*:*");
-        assert( this->dgramr && this->dgrams );
-        int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, this->dgramr );
-        assert(rc == 0);
+        assert( this->dgrams );
     }
     /*
      * Application will hang if done here when closing application entirely...

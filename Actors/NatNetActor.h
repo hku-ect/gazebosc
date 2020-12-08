@@ -6,9 +6,8 @@
 
 struct NatNet {
     // receive / send datagrams
-    // TODO: implement ofxNatNet?
+    // TODO: implement NatNet?
     zsock_t* dgramr = NULL;
-    SOCKET dgram_fd;
     zsock_t* dgrams = NULL;
 
     std::string host = "";

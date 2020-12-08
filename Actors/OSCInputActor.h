@@ -1,7 +1,3 @@
-//
-// Created by Aaron Oostdijk on 08/12/2020.
-//
-
 #ifndef GAZEBOSC_OSCINPUTACTOR_H
 #define GAZEBOSC_OSCINPUTACTOR_H
 
