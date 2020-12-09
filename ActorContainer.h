@@ -371,17 +371,16 @@ struct ActorContainer {
 
         ReadInt( &max, zmax );
 
-        char* buf = new char[MAX_STR_DEFAULT];
+        char buf[MAX_STR_DEFAULT];
         const char* zvalueStr = zconfig_value(zvalue);
         strcpy(buf, zvalueStr);
+        char *p = &buf[0];
 
         ImGui::SetNextItemWidth(200);
         if ( ImGui::InputText(name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
             zconfig_set_value(zvalue, "%s", buf);
-            SendAPI<char*>(zapic, zapiv, zvalue, &buf);
+            SendAPI<char*>(zapic, zapiv, zvalue, &(p);
         }
-
-        free(buf);
     }
 
     void ReadInt( int *value, zconfig_t * data) {
