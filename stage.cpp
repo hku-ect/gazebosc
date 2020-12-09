@@ -65,7 +65,6 @@ void UpdateRegisteredActorsCache() {
 }
 
 void RegisterActors() {
-    //TODO: Rename this actor...
     sphactor_register<Client>( "OSC Output" );
     sphactor_register<Count>( "Count" );
     sphactor_register( "Log", &LogActor, NULL, NULL );
@@ -76,7 +75,6 @@ void RegisterActors() {
     UpdateRegisteredActorsCache();
 }
 
-//TODO: REWRITE
 ActorContainer * CreateFromType( const char* typeStr, const char* uuidStr ) {
     zuuid_t *uuid = zuuid_new();
     if ( uuidStr != NULL )

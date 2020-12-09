@@ -9,6 +9,12 @@ const char * natnetCapabilities =
                                 "        value = \"192.168.0.1\"\n"
                                 "        api_call = \"SET HOST\"\n"
                                 "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+                                "    data\n"
+                                "        name = \"sendRate\"\n"
+                                "        type = \"int\"\n"
+                                "        value = \"60\"\n"
+                                "        api_call = \"SET TIMEOUT\"\n"
+                                "        api_value = \"i\"\n"           // optional picture format used in zsock_send
                                 "outputs\n"
                                 "    output\n"
                                 //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -40,10 +46,6 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         zmsg_destroy(&ev->msg);
         return NULL;
     }
-    /*
-     * Application will hang if done here when closing application entirely...
-     * Even if you have destroyed client actors in between... very odd...
-     * */
     else if ( streq(ev->type, "DESTROY") ) {
         if ( CommandSocket != NULL ) {
             sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
@@ -145,13 +147,8 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                         zmsg_destroy(&zmsg);
                     }
 
-                    //TODO: package resulting data into osc messages and return as new message
-                    // -> each osc message should be a zframe of the zmsg
-                    zmsg_t* oscMsg = zmsg_new();
-                    zosc_t* zosc = zosc_create("/test", "s", "Hello");
-                    zmsg_add(oscMsg, zosc_pack(zosc));
                     zmsg_destroy(&ev->msg);
-                    return oscMsg;
+                    return NULL;
                 }
             }
         }
@@ -163,8 +160,314 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
 
         return NULL;
     }
+    else if ( streq( ev->type, "TIME")) {
 
-    return ev->msg;
+        //set to false if number of skels/rb's needs updating
+        bool rigidbodiesReady = true;
+        bool skeletonsReady = true;
+        bool sentRequest = false;
+
+        // if there is a difference do natnet.sendRequestDescription(); to get up to date rigidbodie descriptions and thus names
+        if (rigidbody_descs.size() != rigidbodies.size())
+        {
+            //TODO: non-blocking send request
+            if (!sentRequest) {
+                //sendRequestDescription()
+                sentRequest = true;
+            }
+            rigidbodiesReady = false;
+        }
+
+        //get & check skeletons size
+        if (skeleton_descs.size() != skeletons.size())
+        {
+            //TODO: non-blocking send request
+            if (!sentRequest) {
+                //sendRequestDescription()
+                sentRequest = true;
+            }
+            skeletonsReady = false;
+        }
+
+        zmsg_t* oscMsg = zmsg_new();
+
+        //markers
+        for (int i = 0; i < markers.size(); i++)
+        {
+            zosc_t * osc = zosc_create("/marker", "ifff", i, markers[i][0], markers[i][1], markers[i][2]);
+            zmsg_add(oscMsg, zosc_pack(osc));
+            //TODO: clean up osc* ?
+        }
+
+        //rigidbodies
+        addRigidbodies(oscMsg);
+
+        //skeletons
+        //TODO: implement skeletons (requires zosc_append)
+        addSkeletons(oscMsg);
+
+        //TODO: add vivetrackers data
+        if ( zmsg_content_size(oscMsg) != 0 ){
+            //zsys_info("NatNet: sending data");
+            zmsg_destroy(&ev->msg);
+            return oscMsg;
+        }
+        else {
+            //zsys_info("NatNet: nothing to send");
+            zmsg_destroy(&oscMsg);
+        }
+    }
+
+    zmsg_destroy(&ev->msg);
+    return NULL;
+}
+
+void NatNet::addRigidbodies(zmsg_t *zmsg)
+{
+    for (int i = 0; i < rigidbodies.size(); i++)
+    {
+        const RigidBody &RB = rigidbodies[i];
+
+        // Get the matirx
+        //TODO: Matrix
+        //ofMatrix4x4 matrix = RB.matrix;
+
+        // Decompose to get the different elements
+        Vec3 position;
+        Vec4 rotation;
+        Vec3 scale;
+        Vec4 so;
+        //TODO: Matrix
+        //matrix.decompose(position, rotation, scale, so);
+
+        //we're going to fetch or create this
+        //TODO: re-implement rigidbody histories for velocity data
+        /*
+        RigidBodyHistory *rb;
+
+        //Get or create rigidbodyhistory
+        bool found = false;
+        for( int r = 0; r < rbHistory.size(); ++r )
+        {
+            if ( rbHistory[r].rigidBodyId == rbd[i].id )
+            {
+                rb = &rbHistory[r];
+                found = true;
+            }
+        }
+
+        if ( !found )
+        {
+            rb = new RigidBodyHistory( rbd[i].id, position, rotation );
+            rbHistory.push_back(*rb);
+        }
+
+        Vec3 velocity;
+        Vec3 angularVelocity;
+
+        if ( rb->firstRun == TRUE )
+        {
+            rb->currentDataPoint = 0;
+            rb->firstRun = FALSE;
+        }
+        else
+        {
+            if ( rb->currentDataPoint < 2 * SMOOTHING + 1 )
+            {
+                rb->velocities[rb->currentDataPoint] = ( position - rb->previousPosition ) * invFPS;
+
+                ofVec3f diff = ( rb->previousOrientation * rotation.inverse() ).getEuler();
+                rb->angularVelocities[rb->currentDataPoint] = ( diff * invFPS );
+
+                rb->currentDataPoint++;
+            }
+            else
+            {
+                int count = 0;
+                int maxDist = SMOOTHING;
+                ofVec3f totalVelocity;
+                ofVec3f totalAngularVelocity;
+                //calculate smoothed velocity
+                for( int x = 0; x < SMOOTHING * 2 + 1; ++x )
+                {
+                    //calculate integer distance from "center"
+                    //above - maxDist = influence of data point
+                    int dist = abs( x - SMOOTHING );
+                    int infl = ( maxDist - dist ) + 1;
+
+                    //add all
+                    totalVelocity += rb->velocities[x] * infl;
+                    totalAngularVelocity += rb->angularVelocities[x] * infl;
+                    //count "influences"
+                    count += infl;
+                }
+
+                //divide by total data point influences
+                velocity = totalVelocity / count;
+                angularVelocity = totalAngularVelocity / count;
+
+                for( int x = 0; x < rb->currentDataPoint - 1; ++x )
+                {
+                    rb->velocities[x] = rb->velocities[x+1];
+                    rb->angularVelocities[x] = rb->angularVelocities[x+1];
+                }
+                rb->velocities[rb->currentDataPoint-1] = ( position - rb->previousPosition ) * invFPS;
+
+                ofVec3f diff = ( rb->previousOrientation * rotation.inverse() ).getEuler();
+                rb->angularVelocities[rb->currentDataPoint-1] = ( diff * invFPS );
+            }
+
+            rb->previousPosition = position;
+            rb->previousOrientation = rotation;
+        }
+        */
+
+        //TODO: support hierarchy mode
+        zosc_t * oscMsg = zosc_create("/rigidbody", "isfffffffi",
+                                        RB.id,
+                                        rigidbody_descs[i].name.c_str(),
+                                        position[0],
+                                        position[1],
+                                        position[2],
+                                        rotation[0],
+                                        rotation[1],
+                                        rotation[2],
+                                        rotation[3],
+                                        ( RB.isActive() ? 1 : 0 )
+                                        );
+
+        //TODO: Velocity add
+        /*
+        if ( c->getModeFlags() & ClientFlag_Velocity )
+        {
+            //velocity over SMOOTHING * 2 + 1 frames
+            m.addFloatArg(velocity.x * 1000);
+            m.addFloatArg(velocity.y * 1000);
+            m.addFloatArg(velocity.z * 1000);
+            //angular velocity (euler), also smoothed
+            m.addFloatArg(angularVelocity.x * 1000);
+            m.addFloatArg(angularVelocity.y * 1000);
+            m.addFloatArg(angularVelocity.z * 1000);
+        }
+        */
+
+        zmsg_add(zmsg, zosc_pack(oscMsg));
+    }
+}
+
+void NatNet::addSkeletons(zmsg_t *zmsg)
+{
+    for (int j = 0; j < skeletons.size(); j++)
+    {
+        const Skeleton &S = skeletons[j];
+        std::vector<RigidBodyDescription> rbd = skeleton_descs[j].joints;
+
+        //TODO: Hierarchy mode
+        /*if ( c->getHierarchy())
+        {
+            for (int i = 0; i < S.joints.size(); i++)
+            {
+                const ofxNatNet::RigidBody &RB = S.joints[i];
+
+                ofxOscMessage m;
+                m.setAddress("/skeleton/" + ofToString(sd[j].name) + "/" +
+                             ofToString(ofToString(rbd[i].name)));
+
+                // Get the matirx
+                ofMatrix4x4 matrix = RB.matrix;
+
+                // Decompose to get the different elements
+                ofVec3f position;
+                ofQuaternion rotation;
+                ofVec3f scale;
+                ofQuaternion so;
+                matrix.decompose(position, rotation, scale, so);
+                m.addStringArg(ofToString(rbd[i].name));
+                m.addFloatArg(position.x);
+                m.addFloatArg(position.y);
+                m.addFloatArg(position.z);
+                m.addFloatArg(rotation.x());
+                m.addFloatArg(rotation.y());
+                m.addFloatArg(rotation.z());
+                m.addFloatArg(rotation.w());
+                //needed for skeleton retargeting
+                if ( c->getModeFlags() & ClientFlag_FullSkeleton )
+                {
+                    m.addIntArg(rbd[i].parent_id);
+                    m.addFloatArg(rbd[i].offset.x);
+                    m.addFloatArg(rbd[i].offset.y);
+                    m.addFloatArg(rbd[i].offset.z);
+                    //TODO: Figure out if this is needed. It's obvious for rigidbodies,
+                    //          but skeletons don't have an "isActive" as a totality
+                    //m.addBoolArg(RB.isActive());
+                }
+
+                bundle->addMessage(m);
+            }
+        }
+        else
+        */
+        {
+            //TODO: Support append for zosc messages
+            /*
+            ofxOscMessage m;
+            m.setAddress("/skeleton");
+            m.addStringArg(ofToString(sd[j].name));
+            m.addIntArg(S.id);
+
+            for (int i = 0; i < S.joints.size(); i++)
+            {
+                const ofxNatNet::RigidBody &RB = S.joints[i];
+
+                // Get the matirx
+                ofMatrix4x4 matrix = RB.matrix;
+
+                // Decompose to get the different elements
+                ofVec3f position;
+                ofQuaternion rotation;
+                ofVec3f scale;
+                ofQuaternion so;
+                matrix.decompose(position, rotation, scale, so);
+                m.addStringArg(ofToString(rbd[i].name));
+                m.addFloatArg(position.x);
+                m.addFloatArg(position.y);
+                m.addFloatArg(position.z);
+                m.addFloatArg(rotation.x());
+                m.addFloatArg(rotation.y());
+                m.addFloatArg(rotation.z());
+                m.addFloatArg(rotation.w());
+                //needed for skeleton retargeting
+                if ( c->getModeFlags() & ClientFlag_FullSkeleton )
+                {
+                    m.addIntArg(rbd[i].parent_id);
+                    m.addFloatArg(rbd[i].offset.x);
+                    m.addFloatArg(rbd[i].offset.y);
+                    m.addFloatArg(rbd[i].offset.z);
+                }
+            }
+
+            bundle->addMessage(m);
+            */
+        }
+    }
+}
+
+void NatNet::fixRanges( Vec3 *euler )
+{
+    if ((*euler)[0] < -180.0f)
+        (*euler)[0] += 360.0f;
+    else if ((*euler)[0] > 180.0f)
+        (*euler)[0] -= 360.0f;
+
+    if ((*euler)[1] < -180.0f)
+        (*euler)[1] += 360.0f;
+    else if ((*euler)[1] > 180.0f)
+        (*euler)[1] -= 360.0f;
+
+    if ((*euler)[2] < -180.0f)
+        (*euler)[2] += 360.0f;
+    else if ((*euler)[2] > 180.0f)
+        (*euler)[2] -= 360.0f;
 }
 
 // NatNet implementation
@@ -352,29 +655,42 @@ void NatNet::Unpack( char * pData ) {
     int major = NatNetVersion[0];
     int minor = NatNetVersion[1];
 
+    //TODO: Matrix
+    //Vec4 rotation = transform.getRotate();
+    Vec4 rotation;
+
     char *ptr = pData;
 
-    zsys_info("Begin Packet\n-------\n");
+    //zsys_info("Begin Packet\n-------\n");
 
     // message ID
     int MessageID = 0;
     memcpy(&MessageID, ptr, 2); ptr += 2;
-    zsys_info("Message ID : %d\n", MessageID);
+    //zsys_info("Message ID : %d\n", MessageID);
 
     // size
     int nBytes = 0;
     memcpy(&nBytes, ptr, 2); ptr += 2;
-    zsys_info("Byte count : %d\n", nBytes);
+    //zsys_info("Byte count : %d\n", nBytes);
 
     if(MessageID == 7)      // FRAME OF MOCAP DATA packet
     {
+        // temporary data containers
+        std::vector<std::vector<Marker> > tmp_markers_set;
+        std::vector<Skeleton> tmp_skeletons;
+        std::vector<Marker> tmp_markers;
+        std::vector<Marker> tmp_filtered_markers;
+        std::vector<RigidBody> tmp_rigidbodies;
+
         // frame number
         int frameNumber = 0; memcpy(&frameNumber, ptr, 4); ptr += 4;
-        zsys_info("Frame # : %d\n", frameNumber);
+        //zsys_info("Frame # : %d\n", frameNumber);
 
         // number of data sets (markersets, rigidbodies, etc)
         int nMarkerSets = 0; memcpy(&nMarkerSets, ptr, 4); ptr += 4;
-        zsys_info("Marker Set Count : %d\n", nMarkerSets);
+        //zsys_info("Marker Set Count : %d\n", nMarkerSets);
+
+        tmp_markers_set.resize(nMarkerSets);
 
         for (int i=0; i < nMarkerSets; i++)
         {
@@ -383,192 +699,35 @@ void NatNet::Unpack( char * pData ) {
             strcpy(szName, ptr);
             int nDataBytes = (int) strlen(szName) + 1;
             ptr += nDataBytes;
-            zsys_info("Model Name: %s\n", szName);
+            //zsys_info("Model Name: %s\n", szName);
 
-            // marker data
-            int nMarkers = 0; memcpy(&nMarkers, ptr, 4); ptr += 4;
-            zsys_info("Marker Count : %d\n", nMarkers);
-
-            for(int j=0; j < nMarkers; j++)
-            {
-                float x = 0; memcpy(&x, ptr, 4); ptr += 4;
-                float y = 0; memcpy(&y, ptr, 4); ptr += 4;
-                float z = 0; memcpy(&z, ptr, 4); ptr += 4;
-                zsys_info("\tMarker %d : [x=%3.2f,y=%3.2f,z=%3.2f]\n",j,x,y,z);
-            }
+            ptr = unpackMarkerSet(ptr, tmp_markers_set[i]);
         }
 
         // unidentified markers
-        int nOtherMarkers = 0; memcpy(&nOtherMarkers, ptr, 4); ptr += 4;
-        zsys_info("Unidentified Marker Count : %d\n", nOtherMarkers);
-        for(int j=0; j < nOtherMarkers; j++)
-        {
-            float x = 0.0f; memcpy(&x, ptr, 4); ptr += 4;
-            float y = 0.0f; memcpy(&y, ptr, 4); ptr += 4;
-            float z = 0.0f; memcpy(&z, ptr, 4); ptr += 4;
-            zsys_info("\tMarker %d : pos = [%3.2f,%3.2f,%3.2f]\n",j,x,y,z);
-        }
+        ptr = unpackMarkerSet(ptr, tmp_markers);
 
         // rigid bodies
-        int nRigidBodies = 0;
-        memcpy(&nRigidBodies, ptr, 4); ptr += 4;
-        zsys_info("Rigid Body Count : %d\n", nRigidBodies);
-        for (int j=0; j < nRigidBodies; j++)
-        {
-            // rigid body pos/ori
-            int ID = 0; memcpy(&ID, ptr, 4); ptr += 4;
-            float x = 0.0f; memcpy(&x, ptr, 4); ptr += 4;
-            float y = 0.0f; memcpy(&y, ptr, 4); ptr += 4;
-            float z = 0.0f; memcpy(&z, ptr, 4); ptr += 4;
-            float qx = 0; memcpy(&qx, ptr, 4); ptr += 4;
-            float qy = 0; memcpy(&qy, ptr, 4); ptr += 4;
-            float qz = 0; memcpy(&qz, ptr, 4); ptr += 4;
-            float qw = 0; memcpy(&qw, ptr, 4); ptr += 4;
-            zsys_info("ID : %d\n", ID);
-            zsys_info("pos: [%3.2f,%3.2f,%3.2f]\n", x,y,z);
-            zsys_info("ori: [%3.2f,%3.2f,%3.2f,%3.2f]\n", qx,qy,qz,qw);
-
-            // associated marker positions
-            int nRigidMarkers = 0;  memcpy(&nRigidMarkers, ptr, 4); ptr += 4;
-            zsys_info("Marker Count: %d\n", nRigidMarkers);
-            int nBytes = nRigidMarkers*3*sizeof(float);
-            float* markerData = (float*)malloc(nBytes);
-            memcpy(markerData, ptr, nBytes);
-            ptr += nBytes;
-
-            if(major >= 2)
-            {
-                // associated marker IDs
-                nBytes = nRigidMarkers*sizeof(int);
-                int* markerIDs = (int*)malloc(nBytes);
-                memcpy(markerIDs, ptr, nBytes);
-                ptr += nBytes;
-
-                // associated marker sizes
-                nBytes = nRigidMarkers*sizeof(float);
-                float* markerSizes = (float*)malloc(nBytes);
-                memcpy(markerSizes, ptr, nBytes);
-                ptr += nBytes;
-
-                for(int k=0; k < nRigidMarkers; k++)
-                {
-                    zsys_info("\tMarker %d: id=%d\tsize=%3.1f\tpos=[%3.2f,%3.2f,%3.2f]\n", k, markerIDs[k], markerSizes[k], markerData[k*3], markerData[k*3+1],markerData[k*3+2]);
-                }
-
-                if(markerIDs)
-                    free(markerIDs);
-                if(markerSizes)
-                    free(markerSizes);
-
-            }
-            else
-            {
-                for(int k=0; k < nRigidMarkers; k++)
-                {
-                    zsys_info("\tMarker %d: pos = [%3.2f,%3.2f,%3.2f]\n", k, markerData[k*3], markerData[k*3+1],markerData[k*3+2]);
-                }
-            }
-            if(markerData)
-                free(markerData);
-
-            if(major >= 2)
-            {
-                // Mean marker error
-                float fError = 0.0f; memcpy(&fError, ptr, 4); ptr += 4;
-                zsys_info("Mean marker error: %3.2f\n", fError);
-            }
-
-            // 2.6 and later
-            if( ((major == 2)&&(minor >= 6)) || (major > 2) || (major == 0) )
-            {
-                // params
-                short params = 0; memcpy(&params, ptr, 2); ptr += 2;
-                bool bTrackingValid = params & 0x01; // 0x01 : rigid body was successfully tracked in this frame
-            }
-
-        } // next rigid body
-
+        ptr = unpackRigidBodies(ptr, tmp_rigidbodies);
 
         // skeletons (version 2.1 and later)
         if( ((major == 2)&&(minor>0)) || (major>2))
         {
             int nSkeletons = 0;
             memcpy(&nSkeletons, ptr, 4); ptr += 4;
-            zsys_info("Skeleton Count : %d\n", nSkeletons);
+            //zsys_info("Skeleton Count : %d\n", nSkeletons);
+
+            tmp_skeletons.resize(nSkeletons);
+
             for (int j=0; j < nSkeletons; j++)
             {
                 // skeleton id
                 int skeletonID = 0;
                 memcpy(&skeletonID, ptr, 4); ptr += 4;
-                // # of rigid bodies (bones) in skeleton
-                int nRigidBodies = 0;
-                memcpy(&nRigidBodies, ptr, 4); ptr += 4;
-                zsys_info("Rigid Body Count : %d\n", nRigidBodies);
-                for (int j=0; j < nRigidBodies; j++)
-                {
-                    // rigid body pos/ori
-                    int ID = 0; memcpy(&ID, ptr, 4); ptr += 4;
-                    float x = 0.0f; memcpy(&x, ptr, 4); ptr += 4;
-                    float y = 0.0f; memcpy(&y, ptr, 4); ptr += 4;
-                    float z = 0.0f; memcpy(&z, ptr, 4); ptr += 4;
-                    float qx = 0; memcpy(&qx, ptr, 4); ptr += 4;
-                    float qy = 0; memcpy(&qy, ptr, 4); ptr += 4;
-                    float qz = 0; memcpy(&qz, ptr, 4); ptr += 4;
-                    float qw = 0; memcpy(&qw, ptr, 4); ptr += 4;
-                    zsys_info("ID : %d\n", ID);
-                    zsys_info("pos: [%3.2f,%3.2f,%3.2f]\n", x,y,z);
-                    zsys_info("ori: [%3.2f,%3.2f,%3.2f,%3.2f]\n", qx,qy,qz,qw);
 
-                    // associated marker positions
-                    int nRigidMarkers = 0;  memcpy(&nRigidMarkers, ptr, 4); ptr += 4;
-                    zsys_info("Marker Count: %d\n", nRigidMarkers);
-                    int nBytes = nRigidMarkers*3*sizeof(float);
-                    float* markerData = (float*)malloc(nBytes);
-                    memcpy(markerData, ptr, nBytes);
-                    ptr += nBytes;
+                tmp_skeletons[j].id = skeletonID;
 
-                    // associated marker IDs
-                    nBytes = nRigidMarkers*sizeof(int);
-                    int* markerIDs = (int*)malloc(nBytes);
-                    memcpy(markerIDs, ptr, nBytes);
-                    ptr += nBytes;
-
-                    // associated marker sizes
-                    nBytes = nRigidMarkers*sizeof(float);
-                    float* markerSizes = (float*)malloc(nBytes);
-                    memcpy(markerSizes, ptr, nBytes);
-                    ptr += nBytes;
-
-                    for(int k=0; k < nRigidMarkers; k++)
-                    {
-                        zsys_info("\tMarker %d: id=%d\tsize=%3.1f\tpos=[%3.2f,%3.2f,%3.2f]\n", k, markerIDs[k], markerSizes[k], markerData[k*3], markerData[k*3+1],markerData[k*3+2]);
-                    }
-
-                    // Mean marker error (2.0 and later)
-                    if(major >= 2)
-                    {
-                        float fError = 0.0f; memcpy(&fError, ptr, 4); ptr += 4;
-                        zsys_info("Mean marker error: %3.2f\n", fError);
-                    }
-
-                    // Tracking flags (2.6 and later)
-                    if( ((major == 2)&&(minor >= 6)) || (major > 2) || (major == 0) )
-                    {
-                        // params
-                        short params = 0; memcpy(&params, ptr, 2); ptr += 2;
-                        bool bTrackingValid = params & 0x01; // 0x01 : rigid body was successfully tracked in this frame
-                    }
-
-                    // release resources
-                    if(markerIDs)
-                        free(markerIDs);
-                    if(markerSizes)
-                        free(markerSizes);
-                    if(markerData)
-                        free(markerData);
-
-                } // next rigid body
-
+                ptr = unpackRigidBodies(ptr, tmp_skeletons[j].joints);
             } // next skeleton
         }
 
@@ -577,7 +736,7 @@ void NatNet::Unpack( char * pData ) {
         {
             int nLabeledMarkers = 0;
             memcpy(&nLabeledMarkers, ptr, 4); ptr += 4;
-            zsys_info("Labeled Marker Count : %d\n", nLabeledMarkers);
+            //zsys_info("Labeled Marker Count : %d\n", nLabeledMarkers);
             for (int j=0; j < nLabeledMarkers; j++)
             {
                 // id
@@ -601,9 +760,14 @@ void NatNet::Unpack( char * pData ) {
                     bool bModelSolved = params & 0x04;  // position provided by model solve
                 }
 
-                zsys_info("ID  : %d\n", ID);
-                zsys_info("pos : [%3.2f,%3.2f,%3.2f]\n", x,y,z);
-                zsys_info("size: [%3.2f]\n", size);
+                //zsys_info("ID  : %d\n", ID);
+                //zsys_info("pos : [%3.2f,%3.2f,%3.2f]\n", x,y,z);
+                //zsys_info("size: [%3.2f]\n", size);
+
+                Vec3 pp(x, y, z);
+                //TODO: Matrix
+                //pp = transform.preMult(pp);
+                tmp_markers.push_back(pp);
             }
         }
 
@@ -616,7 +780,7 @@ void NatNet::Unpack( char * pData ) {
             {
                 // ID
                 int ID = 0; memcpy(&ID, ptr, 4); ptr += 4;
-                zsys_info("Force Plate : %d\n", ID);
+                //zsys_info("Force Plate : %d\n", ID);
 
                 // Channel Count
                 int nChannels = 0; memcpy(&nChannels, ptr, 4); ptr += 4;
@@ -624,21 +788,22 @@ void NatNet::Unpack( char * pData ) {
                 // Channel Data
                 for (int i = 0; i < nChannels; i++)
                 {
-                    zsys_info(" Channel %d : ", i);
+                    //zsys_info(" Channel %d : ", i);
                     int nFrames = 0; memcpy(&nFrames, ptr, 4); ptr += 4;
                     for (int j = 0; j < nFrames; j++)
                     {
                         float val = 0.0f;  memcpy(&val, ptr, 4); ptr += 4;
-                        zsys_info("%3.2f   ", val);
+                        //zsys_info("%3.2f   ", val);
                     }
-                    zsys_info("\n");
+                    //zsys_info("\n");
                 }
             }
         }
 
         // latency
         float latency = 0.0f; memcpy(&latency, ptr, 4);	ptr += 4;
-        zsys_info("latency : %3.3f\n", latency);
+        //zsys_info("latency : %3.3f\n", latency);
+        this->latency = latency;
 
         // timecode
         unsigned int timecode = 0; 	memcpy(&timecode, ptr, 4);	ptr += 4;
@@ -668,34 +833,90 @@ void NatNet::Unpack( char * pData ) {
 
         // end of data tag
         int eod = 0; memcpy(&eod, ptr, 4); ptr += 4;
-        zsys_info("End Packet\n-------------\n");
+        //zsys_info("End Packet\n-------------\n");
 
+        // filter markers
+        // TODO: re-implement marker filtering (?)
+        /*
+        if (duplicated_point_removal_distance > 0)
+        {
+            std::map<int, RigidBody>::iterator it =
+                    this->rigidbodies.begin();
+            while (it != this->rigidbodies.end())
+            {
+                RigidBody& RB = it->second;
+
+                for (int i = 0; i < RB.markers.size(); i++)
+                {
+                    Vec3& v = RB.markers[i];
+                    std::vector<Marker>::iterator it = remove_if(
+                            tmp_filtered_markers.begin(), tmp_filtered_markers.end(),
+                            remove_dups(v, duplicated_point_removal_distance));
+                    tmp_filtered_markers.erase(it, tmp_filtered_markers.end());
+                }
+
+                it++;
+            }
+        }
+         */
+
+        //Copy data to instance...
+        this->latency = latency;
+        this->frame_number = frameNumber;
+        this->markers_set = tmp_markers_set;
+        this->markers = tmp_markers;
+        this->filtered_markers = tmp_filtered_markers;
+        this->rigidbodies_arr = tmp_rigidbodies;
+        this->skeletons_arr = tmp_skeletons;
+
+        // fill the rigidbodies map
+        {
+            for (int i = 0; i < tmp_rigidbodies.size(); i++) {
+                RigidBody &RB = tmp_rigidbodies[i];
+                RigidBody &tRB = this->rigidbodies[RB.id];
+                tRB = RB;
+            }
+        }
+        {
+            for (int i = 0; i < tmp_skeletons.size(); i++) {
+                Skeleton &S = tmp_skeletons[i];
+                Skeleton &tS = this->skeletons[S.id];
+                tS = S;
+            }
+        }
     }
     else if(MessageID == 5) // Data Descriptions
     {
+        std::vector<RigidBodyDescription> tmp_rigidbody_descs;
+        std::vector<SkeletonDescription> tmp_skeleton_descs;
+        std::vector<MarkerSetDescription> tmp_markerset_descs;
+
         // number of datasets
         int nDatasets = 0; memcpy(&nDatasets, ptr, 4); ptr += 4;
-        zsys_info("Dataset Count : %d\n", nDatasets);
+        //zsys_info("Dataset Count : %d\n", nDatasets);
 
         for(int i=0; i < nDatasets; i++)
         {
-            zsys_info("Dataset %d\n", i);
+            //zsys_info("Dataset %d\n", i);
 
             int type = 0; memcpy(&type, ptr, 4); ptr += 4;
-            zsys_info("Type : %d\n", i, type);
+            //zsys_info("Type : %d\n", i, type);
 
             if(type == 0)   // markerset
             {
+                MarkerSetDescription description;
+
                 // name
                 char szName[256];
                 strcpy(szName, ptr);
                 int nDataBytes = (int) strlen(szName) + 1;
                 ptr += nDataBytes;
-                zsys_info("Markerset Name: %s\n", szName);
+                //zsys_info("Markerset Name: %s\n", szName);
+                description.name = szName;
 
                 // marker data
                 int nMarkers = 0; memcpy(&nMarkers, ptr, 4); ptr += 4;
-                zsys_info("Marker Count : %d\n", nMarkers);
+                //zsys_info("Marker Count : %d\n", nMarkers);
 
                 for(int j=0; j < nMarkers; j++)
                 {
@@ -703,48 +924,65 @@ void NatNet::Unpack( char * pData ) {
                     strcpy(szName, ptr);
                     int nDataBytes = (int) strlen(szName) + 1;
                     ptr += nDataBytes;
-                    zsys_info("Marker Name: %s\n", szName);
+                    //zsys_info("Marker Name: %s\n", szName);
+                    description.marker_names.push_back(szName);
                 }
+                tmp_markerset_descs.push_back(description);
             }
             else if(type ==1)   // rigid body
             {
+                RigidBodyDescription description;
+
                 if(major >= 2)
                 {
                     // name
                     char szName[MAX_NAMELENGTH];
                     strcpy(szName, ptr);
                     ptr += strlen(ptr) + 1;
-                    zsys_info("Name: %s\n", szName);
+                    //zsys_info("Name: %s\n", szName);
+                    description.name = szName;
                 }
 
                 int ID = 0; memcpy(&ID, ptr, 4); ptr +=4;
-                zsys_info("ID : %d\n", ID);
+                //zsys_info("ID : %d\n", ID);
+                description.id = ID;
 
                 int parentID = 0; memcpy(&parentID, ptr, 4); ptr +=4;
-                zsys_info("Parent ID : %d\n", parentID);
+                //zsys_info("Parent ID : %d\n", parentID);
+                description.parent_id = parentID;
 
                 float xoffset = 0; memcpy(&xoffset, ptr, 4); ptr +=4;
-                zsys_info("X Offset : %3.2f\n", xoffset);
+                //zsys_info("X Offset : %3.2f\n", xoffset);
 
                 float yoffset = 0; memcpy(&yoffset, ptr, 4); ptr +=4;
-                zsys_info("Y Offset : %3.2f\n", yoffset);
+                //zsys_info("Y Offset : %3.2f\n", yoffset);
 
                 float zoffset = 0; memcpy(&zoffset, ptr, 4); ptr +=4;
-                zsys_info("Z Offset : %3.2f\n", zoffset);
+                //zsys_info("Z Offset : %3.2f\n", zoffset);
 
+                description.offset[0] = xoffset;
+                description.offset[1] = xoffset;
+                description.offset[2] = xoffset;
+
+                tmp_rigidbody_descs.push_back(description);
             }
             else if(type ==2)   // skeleton
             {
+                SkeletonDescription description;
+
                 char szName[MAX_NAMELENGTH];
                 strcpy(szName, ptr);
                 ptr += strlen(ptr) + 1;
-                zsys_info("Name: %s\n", szName);
+                //zsys_info("Name: %s\n", szName);
+                description.name = szName;
 
                 int ID = 0; memcpy(&ID, ptr, 4); ptr +=4;
-                zsys_info("ID : %d\n", ID);
+                //zsys_info("ID : %d\n", ID);
+                description.id = ID;
 
                 int nRigidBodies = 0; memcpy(&nRigidBodies, ptr, 4); ptr +=4;
-                zsys_info("RigidBody (Bone) Count : %d\n", nRigidBodies);
+                //zsys_info("RigidBody (Bone) Count : %d\n", nRigidBodies);
+                description.joints.resize(nRigidBodies);
 
                 for(int i=0; i< nRigidBodies; i++)
                 {
@@ -754,30 +992,42 @@ void NatNet::Unpack( char * pData ) {
                         char szName[MAX_NAMELENGTH];
                         strcpy(szName, ptr);
                         ptr += strlen(ptr) + 1;
-                        zsys_info("Rigid Body Name: %s\n", szName);
+                        //zsys_info("Rigid Body Name: %s\n", szName);
+                        description.joints[i].name = szName;
                     }
 
                     int ID = 0; memcpy(&ID, ptr, 4); ptr +=4;
-                    zsys_info("RigidBody ID : %d\n", ID);
+                    //zsys_info("RigidBody ID : %d\n", ID);
+                    description.joints[i].id = ID;
 
                     int parentID = 0; memcpy(&parentID, ptr, 4); ptr +=4;
-                    zsys_info("Parent ID : %d\n", parentID);
+                    //zsys_info("Parent ID : %d\n", parentID);
+                    description.joints[i].parent_id = parentID;
 
                     float xoffset = 0; memcpy(&xoffset, ptr, 4); ptr +=4;
-                    zsys_info("X Offset : %3.2f\n", xoffset);
+                    //zsys_info("X Offset : %3.2f\n", xoffset);
 
                     float yoffset = 0; memcpy(&yoffset, ptr, 4); ptr +=4;
-                    zsys_info("Y Offset : %3.2f\n", yoffset);
+                    //zsys_info("Y Offset : %3.2f\n", yoffset);
 
                     float zoffset = 0; memcpy(&zoffset, ptr, 4); ptr +=4;
-                    zsys_info("Z Offset : %3.2f\n", zoffset);
+                    //zsys_info("Z Offset : %3.2f\n", zoffset);
+
+                    description.joints[i].offset[0] = xoffset;
+                    description.joints[i].offset[0] = yoffset;
+                    description.joints[i].offset[0] = zoffset;
                 }
+                tmp_skeleton_descs.push_back(description);
             }
 
         }   // next dataset
 
-        zsys_info("End Packet\n-------------\n");
+        //zsys_info("End Packet\n-------------\n");
 
+        //Store data
+        this->markerset_descs = tmp_markerset_descs;
+        this->rigidbody_descs = tmp_rigidbody_descs;
+        this->skeleton_descs = tmp_skeleton_descs;
     }
     else
     {
@@ -837,17 +1087,17 @@ void NatNet::HandleCommand( sPacket *PacketIn ) {
             else
             {
                 memcpy(&gCommandResponseString[0], &PacketIn->Data.cData[0], gCommandResponseSize);
-                printf("Response : %s", gCommandResponseString);
+                zsys_info("Response : %s", gCommandResponseString);
                 gCommandResponse = 0;   // ok
             }
             break;
         case NAT_UNRECOGNIZED_REQUEST:
-            printf("[Client] received 'unrecognized request'\n");
+            zsys_info("[Client] received 'unrecognized request'\n");
             gCommandResponseSize = 0;
             gCommandResponse = 1;       // err
             break;
         case NAT_MESSAGESTRING:
-            printf("[Client] Received message: %s\n", PacketIn->Data.szData);
+            zsys_info("[Client] Received message: %s\n", PacketIn->Data.szData);
             break;
     }
 }

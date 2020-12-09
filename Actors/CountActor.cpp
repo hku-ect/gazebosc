@@ -23,7 +23,7 @@ Count::handleMsg( sphactor_event_t *ev ) {
         this->msgCount++;
         zosc_t * msg = zosc_create("/report", "ssscsishsf",
                                                 "Some Text", "12345678",
-                                                "Some Char", 'q',     //TODO: FIX
+                                                "Some Char", 'q',
                                                 "Small Int", (int32_t)this->msgCount,
                                                 "Big Int", (int64_t)this->msgCount,
                                                 "A float!", (float)0.23454 );

@@ -8,11 +8,9 @@
 #include "NatNetDataTypes.h"
 
 struct NatNet {
-    // HostAddr = udp://*:* ?
     // DataSocket;
     zsock_t* DataSocket = NULL;
     SOCKET dataFD = -1;
-    char  szData[20000];    //data receive buffer
 
     // CommandSocket;
     zsock_t* CommandSocket = NULL;
@@ -28,7 +26,6 @@ struct NatNet {
     unsigned char gCommandResponseString[260]; //MAX_PATH = 260?
     int gCommandResponseCode = 0;
 
-    //IDEA: definition vectors
     int frame_number;
     float latency;
     float timeout;
@@ -47,24 +44,28 @@ struct NatNet {
     std::vector<SkeletonDescription> skeleton_descs;
     std::vector<MarkerSetDescription> markerset_descs;
 
+    zmsg_t * handleMsg( sphactor_event_t *ev );
+
+    //NatNet parse functions
+    void Unpack( char * pData );
+    int SendCommand(char* szCOmmand);
+    void HandleCommand(sPacket *PacketIn);
+
     // ofxNatNet borrowed functions
     char* unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies);
     char* unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers);
 
-    zmsg_t * handleMsg( sphactor_event_t *ev );
 
-    //Natnet parse functions
+    //OSC Sending Functions
+    void addRigidbodies(zmsg_t *zmsg);
+    void addSkeletons(zmsg_t *zmsg);
+    void fixRanges( Vec3 *euler );
+
     //TODO: necessary?
     bool IPAddress_StringToAddr(char *szNameOrAddress, struct in_addr *Address);
-
-    void Unpack( char * pData );
-
-    //TODO: necessary?
     int GetLocalIPAddresses(unsigned long Addresses[], int nMax);
 
-    //TODO: copy/paste, edit using our dgrams
-    int SendCommand(char* szCOmmand);
-    void HandleCommand(sPacket *PacketIn);
+
 
     NatNet() {
 

@@ -27,13 +27,8 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(clientCapabilities));
         this->dgrams = zsock_new_dgram("udp://*:*");
     }
-    /*
-     * Application will hang if done here when closing application entirely...
-     * Even if you have destroyed client actors in between... very odd...
-     * */
     else if ( streq(ev->type, "DESTROY") ) {
         zsys_info("Handling Destroy");
-        //TODO: Fix zsys_shutdown crash when destroying dgrams along the way...
         if ( this->dgrams != NULL ) {
             zsock_destroy(&this->dgrams);
             this->dgrams = NULL;

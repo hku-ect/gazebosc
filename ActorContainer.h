@@ -69,7 +69,6 @@ struct ActorContainer {
         this->capabilities = zconfig_dup(sphactor_ask_capability(actor));
 
         ParseConnections();
-        //TODO: figure out why this doesn't work
         InitializeCapabilities();
     }
 
