@@ -39,7 +39,9 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
             this->dgrams = NULL;
         }
 
-        return ev->msg;
+        delete this;
+        zmsg_destroy(&ev->msg);
+        return NULL;
     }
     else if ( streq(ev->type, "SOCK") ) {
         if ( ev->msg == NULL ) return NULL;

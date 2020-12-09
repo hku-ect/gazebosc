@@ -4,6 +4,7 @@
 #include "libsphactor.h"
 #include <string>
 #include <vector>
+#include <map>
 #include "NatNetDataTypes.h"
 
 struct NatNet {
@@ -28,9 +29,27 @@ struct NatNet {
     int gCommandResponseCode = 0;
 
     //IDEA: definition vectors
-    std::vector<MarkerDefinition> markers;
-    std::vector<RigidbodyDefinition> rigidbodies;
-    std::vector<SkeletonDefinition> skeletons;
+    int frame_number;
+    float latency;
+    float timeout;
+
+    std::vector<std::vector<Marker> > markers_set;
+    std::vector<Marker> filtered_markers;
+    std::vector<Marker> markers;
+
+    std::map<int, RigidBody> rigidbodies;
+    std::vector<RigidBody> rigidbodies_arr;
+
+    std::map<int, Skeleton> skeletons;
+    std::vector<Skeleton> skeletons_arr;
+
+    std::vector<RigidBodyDescription> rigidbody_descs;
+    std::vector<SkeletonDescription> skeleton_descs;
+    std::vector<MarkerSetDescription> markerset_descs;
+
+    // ofxNatNet borrowed functions
+    char* unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies);
+    char* unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers);
 
     zmsg_t * handleMsg( sphactor_event_t *ev );
 

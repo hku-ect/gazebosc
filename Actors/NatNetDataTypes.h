@@ -5,23 +5,74 @@
 #include <vector>
 
 // Custom data structs
-struct MarkerDefinition {
-    float x, y, z;
+struct Vec3 {
+    float p[3] = {0,0,0};
+    float& operator [](int id) {
+        return p[id];
+    }
+
+    Vec3(){};
+
+    Vec3(float x, float y, float z) {
+        p[0] = x;
+        p[1] = y;
+        p[2] = z;
+    }
 };
 
-struct RigidbodyDefinition {
-    std::string name;
-    int id;
-    float x, y, z;
-    float qx, qy, qz, qw;
-    int parentID;
-    int xOffset, yOffset, zOffset;
+struct Vec4 {
+    float p[4] = {0,0,0,0};
+    float& operator [](int id) {
+        return p[id];
+    }
 };
 
-struct SkeletonDefinition {
+typedef Vec3 Marker;
+
+struct RigidBody
+{
+    int id;
+    //TODO: matrix...?
+
+    //ofMatrix4x4 matrix;
+    std::vector<Marker> markers;
+
+    float mean_marker_error;
+
+    inline bool isActive() const { return _active; }
+    //TODO: matrix...?
+    //const ofMatrix4x4& getMatrix() const { return matrix; }
+
+    bool _active;
+    Vec3 position;
+};
+
+struct Skeleton
+{
+    int id;
+    std::vector<RigidBody> joints;
+};
+
+struct RigidBodyDescription
+{
     std::string name;
     int id;
-    std::vector<RigidbodyDefinition> rigidBodies;
+    int parent_id;
+    Vec3 offset;
+    std::vector<std::string> marker_names;
+};
+
+struct SkeletonDescription
+{
+    std::string name;
+    int id;
+    std::vector<RigidBodyDescription> joints;
+};
+
+struct MarkerSetDescription
+{
+    std::string name;
+    std::vector<std::string> marker_names;
 };
 
 // Natnet settings

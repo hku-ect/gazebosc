@@ -35,6 +35,11 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
         assert(rc == 0);
     }
+    else if ( streq( ev->type, "DESTROY")) {
+        delete this;
+        zmsg_destroy(&ev->msg);
+        return NULL;
+    }
     /*
      * Application will hang if done here when closing application entirely...
      * Even if you have destroyed client actors in between... very odd...
@@ -192,6 +197,155 @@ bool TimecodeStringify(unsigned int inTimecode, unsigned int inTimecodeSubframe,
             Buffer[i]='0';
 
     return bValid;
+}
+
+char* NatNet::unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers)
+{
+    int nMarkers = 0;
+    memcpy(&nMarkers, ptr, 4);
+    ptr += 4;
+
+    ref_markers.resize(nMarkers);
+
+    for (int j = 0; j < nMarkers; j++)
+    {
+        Marker p;
+        memcpy(&p[0], ptr, 4);
+        ptr += 4;
+        memcpy(&p[1], ptr, 4);
+        ptr += 4;
+        memcpy(&p[2], ptr, 4);
+        ptr += 4;
+
+        //TODO: Matrix
+        //p = transform.preMult(p);
+
+        ref_markers[j] = p;
+    }
+
+    return ptr;
+}
+
+char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies)
+{
+    int major = NatNetVersion[0];
+    int minor = NatNetVersion[1];
+    //it was --> int major = NatNetVersion[0];
+    //it was --> int minor = NatNetVersion[1];
+
+    //TODO: Matrix, ofQuaternion?
+    //ofQuaternion rot = transform.getRotate();
+
+    int nRigidBodies = 0;
+    memcpy(&nRigidBodies, ptr, 4);
+    ptr += 4;
+
+    ref_rigidbodies.resize(nRigidBodies);
+
+    for (int j = 0; j < nRigidBodies; j++)
+    {
+        RigidBody& RB = ref_rigidbodies[j];
+
+        Vec3 pp;
+        Vec4 q;
+
+        int ID = 0;
+        memcpy(&ID, ptr, 4);
+        ptr += 4;
+
+        memcpy(&pp[0], ptr, 4);
+        ptr += 4;
+
+        memcpy(&pp[1], ptr, 4);
+        ptr += 4;
+
+        memcpy(&pp[2], ptr, 4);
+        ptr += 4;
+
+        memcpy(&q[0], ptr, 4);
+        ptr += 4;
+
+        memcpy(&q[1], ptr, 4);
+        ptr += 4;
+
+        memcpy(&q[2], ptr, 4);
+        ptr += 4;
+
+        memcpy(&q[3], ptr, 4);
+        ptr += 4;
+
+        RB.id = ID;
+        RB.position = pp;
+
+        //TODO: Matrix
+        //pp = transform.preMult(pp);
+        //
+        //ofMatrix4x4 mat;
+        //mat.setTranslation(pp);
+        //mat.setRotate(q * rot);
+        //RB.matrix = mat;
+
+        // associated marker positions
+        int nRigidMarkers = 0;
+        memcpy(&nRigidMarkers, ptr, 4);
+        ptr += 4;
+
+        int nBytes = nRigidMarkers * 3 * sizeof(float);
+        float* markerData = (float*)malloc(nBytes);
+        memcpy(markerData, ptr, nBytes);
+        ptr += nBytes;
+
+        if (major >= 2)
+        {
+            // associated marker IDs
+            nBytes = nRigidMarkers * sizeof(int);
+            ptr += nBytes;
+
+            // associated marker sizes
+            nBytes = nRigidMarkers * sizeof(float);
+            ptr += nBytes;
+        }
+
+        RB.markers.resize(nRigidMarkers);
+
+        for (int k = 0; k < nRigidMarkers; k++)
+        {
+            float x = markerData[k * 3];
+            float y = markerData[k * 3 + 1];
+            float z = markerData[k * 3 + 2];
+
+            Vec3 pp(x, y, z);
+            //TODO: Matrix
+            //pp = transform.preMult(pp);
+            RB.markers[k] = pp;
+        }
+
+        if (markerData) free(markerData);
+
+        if (major >= 2)
+        {
+            // Mean marker error
+            float fError = 0.0f;
+            memcpy(&fError, ptr, 4);
+            ptr += 4;
+
+            RB.mean_marker_error = fError;
+            RB._active = RB.mean_marker_error > 0;
+        } else {
+            RB.mean_marker_error = 0;
+        }
+
+        // 2.6 and later
+        if (((major == 2) && (minor >= 6)) || (major > 2) || (major == 0))
+        {
+            // params
+            short params = 0; memcpy(&params, ptr, 2); ptr += 2;
+            bool bTrackingValid = params & 0x01; // 0x01 : rigid body was successfully tracked in this frame
+        }
+
+    }  // next rigid body
+
+    return ptr;
 }
 
 void NatNet::Unpack( char * pData ) {
