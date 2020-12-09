@@ -120,41 +120,40 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     sPacket PacketIn;
                     addr_len = sizeof(struct sockaddr);
 
-                    int rc = zmq_recv(CommandSocket, (char *) &PacketIn, sizeof(sPacket),
-                                                  0);
-                    if ( rc == 0 ) {
-                        HandleCommand(&PacketIn);
+                    //int rc = zmq_recv(CommandSocket, (char *) &PacketIn, sizeof(sPacket), 0);
+                    zmsg_t* zmsg = zmsg_recv(CommandSocket);
+                    if ( zmsg ) {
+                        zframe_t *zframe = zmsg_pop(zmsg);
+                        if ( zframe ) {
+                            HandleCommand((sPacket *) zframe_data(zframe));
+
+                            zframe_destroy(&zframe);
+                        }
+                        zmsg_destroy(&zmsg);
                     }
                 }
                 else if ( id == dataFD ) {
                     zsys_info("DATA SOCKET");
                     //TODO: Parse packet, can we use zmq_recv?
-                    int nDataBytesReceived = zmq_recv(DataSocket, &szData, sizeof(szData), 0);
-                    Unpack(szData);
+                    //int nDataBytesReceived = zmq_recv(DataSocket, &szData, sizeof(szData), 0);
+
+                    zmsg_t* zmsg = zmsg_recv(DataSocket);
+                    if ( zmsg ) {
+                        zframe_t *zframe = zmsg_pop(zmsg);
+                        if (zframe) {
+                            Unpack((char *) zframe_data(zframe));
+                            zframe_destroy(&zframe);
+                        }
+                        zmsg_destroy(&zmsg);
+                    }
+
+                    //TODO: package resulting data into osc messages and return as new message
+                    // -> each osc message should be a zframe of the zmsg
+                    zmsg_t* oscMsg = zmsg_new();
+                    //zmsg_add(oscMsg, oscFrame);
+                    zmsg_destroy(&ev->msg);
+                    return oscMsg;
                 }
-
-                // TESTCODE
-                byte* msg;
-                size_t len;
-
-                //TODO: Implement natnet read from stream to data buffer
-                // -> this will probably require some kind of while read...
-                zmsg_t * zmsg = zmsg_recv(sock);
-                assert(zmsg);
-
-                char* source = zmsg_popstr(zmsg);
-                zstr_free(&source);
-
-                zframe_t * oscFrame = zmsg_pop(zmsg);
-                assert(oscFrame);
-
-                //TODO: Parse data buffer pointer to natnet implementation
-
-                //TODO: package resulting data into osc messages and return as new message
-                // -> each osc message should be a zframe of the zmsg
-                zmsg_t* oscMsg = zmsg_new();
-                zmsg_add(oscMsg, oscFrame);
-                return oscMsg;
             }
         }
         else
