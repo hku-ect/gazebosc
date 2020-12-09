@@ -226,20 +226,27 @@ struct ActorContainer {
                     assert(type == 's');
 
                     char* nameStr;
-                    zosc_pop_string(customData, &nameStr);
-
-                    ImGui::BeginGroup();
-                    ImGui::SetNextItemWidth(LABEL_WIDTH);
-                    ImGui::Text("%s:", nameStr);
-                    ImGui::SameLine();
-                    ImGui::SetNextItemWidth(VALUE_WIDTH);
+                    int rc = zosc_pop_string(customData, &nameStr);
+                    if (rc == 0 )
+                    {
+                        ImGui::BeginGroup();
+                        ImGui::SetNextItemWidth(LABEL_WIDTH);
+                        ImGui::Text("%s:", nameStr);
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(VALUE_WIDTH);
+                        zstr_free(&nameStr);
+                    }
                 }
                 else {
                     switch(type) {
                         case 's': {
                             char* value;
-                            zosc_pop_string(customData, &value);
-                            ImGui::Text("%s", value);
+                            int rc = zosc_pop_string(customData, &value);
+                            if( rc == 0)
+                            {
+                                ImGui::Text("%s", value);
+                                zstr_free(&value);
+                            }
                         } break;
                         case 'c': {
                             char value;
@@ -379,7 +386,7 @@ struct ActorContainer {
         ImGui::SetNextItemWidth(200);
         if ( ImGui::InputText(name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
             zconfig_set_value(zvalue, "%s", buf);
-            SendAPI<char*>(zapic, zapiv, zvalue, &(p);
+            SendAPI<char*>(zapic, zapiv, zvalue, &(p));
         }
     }
 
