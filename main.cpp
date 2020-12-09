@@ -245,7 +245,7 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
 
     // Main loop
     bool done = false;
-    unsigned int deltaTime, oldTime;
+    unsigned int deltaTime = 0, oldTime = 0;
     while (!done)
     {
         static int w, h;

@@ -152,7 +152,7 @@ void ShowLogWindow(ImGuiTextBuffer& buffer) {
 }
 
 int RenderMenuBar( bool * showLog ) {
-    static char* configFile = new char[64];
+    static char* configFile = new char[64] { 0x0 };
     static int keyFocus = 0;
     MenuAction action = MenuAction_None;
 
