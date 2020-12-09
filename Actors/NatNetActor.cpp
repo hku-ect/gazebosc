@@ -19,21 +19,20 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         //init capabilities
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natnetCapabilities));
 
-        //TODO: Check receive port in NatNet specifications
         //receive socket on port DATA_PORT
         std::string url = "udp://*:"+DATA_PORT;
-        this->DataSocket = zsock_new_dgram(url.c_str());
-        assert( this->DataSocket );
-        this->dataFD = zsock_fd(this->DataSocket);
-        int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, this->DataSocket );
+        DataSocket = zsock_new_dgram(url.c_str());
+        assert( DataSocket );
+        dataFD = zsock_fd(DataSocket);
+        int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
         assert(rc == 0);
 
         // receive socket on CMD_PORT
         url = "udp://*:"+CMD_PORT;
-        this->CommandSocket = zsock_new_dgram(url.c_str());
-        assert( this->CommandSocket );
-        this->cmdFD = zsock_fd(this->CommandSocket);
-        rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, this->CommandSocket );
+        CommandSocket = zsock_new_dgram(url.c_str());
+        assert( CommandSocket );
+        cmdFD = zsock_fd(CommandSocket);
+        rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
         assert(rc == 0);
     }
     /*
@@ -41,24 +40,20 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
      * Even if you have destroyed client actors in between... very odd...
      * */
     else if ( streq(ev->type, "DESTROY") ) {
-        if ( this->CommandSocket != NULL ) {
-            sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, this->DataSocket);
-            zsock_destroy(&this->CommandSocket);
-            this->CommandSocket = NULL;
-            this->cmdFD = -1;
+        if ( CommandSocket != NULL ) {
+            sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
+            zsock_destroy(&CommandSocket);
+            CommandSocket = NULL;
+            cmdFD = -1;
         }
-        if ( this->DataSocket != NULL ) {
-            sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, this->DataSocket);
-            zsock_destroy(&this->DataSocket);
-            this->DataSocket = NULL;
-            this->dataFD = -1;
+        if ( DataSocket != NULL ) {
+            sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
+            zsock_destroy(&DataSocket);
+            DataSocket = NULL;
+            dataFD = -1;
         }
 
         return ev->msg;
-    }
-    else if ( streq(ev->type, "SOCK") ) {
-        //TODO: ?
-        zsys_info("GOT SOCK");
     }
     else if ( streq(ev->type, "API")) {
         //pop msg for command
@@ -66,8 +61,8 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         if (cmd) {
             if ( streq(cmd, "SET HOST") ) {
                 char * host_addr = zmsg_popstr(ev->msg);
-                this->host = host_addr;
-                std::string url = "udp://" + this->host + DATA_PORT;
+                host = host_addr;
+                std::string url = "udp://" + host + DATA_PORT;
                 zsys_info("SET HOST: %s", url.c_str());
                 zstr_free(&host_addr);
 
@@ -80,9 +75,9 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                 while (nTries--)
                 {
                     //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-                    std::string url = this->host+":"+CMD_PORT;
-                    zstr_sendm(this->CommandSocket, url.c_str());
-                    int rc = zsock_send(this->CommandSocket,  "b", (char*)&PacketOut, 4 + PacketOut.nDataBytes);
+                    std::string url = host+":"+CMD_PORT;
+                    zstr_sendm(CommandSocket, url.c_str());
+                    int rc = zsock_send(CommandSocket,  "b", (char*)&PacketOut, 4 + PacketOut.nDataBytes);
                     if(rc != SOCKET_ERROR)
                         break;
                 }
@@ -99,7 +94,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     {
         zsys_info("GOT FDSOCK");
 
-        //TODO: Read data from our socket...
+        // Get the socket...
         assert(ev->msg);
         zframe_t *frame = zmsg_pop(ev->msg);
         if (zframe_size(frame) == sizeof( void *) )
@@ -113,7 +108,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
 
                 if ( id == cmdFD ) {
                     zsys_info("CMD SOCKET");
-                    //TODO: Parse command
+                    // Parse command
                     int addr_len;
                     int nDataBytesReceived;
                     char str[256];
@@ -126,7 +121,6 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                         zframe_t *zframe = zmsg_pop(zmsg);
                         if ( zframe ) {
                             HandleCommand((sPacket *) zframe_data(zframe));
-
                             zframe_destroy(&zframe);
                         }
                         zmsg_destroy(&zmsg);
@@ -134,9 +128,8 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                 }
                 else if ( id == dataFD ) {
                     zsys_info("DATA SOCKET");
-                    //TODO: Parse packet, can we use zmq_recv?
-                    //int nDataBytesReceived = zmq_recv(DataSocket, &szData, sizeof(szData), 0);
 
+                    // Parse packet
                     zmsg_t* zmsg = zmsg_recv(DataSocket);
                     if ( zmsg ) {
                         zframe_t *zframe = zmsg_pop(zmsg);
@@ -150,7 +143,8 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     //TODO: package resulting data into osc messages and return as new message
                     // -> each osc message should be a zframe of the zmsg
                     zmsg_t* oscMsg = zmsg_new();
-                    //zmsg_add(oscMsg, oscFrame);
+                    zosc_t* zosc = zosc_create("/test", "s", "Hello");
+                    zmsg_add(oscMsg, zosc_pack(zosc));
                     zmsg_destroy(&ev->msg);
                     return oscMsg;
                 }
@@ -653,44 +647,19 @@ int NatNet::SendCommand(char* szCommand) {
 
     //TODO: Check if replacement works...
     //int iRet = sendto(CommandSocket, (char *)&commandPacket, 4 + commandPacket.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-    std::string url = this->host+":"+CMD_PORT;
-    zstr_sendm(this->CommandSocket, url.c_str());
-    int rc = zsock_send(this->CommandSocket,  "b", (char*)&commandPacket, 4 + commandPacket.nDataBytes);
+    std::string url = host+":"+CMD_PORT;
+    zstr_sendm(CommandSocket, url.c_str());
+    int rc = zsock_send(CommandSocket,  "b", (char*)&commandPacket, 4 + commandPacket.nDataBytes);
     if(rc != 0)
     {
         zsys_info("Socket error sending command: %s", szCommand);
     }
-    // TODO: needed? will stall actor poll thread as well, so... no?
-    /*
-    else
-    {
-        int waitTries = 5;
-        while (waitTries--)
-        {
-            if(gCommandResponse != -1)
-                break;
-            sleep(30);
-        }
-
-        if(gCommandResponse == -1)
-        {
-            printf("Command response not received (timeout)");
-        }
-        else if(gCommandResponse == 0)
-        {
-            printf("Command response received with success");
-        }
-        else if(gCommandResponse > 0)
-        {
-            printf("Command response received with errors");
-        }
-    }
-    */
 
     return gCommandResponse;
 }
 
 void NatNet::HandleCommand( sPacket *PacketIn ) {
+    zsys_info("Message ID: %i", PacketIn->iMessage);
     // handle command
     switch (PacketIn->iMessage)
     {
