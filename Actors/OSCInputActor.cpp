@@ -24,6 +24,10 @@ zmsg_t * OSCInput::handleMsg( sphactor_event_t *ev )
             sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, this->dgramr);
             zsock_destroy(&this->dgramr);
         }
+
+        delete this;
+        zmsg_destroy(&ev->msg);
+        return NULL;
     }
     else if ( streq( ev->type, "API")) {
         char * cmd = zmsg_popstr(ev->msg);
