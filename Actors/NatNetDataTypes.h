@@ -124,7 +124,7 @@ typedef struct
 #define PORT_COMMAND            1510
 #define PORT_DATA  			    1511
 
-static std::string PORT_COMMAND_STR = "1151";
-static std::string PORT_DATA_STR = "1150";
+static std::string PORT_COMMAND_STR = "1150";
+static std::string PORT_DATA_STR = "1151";
 
 #endif //GAZEBOSC_NATNETDATATYPES_H
