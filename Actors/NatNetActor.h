@@ -29,6 +29,7 @@ struct NatNet {
     int frame_number;
     float latency;
     float timeout;
+    int sentRequest;
 
     std::vector<std::vector<Marker> > markers_set;
     std::vector<Marker> filtered_markers;
@@ -54,7 +55,7 @@ struct NatNet {
     // ofxNatNet borrowed functions
     char* unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies);
     char* unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers);
-
+    void sendRequestDescription();
 
     //OSC Sending Functions
     void addRigidbodies(zmsg_t *zmsg);

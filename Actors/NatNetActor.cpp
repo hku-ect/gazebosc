@@ -10,7 +10,7 @@ const char * natnetCapabilities =
                                 "        api_call = \"SET HOST\"\n"
                                 "        api_value = \"s\"\n"           // optional picture format used in zsock_send
                                 "    data\n"
-                                "        name = \"sendRate\"\n"
+                                "        name = \"sendTimeout\"\n"
                                 "        type = \"int\"\n"
                                 "        value = \"60\"\n"
                                 "        api_call = \"SET TIMEOUT\"\n"
@@ -165,15 +165,14 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         //set to false if number of skels/rb's needs updating
         bool rigidbodiesReady = true;
         bool skeletonsReady = true;
-        bool sentRequest = false;
 
         // if there is a difference do natnet.sendRequestDescription(); to get up to date rigidbodie descriptions and thus names
         if (rigidbody_descs.size() != rigidbodies.size())
         {
             //TODO: non-blocking send request
-            if (!sentRequest) {
-                //sendRequestDescription()
-                sentRequest = true;
+            if (sentRequest <= 0) {
+                sendRequestDescription();
+                sentRequest = 60; //1 second
             }
             rigidbodiesReady = false;
         }
@@ -182,12 +181,14 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         if (skeleton_descs.size() != skeletons.size())
         {
             //TODO: non-blocking send request
-            if (!sentRequest) {
-                //sendRequestDescription()
-                sentRequest = true;
+            if (sentRequest <= 0) {
+                sendRequestDescription();
+                sentRequest = 60; //1 second
             }
             skeletonsReady = false;
         }
+
+        if (sentRequest > 0) sentRequest--;
 
         zmsg_t* oscMsg = zmsg_new();
 
@@ -1037,6 +1038,20 @@ void NatNet::Unpack( char * pData ) {
 
 int NatNet::GetLocalIPAddresses(unsigned long Addresses[], int nMax) {
     return 0;
+}
+
+void NatNet::sendRequestDescription() {
+    sPacket packet;
+    packet.iMessage = NAT_REQUEST_MODELDEF;
+    packet.nDataBytes = 0;
+
+    std::string url = host+":"+CMD_PORT;
+    zstr_sendm(CommandSocket, url.c_str());
+    int rc = zsock_send(CommandSocket,  "b", (char*)&packet, 4 + packet.nDataBytes);
+    if(rc != 0)
+    {
+        zsys_info("Socket error sending command: NAT_REQUEST_MODELDEF");
+    }
 }
 
 int NatNet::SendCommand(char* szCommand) {
