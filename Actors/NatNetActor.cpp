@@ -26,7 +26,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natnetCapabilities));
 
         //receive socket on port DATA_PORT
-        std::string url = "udp://*:"+DATA_PORT;
+        std::string url = "udp://*:"+PORT_DATA_STR;
         DataSocket = zsock_new_dgram(url.c_str());
         assert( DataSocket );
         dataFD = zsock_fd(DataSocket);
@@ -34,7 +34,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         assert(rc == 0);
 
         // receive socket on CMD_PORT
-        url = "udp://*:"+CMD_PORT;
+        url = "udp://*:"+ PORT_COMMAND_STR;
         CommandSocket = zsock_new_dgram(url.c_str());
         assert( CommandSocket );
         cmdFD = zsock_fd(CommandSocket);
@@ -69,7 +69,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
             if ( streq(cmd, "SET HOST") ) {
                 char * host_addr = zmsg_popstr(ev->msg);
                 host = host_addr;
-                std::string url = "udp://" + host + DATA_PORT;
+                std::string url = "udp://" + host + PORT_DATA_STR;
                 zsys_info("SET HOST: %s", url.c_str());
                 zstr_free(&host_addr);
 
@@ -82,7 +82,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                 while (nTries--)
                 {
                     //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-                    std::string url = host+":"+CMD_PORT;
+                    std::string url = host+":"+PORT_COMMAND_STR;
                     zstr_sendm(CommandSocket, url.c_str());
                     int rc = zsock_send(CommandSocket,  "b", (char*)&PacketOut, 4 + PacketOut.nDataBytes);
                     if(rc != SOCKET_ERROR)
@@ -1035,7 +1035,7 @@ void NatNet::sendRequestDescription() {
     packet.iMessage = NAT_REQUEST_MODELDEF;
     packet.nDataBytes = 0;
 
-    std::string url = host+":"+CMD_PORT;
+    std::string url = host+":"+PORT_COMMAND_STR;
     zstr_sendm(CommandSocket, url.c_str());
     int rc = zsock_send(CommandSocket,  "b", (char*)&packet, 4 + packet.nDataBytes);
     if(rc != 0)
@@ -1056,7 +1056,7 @@ int NatNet::SendCommand(char* szCommand) {
 
     //TODO: Check if replacement works...
     //int iRet = sendto(CommandSocket, (char *)&commandPacket, 4 + commandPacket.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-    std::string url = host+":"+CMD_PORT;
+    std::string url = host+":"+PORT_COMMAND_STR;
     zstr_sendm(CommandSocket, url.c_str());
     int rc = zsock_send(CommandSocket,  "b", (char*)&commandPacket, 4 + commandPacket.nDataBytes);
     if(rc != 0)
