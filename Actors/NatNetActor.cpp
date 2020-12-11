@@ -169,7 +169,6 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         // if there is a difference do natnet.sendRequestDescription(); to get up to date rigidbodie descriptions and thus names
         if (rigidbody_descs.size() != rigidbodies.size())
         {
-            //TODO: non-blocking send request
             if (sentRequest <= 0) {
                 sendRequestDescription();
                 sentRequest = 60; //1 second
@@ -180,7 +179,6 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         //get & check skeletons size
         if (skeleton_descs.size() != skeletons.size())
         {
-            //TODO: non-blocking send request
             if (sentRequest <= 0) {
                 sendRequestDescription();
                 sentRequest = 60; //1 second
@@ -229,17 +227,9 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
     {
         const RigidBody &RB = rigidbodies[i];
 
-        // Get the matirx
-        //TODO: Matrix
-        //ofMatrix4x4 matrix = RB.matrix;
-
         // Decompose to get the different elements
-        Vec3 position;
-        Vec4 rotation;
-        Vec3 scale;
-        Vec4 so;
-        //TODO: Matrix
-        //matrix.decompose(position, rotation, scale, so);
+        Vec3 position = RB.position;
+        Vec4 rotation = RB.rotation;
 
         //we're going to fetch or create this
         //TODO: re-implement rigidbody histories for velocity data
@@ -580,8 +570,9 @@ char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodi
 
         RB.id = ID;
         RB.position = pp;
+        RB.rotation = q;
 
-        //TODO: Matrix
+        //TODO: Matrix, what does preMult do? Is it even necessary?
         //pp = transform.preMult(pp);
         //
         //ofMatrix4x4 mat;
@@ -619,7 +610,7 @@ char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodi
             float z = markerData[k * 3 + 2];
 
             Vec3 pp(x, y, z);
-            //TODO: Matrix
+            //TODO: Matrix?
             //pp = transform.preMult(pp);
             RB.markers[k] = pp;
         }
@@ -656,9 +647,8 @@ void NatNet::Unpack( char * pData ) {
     int major = NatNetVersion[0];
     int minor = NatNetVersion[1];
 
-    //TODO: Matrix
+    //TODO: Matrix?
     //Vec4 rotation = transform.getRotate();
-    Vec4 rotation;
 
     char *ptr = pData;
 
@@ -766,7 +756,7 @@ void NatNet::Unpack( char * pData ) {
                 //zsys_info("size: [%3.2f]\n", size);
 
                 Vec3 pp(x, y, z);
-                //TODO: Matrix
+                //TODO: Matrix?
                 //pp = transform.preMult(pp);
                 tmp_markers.push_back(pp);
             }

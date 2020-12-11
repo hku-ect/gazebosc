@@ -32,9 +32,12 @@ typedef Vec3 Marker;
 struct RigidBody
 {
     int id;
-    //TODO: matrix...?
 
+    //TODO: matrix...?
     //ofMatrix4x4 matrix;
+    Vec3 position;
+    Vec4 rotation;
+
     std::vector<Marker> markers;
 
     float mean_marker_error;
@@ -44,7 +47,6 @@ struct RigidBody
     //const ofMatrix4x4& getMatrix() const { return matrix; }
 
     bool _active;
-    Vec3 position;
 };
 
 struct Skeleton
