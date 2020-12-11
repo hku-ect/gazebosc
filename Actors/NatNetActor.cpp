@@ -26,8 +26,10 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natnetCapabilities));
 
         //receive socket on port DATA_PORT
-        std::string url = "udp://*:"+PORT_DATA_STR;
-        DataSocket = zsock_new_dgram(url.c_str());
+        //Test multicast group to receive data
+        std::string url = "epgm://*;" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+        DataSocket = zsock_new(ZMQ_DGRAM);
+        zsock_connect(DataSocket, "%s", url.c_str());
         assert( DataSocket );
         dataFD = zsock_fd(DataSocket);
         int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
@@ -69,8 +71,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
             if ( streq(cmd, "SET HOST") ) {
                 char * host_addr = zmsg_popstr(ev->msg);
                 host = host_addr;
-                std::string url = "udp://" + host + PORT_DATA_STR;
-                zsys_info("SET HOST: %s", url.c_str());
+                zsys_info("SET HOST: %s", host_addr);
                 zstr_free(&host_addr);
 
                 // Say hello to our new host

@@ -15,9 +15,14 @@ struct NatNet {
     // CommandSocket;
     zsock_t* CommandSocket = NULL;
     SOCKET cmdFD = -1;
-    // ServerAddress;
-    std::string host = "";
 
+    // Actor Settings
+    // ServerAddress
+    std::string host = "";
+    // send
+
+
+    // NatNet vars
     int NatNetVersion[4] = {0,0,0,0};
     int ServerVersion[4] = {0,0,0,0};
 

@@ -11,7 +11,7 @@ struct Vec3 {
         return p[id];
     }
 
-    Vec3(){};
+    Vec3()= default;
 
     Vec3(float x, float y, float z) {
         p[0] = x;
@@ -120,10 +120,11 @@ typedef struct
 
 } sPacket;
 
-#define MULTICAST_ADDRESS		"239.255.42.99"     // IANA, local network
+//#define MULTICAST_ADDRESS		"239.255.42.99"     // IANA, local network
 #define PORT_COMMAND            1510
 #define PORT_DATA  			    1511
 
+static std::string MULTICAST_ADDRESS = "239.255.42.99";
 static std::string PORT_COMMAND_STR = "1150";
 static std::string PORT_DATA_STR = "1151";
 
