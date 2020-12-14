@@ -213,7 +213,7 @@ void BeginCanvas(CanvasState* canvas)
 
     if (!ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
     {
-        if (ImGui::IsMouseDragging(2))
+        if (ImGui::IsMouseDragging(1))
             canvas->offset += io.MouseDelta;
 
         if (io.KeyShift && !io.KeyCtrl)
