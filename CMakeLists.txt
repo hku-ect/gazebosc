@@ -37,7 +37,7 @@ endif()
 ## End getting the submodules
 
 set(CMAKE_CXX_STANDARD 14)
-set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
+set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
 
 ## Definitions for draft API's of submodules
