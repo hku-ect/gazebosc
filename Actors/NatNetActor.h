@@ -10,11 +10,11 @@
 struct NatNet {
     // DataSocket;
     zsock_t* DataSocket = NULL;
-    SOCKET dataFD = -1;
+    int dataFD = -1;
 
     // CommandSocket;
     zsock_t* CommandSocket = NULL;
-    SOCKET cmdFD = -1;
+    int cmdFD = -1;
 
     // Actor Settings
     // ServerAddress

@@ -27,9 +27,11 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
 
         //receive socket on port DATA_PORT
         //Test multicast group to receive data
-        std::string url = "epgm://*;" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+        //TODO: Discover network interfaces, and have user select which to bind (drop-down)?
+        std::string url = "udp://*;" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
         DataSocket = zsock_new(ZMQ_DGRAM);
-        zsock_connect(DataSocket, "%s", url.c_str());
+        //zsock_connect(DataSocket, "%s", url.c_str());
+        zsock_bind(DataSocket, "%s", url.c_str());
         assert( DataSocket );
         dataFD = zsock_fd(DataSocket);
         int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
@@ -111,10 +113,9 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
             zsock_t* sock = (zsock_t*) zsock_resolve( p );
             if ( sock )
             {
-                // Used to determine which socket it is
-                SOCKET id = zsock_fd(sock);
+                SOCKET sockFD = zsock_fd(sock);
 
-                if ( id == cmdFD ) {
+                if ( sockFD == cmdFD ) {
                     zsys_info("CMD SOCKET");
                     // Parse command
                     int addr_len;
@@ -134,7 +135,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                         zmsg_destroy(&zmsg);
                     }
                 }
-                else if ( id == dataFD ) {
+                else if ( sockFD == dataFD ) {
                     zsys_info("DATA SOCKET");
 
                     // Parse packet
