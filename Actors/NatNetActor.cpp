@@ -34,7 +34,7 @@ const char * natnetCapabilities =
                                 "        api_call = \"SET SKELETONS\"\n"
                                 "        api_value = \"s\"\n"
                                 "    data\n"
-                                "        name = \"velocities\"\n"
+                                "        name = \"rbVelocities\"\n"
                                 "        type = \"bool\"\n"
                                 "        value = \"False\"\n"
                                 "        api_call = \"SET VELOCITIES\"\n"
@@ -272,10 +272,8 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         addRigidbodies(oscMsg);
 
         //skeletons
-        //TODO: implement skeletons (requires zosc_append)
         addSkeletons(oscMsg);
 
-        //TODO: add vivetrackers data
         if ( zmsg_content_size(oscMsg) != 0 ){
             //zsys_info("NatNet: sending data");
             zmsg_destroy(&ev->msg);
@@ -383,34 +381,33 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
         }
         */
 
-        //TODO: support hierarchy mode
-        zosc_t * oscMsg = zosc_create("/rigidbody", "isfffffffi",
-                                        RB.id,
-                                        rigidbody_descs[i].name.c_str(),
-                                        position[0],
-                                        position[1],
-                                        position[2],
-                                        rotation[0],
-                                        rotation[1],
-                                        rotation[2],
-                                        rotation[3],
-                                        ( RB.isActive() ? 1 : 0 )
-                                        );
-
-        //TODO: Velocity add
-        /*
-        if ( c->getModeFlags() & ClientFlag_Velocity )
-        {
-            //velocity over SMOOTHING * 2 + 1 frames
-            m.addFloatArg(velocity.x * 1000);
-            m.addFloatArg(velocity.y * 1000);
-            m.addFloatArg(velocity.z * 1000);
-            //angular velocity (euler), also smoothed
-            m.addFloatArg(angularVelocity.x * 1000);
-            m.addFloatArg(angularVelocity.y * 1000);
-            m.addFloatArg(angularVelocity.z * 1000);
+        std::string address = "/rigidbody";
+        if ( sendHierarchy ) {
+            address += "/"+rigidbody_descs[i].name;
         }
-        */
+
+        zosc_t *oscMsg = zosc_create(address.c_str(), "isfffffffi",
+                                     RB.id,
+                                     rigidbody_descs[i].name.c_str(),
+                                     position[0],
+                                     position[1],
+                                     position[2],
+                                     rotation[0],
+                                     rotation[1],
+                                     rotation[2],
+                                     rotation[3],
+                                     (RB.isActive() ? 1 : 0)
+        );
+
+        if ( sendVelocities )
+        {
+            zosc_append(oscMsg, "fffff",
+                        //velocity over SMOOTHING * 2 + 1 frames
+                        0, 0, 0,    //TODO: velocity.x/y/z * 1000
+                        //angular velocity (euler), also smoothed
+                        0, 0, 0 );  //TODO: angularVelocity.x/y/z * 1000
+        }
+
 
         zmsg_add(zmsg, zosc_pack(oscMsg));
     }
@@ -423,92 +420,92 @@ void NatNet::addSkeletons(zmsg_t *zmsg)
         const Skeleton &S = skeletons[j];
         std::vector<RigidBodyDescription> rbd = skeleton_descs[j].joints;
 
-        //TODO: Hierarchy mode
-        /*if ( c->getHierarchy())
+        if ( sendHierarchy )
         {
             for (int i = 0; i < S.joints.size(); i++)
             {
-                const ofxNatNet::RigidBody &RB = S.joints[i];
-
-                ofxOscMessage m;
-                m.setAddress("/skeleton/" + ofToString(sd[j].name) + "/" +
-                             ofToString(ofToString(rbd[i].name)));
+                RigidBody RB = S.joints[i];
+                std::string address = "/skeleton/" + skeleton_descs[j].name + "/" + rbd[i].name;
 
                 // Get the matirx
-                ofMatrix4x4 matrix = RB.matrix;
+                //ofMatrix4x4 matrix = RB.matrix;
 
                 // Decompose to get the different elements
-                ofVec3f position;
-                ofQuaternion rotation;
-                ofVec3f scale;
-                ofQuaternion so;
-                matrix.decompose(position, rotation, scale, so);
-                m.addStringArg(ofToString(rbd[i].name));
-                m.addFloatArg(position.x);
-                m.addFloatArg(position.y);
-                m.addFloatArg(position.z);
-                m.addFloatArg(rotation.x());
-                m.addFloatArg(rotation.y());
-                m.addFloatArg(rotation.z());
-                m.addFloatArg(rotation.w());
+                //Vec3 position;
+                //Vec4 rotation;
+                //Vec3 scale;
+                //Vec4 so;
+                //matrix.decompose(position, rotation, scale, so);
+
+                zosc_t *oscMsg = zosc_create( address.c_str(), "sfffffff",
+                                                rbd[i].name.c_str(),
+                                                RB.position[0],
+                                                RB.position[1],
+                                                RB.position[2],
+                                                RB.rotation[0],
+                                                RB.rotation[1],
+                                                RB.rotation[2],
+                                                RB.rotation[3]
+                                            );
+
                 //needed for skeleton retargeting
-                if ( c->getModeFlags() & ClientFlag_FullSkeleton )
+                if ( sendSkeletonDefinitions )
                 {
-                    m.addIntArg(rbd[i].parent_id);
-                    m.addFloatArg(rbd[i].offset.x);
-                    m.addFloatArg(rbd[i].offset.y);
-                    m.addFloatArg(rbd[i].offset.z);
-                    //TODO: Figure out if this is needed. It's obvious for rigidbodies,
-                    //          but skeletons don't have an "isActive" as a totality
-                    //m.addBoolArg(RB.isActive());
+                    zosc_append(oscMsg, "ifff",
+                                        rbd[i].parent_id,
+                                        rbd[i].offset[0],
+                                        rbd[i].offset[1],
+                                        rbd[i].offset[2]
+                                );
                 }
 
-                bundle->addMessage(m);
+                zmsg_add(zmsg, zosc_pack(oscMsg));
             }
         }
         else
-        */
         {
-            //TODO: Support append for zosc messages
-            /*
-            ofxOscMessage m;
-            m.setAddress("/skeleton");
-            m.addStringArg(ofToString(sd[j].name));
-            m.addIntArg(S.id);
+            std::string address = "/skeleton";
+
+            zosc_t * oscMsg = zosc_create(address.c_str(), "si", skeleton_descs[j].name.c_str(), S.id );
 
             for (int i = 0; i < S.joints.size(); i++)
             {
-                const ofxNatNet::RigidBody &RB = S.joints[i];
+                RigidBody RB = S.joints[i];
 
                 // Get the matirx
-                ofMatrix4x4 matrix = RB.matrix;
+                //ofMatrix4x4 matrix = RB.matrix;
 
                 // Decompose to get the different elements
-                ofVec3f position;
-                ofQuaternion rotation;
-                ofVec3f scale;
-                ofQuaternion so;
-                matrix.decompose(position, rotation, scale, so);
-                m.addStringArg(ofToString(rbd[i].name));
-                m.addFloatArg(position.x);
-                m.addFloatArg(position.y);
-                m.addFloatArg(position.z);
-                m.addFloatArg(rotation.x());
-                m.addFloatArg(rotation.y());
-                m.addFloatArg(rotation.z());
-                m.addFloatArg(rotation.w());
+                //ofVec3f position;
+                //ofQuaternion rotation;
+                //ofVec3f scale;
+                //ofQuaternion so;
+                //matrix.decompose(position, rotation, scale, so);
+
+                zosc_append( oscMsg, "sfffffff",
+                                  rbd[i].name.c_str(),
+                                  RB.position[0],
+                                  RB.position[1],
+                                  RB.position[2],
+                                  RB.rotation[0],
+                                  RB.rotation[1],
+                                  RB.rotation[2],
+                                  RB.rotation[3]
+                );
+
                 //needed for skeleton retargeting
-                if ( c->getModeFlags() & ClientFlag_FullSkeleton )
+                if ( sendSkeletonDefinitions )
                 {
-                    m.addIntArg(rbd[i].parent_id);
-                    m.addFloatArg(rbd[i].offset.x);
-                    m.addFloatArg(rbd[i].offset.y);
-                    m.addFloatArg(rbd[i].offset.z);
+                    zosc_append(oscMsg, "ifff",
+                                rbd[i].parent_id,
+                                rbd[i].offset[0],
+                                rbd[i].offset[1],
+                                rbd[i].offset[2]
+                    );
                 }
             }
 
-            bundle->addMessage(m);
-            */
+            zmsg_add(zmsg, zosc_pack(oscMsg));
         }
     }
 }
