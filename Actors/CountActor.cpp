@@ -14,11 +14,16 @@ Count::handleMsg( sphactor_event_t *ev ) {
     if ( streq(ev->type, "INIT")) {
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(countCapabilities));
     }
+    else if ( streq( ev->type, "DESTROY")) {
+        delete this;
+        zmsg_destroy(&ev->msg);
+        return NULL;
+    }
     else if ( streq(ev->type, "SOCK")) {
         this->msgCount++;
         zosc_t * msg = zosc_create("/report", "ssscsishsf",
                                                 "Some Text", "12345678",
-                                                "Some Char", 'q',     //TODO: FIX
+                                                "Some Char", 'q',
                                                 "Small Int", (int32_t)this->msgCount,
                                                 "Big Int", (int64_t)this->msgCount,
                                                 "A float!", (float)0.23454 );

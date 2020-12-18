@@ -105,7 +105,6 @@ ImGuiTextBuffer& getBuffer(){
 // Main code
 int main(int argc, char** argv)
 {
-    //TODO: Register actors through new system
     RegisterActors();
 
     // Argument capture

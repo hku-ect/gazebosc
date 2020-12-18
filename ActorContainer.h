@@ -69,7 +69,6 @@ struct ActorContainer {
         this->capabilities = zconfig_dup(sphactor_ask_capability(actor));
 
         ParseConnections();
-        //TODO: figure out why this doesn't work
         InitializeCapabilities();
     }
 
@@ -111,23 +110,30 @@ struct ActorContainer {
                 char * zapivStr = zconfig_value(zapiv);
                 char type = zapivStr[0];
                 switch( type ) {
-                    case 'i':
+                    case 'b': {
+                        char *buf = new char[4];
+                        const char *zvalueStr = zconfig_value(zvalue);
+                        strcpy(buf, zvalueStr);
+                        SendAPI<char *>(zapic, zapiv, zvalue, &buf);
+                        zstr_free(&buf);
+                    } break;
+                    case 'i': {
                         int ival;
                         ReadInt(&ival, zvalue);
                         SendAPI<int>(zapic, zapiv, zvalue, &ival);
-                    break;
-                    case 'f':
+                    } break;
+                    case 'f': {
                         float fval;
                         ReadFloat(&fval, zvalue);
                         SendAPI<float>(zapic, zapiv, zvalue, &fval);
-                    break;
-                    case 's':
-                        char* buf = new char[MAX_STR_DEFAULT];
-                        const char* zvalueStr = zconfig_value(zvalue);
+                    } break;
+                    case 's': {
+                        char *buf = new char[MAX_STR_DEFAULT];
+                        const char *zvalueStr = zconfig_value(zvalue);
                         strcpy(buf, zvalueStr);
-                        SendAPI<char*>(zapic, zapiv, zvalue, &buf);
+                        SendAPI<char *>(zapic, zapiv, zvalue, &buf);
                         zstr_free(&buf);
-                    break;
+                    } break;
                 }
             }
             else {
@@ -200,6 +206,9 @@ struct ActorContainer {
             }
             else if ( streq(typeStr, "string")) {
                 RenderString( nameStr, data );
+            }
+            else if ( streq(typeStr, "bool")) {
+                RenderBool( nameStr, data );
             }
 
             data = zconfig_next(data);
@@ -303,6 +312,28 @@ struct ActorContainer {
         *position += sizeof(T);
     }
 
+    void RenderBool(const char* name, zconfig_t *data) {
+        bool value;
+
+        zconfig_t * zvalue = zconfig_locate(data, "value");
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+        zconfig_t * zapiv = zconfig_locate(data, "api_value");
+        assert(zvalue);
+
+        ReadBool( &value, zvalue);
+
+        ImGui::SetNextItemWidth(100);
+        if ( ImGui::Checkbox( name, &value ) ) {
+            zconfig_set_value(zvalue, "%s", value ? "True" : "False");
+
+            char *buf = new char[4];
+            const char *zvalueStr = zconfig_value(zvalue);
+            strcpy(buf, zvalueStr);
+            SendAPI<char *>(zapic, zapiv, zvalue, &buf);
+            zstr_free(&buf);
+        }
+    }
+
     void RenderInt(const char* name, zconfig_t *data) {
         int value;
         int min = 0, max = 0, step = 0;
@@ -387,6 +418,12 @@ struct ActorContainer {
         if ( ImGui::InputText(name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
             zconfig_set_value(zvalue, "%s", buf);
             SendAPI<char*>(zapic, zapiv, zvalue, &(p));
+        }
+    }
+
+    void ReadBool( bool *value, zconfig_t * data) {
+        if ( data != NULL ) {
+            *value = streq( zconfig_value(data), "True");
         }
     }
 

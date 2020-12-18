@@ -33,6 +33,11 @@ zmsg_t * Pulse::handleMsg( sphactor_event_t *ev ) {
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pulseCapabilities));
         return ev->msg;
     }
+    else if ( streq( ev->type, "DESTROY")) {
+        delete this;
+        zmsg_destroy(&ev->msg);
+        return NULL;
+    }
     else
     if ( streq(ev->type, "TIME")) {
         zosc_t * osc = zosc_create("/pulse", "s", "PULSE");
