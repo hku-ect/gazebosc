@@ -125,7 +125,7 @@ typedef struct
 #define PORT_DATA  			    1511
 
 static std::string MULTICAST_ADDRESS = "239.255.42.99";
-static std::string PORT_COMMAND_STR = "1150";
-static std::string PORT_DATA_STR = "1151";
+static std::string PORT_COMMAND_STR = "1510";
+static std::string PORT_DATA_STR = "1511";
 
 #endif //GAZEBOSC_NATNETDATATYPES_H

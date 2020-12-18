@@ -6,7 +6,7 @@ const char * natnetCapabilities =
                                 "    data\n"
                                 "        name = \"motive ip\"\n"
                                 "        type = \"string\"\n"
-                                "        value = \"192.168.0.1\"\n"
+                                "        value = \"192.168.10.30\"\n"
                                 "        api_call = \"SET HOST\"\n"
                                 "        api_value = \"s\"\n"           // optional picture format used in zsock_send
                                 "    data\n"
@@ -15,6 +15,42 @@ const char * natnetCapabilities =
                                 "        value = \"60\"\n"
                                 "        api_call = \"SET TIMEOUT\"\n"
                                 "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+                                "    data\n"
+                                "        name = \"markers\"\n"
+                                "        type = \"bool\"\n"
+                                "        value = \"False\"\n"
+                                "        api_call = \"SET MARKERS\"\n"
+                                "        api_value = \"s\"\n"
+                                "    data\n"
+                                "        name = \"rigidbodies\"\n"
+                                "        type = \"bool\"\n"
+                                "        value = \"False\"\n"
+                                "        api_call = \"SET RIGIDBODIES\"\n"
+                                "        api_value = \"s\"\n"
+                                "    data\n"
+                                "        name = \"skeletons\"\n"
+                                "        type = \"bool\"\n"
+                                "        value = \"False\"\n"
+                                "        api_call = \"SET SKELETONS\"\n"
+                                "        api_value = \"s\"\n"
+                                "    data\n"
+                                "        name = \"velocities\"\n"
+                                "        type = \"bool\"\n"
+                                "        value = \"False\"\n"
+                                "        api_call = \"SET VELOCITIES\"\n"
+                                "        api_value = \"s\"\n"
+                                "    data\n"
+                                "        name = \"hierarchy\"\n"
+                                "        type = \"bool\"\n"
+                                "        value = \"True\"\n"
+                                "        api_call = \"SET HIERARCHY\"\n"
+                                "        api_value = \"s\"\n"
+                                "    data\n"
+                                "        name = \"sendSkeletonDefinitions\"\n"
+                                "        type = \"bool\"\n"
+                                "        value = \"False\"\n"
+                                "        api_call = \"SET SKELETONDEF\"\n"
+                                "        api_value = \"s\"\n"
                                 "outputs\n"
                                 "    output\n"
                                 //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -28,7 +64,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         //receive socket on port DATA_PORT
         //Test multicast group to receive data
         //TODO: Discover network interfaces, and have user select which to bind (drop-down)?
-        std::string url = "udp://*;" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+        std::string url = "udp://" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
         DataSocket = zsock_new(ZMQ_DGRAM);
         //zsock_connect(DataSocket, "%s", url.c_str());
         zsock_bind(DataSocket, "%s", url.c_str());
@@ -88,9 +124,41 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     std::string url = host+":"+PORT_COMMAND_STR;
                     zstr_sendm(CommandSocket, url.c_str());
                     int rc = zsock_send(CommandSocket,  "b", (char*)&PacketOut, 4 + PacketOut.nDataBytes);
-                    if(rc != SOCKET_ERROR)
-                        break;
+                    //if(rc != SOCKET_ERROR) {
+                        zsys_info("Sent ping to %s", url.c_str());
+                    //    break;
+                    //}
                 }
+            }
+            else if ( streq(cmd, "SET MARKERS") ) {
+                char * value = zmsg_popstr(ev->msg);
+                sendMarkers = streq( value, "True");
+                //zsys_info("Got: %s, set to %s", value, sendMarkers ? "True" : "False");
+            }
+            else if ( streq(cmd, "SET RIGIDBODIES") ) {
+                char * value = zmsg_popstr(ev->msg);
+                sendRigidbodies = streq( value, "True");
+                //zsys_info("Got: %s, set to %s", value, sendRigidbodies ? "True" : "False");
+            }
+            else if ( streq(cmd, "SET SKELETONS") ) {
+                char * value = zmsg_popstr(ev->msg);
+                sendSkeletons = streq( value, "True");
+                //zsys_info("Got: %s, set to %s", value, sendSkeletons ? "True" : "False");
+            }
+            else if ( streq(cmd, "SET VELOCITIES") ) {
+                char * value = zmsg_popstr(ev->msg);
+                sendVelocities = streq( value, "True");
+                //zsys_info("Got: %s, set to %s", value, sendVelocities ? "True" : "False");
+            }
+            else if ( streq(cmd, "SET HIERARCHY") ) {
+                char * value = zmsg_popstr(ev->msg);
+                sendHierarchy = streq( value, "True");
+                //zsys_info("Got: %s, set to %s", value, sendHierarchy ? "True" : "False");
+            }
+            else if ( streq(cmd, "SET SKELETONDEF") ) {
+                char * value = zmsg_popstr(ev->msg);
+                sendSkeletonDefinitions = streq( value, "True");
+                //zsys_info("Got: %s, set to %s", value, sendSkeletonDefinitions ? "True" : "False");
             }
 
             zstr_free(&cmd);

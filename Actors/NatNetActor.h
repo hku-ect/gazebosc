@@ -19,8 +19,15 @@ struct NatNet {
     // Actor Settings
     // ServerAddress
     std::string host = "";
-    // send
 
+    // Temporary settings for feature parity
+    // TODO: Move these to a filter node? Figure out how to share the natnet data efficiently
+    bool sendMarkers = false;
+    bool sendRigidbodies = false;
+    bool sendSkeletons = false;
+    bool sendSkeletonDefinitions = false;
+    bool sendVelocities = false;
+    bool sendHierarchy = true;
 
     // NatNet vars
     int NatNetVersion[4] = {0,0,0,0};
