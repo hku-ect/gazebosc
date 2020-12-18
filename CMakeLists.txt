@@ -37,7 +37,7 @@ endif()
 ## End getting the submodules
 
 set(CMAKE_CXX_STANDARD 14)
-set(DEP_IMGUI_VERSION "1.72b" CACHE STRING "ImGui version to use")
+set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
 
 ## Definitions for draft API's of submodules
@@ -154,6 +154,13 @@ if (UNIX)
     target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
     target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 endif ()
+
+add_custom_command(
+    TARGET gazebosc POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/misc
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+
 add_custom_command(
     TARGET gazebosc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
