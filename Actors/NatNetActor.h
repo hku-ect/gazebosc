@@ -42,6 +42,7 @@ struct NatNet {
     float latency;
     float timeout;
     int sentRequest;
+    float duplicated_point_removal_distance = 0;
 
     std::vector<std::vector<Marker> > markers_set;
     std::vector<Marker> filtered_markers;
@@ -56,6 +57,8 @@ struct NatNet {
     std::vector<RigidBodyDescription> rigidbody_descs;
     std::vector<SkeletonDescription> skeleton_descs;
     std::vector<MarkerSetDescription> markerset_descs;
+
+    std::vector<RigidBodyHistory> rbHistory;
 
     zmsg_t * handleMsg( sphactor_event_t *ev );
 
@@ -72,13 +75,11 @@ struct NatNet {
     //OSC Sending Functions
     void addRigidbodies(zmsg_t *zmsg);
     void addSkeletons(zmsg_t *zmsg);
-    void fixRanges( Vec3 *euler );
+    void fixRanges( glm::vec3 *euler );
 
     //TODO: necessary?
     bool IPAddress_StringToAddr(char *szNameOrAddress, struct in_addr *Address);
     int GetLocalIPAddresses(unsigned long Addresses[], int nMax);
-
-
 
     NatNet() {
 

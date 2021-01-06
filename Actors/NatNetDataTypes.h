@@ -3,31 +3,13 @@
 
 #include <string>
 #include <vector>
+#include "../ext/glm/glm/glm.hpp"
+#include "../ext/glm/glm/ext.hpp"
+#include "../ext/glm/glm/gtc/quaternion.hpp"
 
 // Custom data structs
-struct Vec3 {
-    float p[3] = {0,0,0};
-    float& operator [](int id) {
-        return p[id];
-    }
 
-    Vec3()= default;
-
-    Vec3(float x, float y, float z) {
-        p[0] = x;
-        p[1] = y;
-        p[2] = z;
-    }
-};
-
-struct Vec4 {
-    float p[4] = {0,0,0,0};
-    float& operator [](int id) {
-        return p[id];
-    }
-};
-
-typedef Vec3 Marker;
+typedef glm::vec3 Marker;
 
 struct RigidBody
 {
@@ -35,8 +17,8 @@ struct RigidBody
 
     //TODO: matrix...?
     //ofMatrix4x4 matrix;
-    Vec3 position;
-    Vec4 rotation;
+    glm::vec3 position;
+    glm::vec4 rotation;
 
     std::vector<Marker> markers;
 
@@ -60,7 +42,7 @@ struct RigidBodyDescription
     std::string name;
     int id;
     int parent_id;
-    Vec3 offset;
+    glm::vec3 offset;
     std::vector<std::string> marker_names;
 };
 
@@ -77,7 +59,48 @@ struct MarkerSetDescription
     std::vector<std::string> marker_names;
 };
 
+struct RigidBodyHistory {
+public:
+    int rigidBodyId;
+    glm::vec3 previousPosition;
+    glm::quat previousOrientation;
+
+    std::vector<glm::vec3> velocities;
+    std::vector<glm::vec3> angularVelocities;
+
+    bool firstRun = TRUE;
+    int currentDataPoint = 0;
+    int framesInactive = 0;
+
+    RigidBodyHistory( int id, glm::vec3 p, glm::quat r )
+    {
+        previousPosition = p;
+        previousOrientation = r;
+        rigidBodyId = id;
+
+        currentDataPoint = 0;
+        firstRun = TRUE;
+        framesInactive = 0;
+    }
+};
+
+struct remove_dups
+{
+    glm::vec3 v;
+    float dist;
+
+    remove_dups(const glm::vec3& v, float dist)
+            : v(v)
+            , dist(dist)
+    {
+    }
+
+    bool operator()(const glm::vec3& t) { return glm::distance(v, t) <= dist; }
+};
+
 // Natnet settings
+
+#define SMOOTHING                   2
 
 #define MAX_NAMELENGTH              256
 

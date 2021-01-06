@@ -293,22 +293,25 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
 {
     for (int i = 0; i < rigidbodies.size(); i++)
     {
-        const RigidBody &RB = rigidbodies[i];
+        RigidBody &RB = rigidbodies[i];
 
         // Decompose to get the different elements
-        Vec3 position = RB.position;
-        Vec4 rotation = RB.rotation;
+        glm::vec3 position = RB.position;
+        glm::quat rotation;
+        rotation.x = RB.rotation[0];
+        rotation.y = RB.rotation[1];
+        rotation.z = RB.rotation[2];
+        rotation.w = RB.rotation[3];
 
         //we're going to fetch or create this
-        //TODO: re-implement rigidbody histories for velocity data
-        /*
+        //TODO: TEST re-implemented rigidbody histories for velocity data
         RigidBodyHistory *rb;
 
         //Get or create rigidbodyhistory
         bool found = false;
         for( int r = 0; r < rbHistory.size(); ++r )
         {
-            if ( rbHistory[r].rigidBodyId == rbd[i].id )
+            if ( rbHistory[r].rigidBodyId == RB.id )
             {
                 rb = &rbHistory[r];
                 found = true;
@@ -317,12 +320,12 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
 
         if ( !found )
         {
-            rb = new RigidBodyHistory( rbd[i].id, position, rotation );
+            rb = new RigidBodyHistory( RB.id, position, rotation );
             rbHistory.push_back(*rb);
         }
 
-        Vec3 velocity;
-        Vec3 angularVelocity;
+        glm::vec3 velocity;
+        glm::vec3 angularVelocity;
 
         if ( rb->firstRun == TRUE )
         {
@@ -331,11 +334,12 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
         }
         else
         {
+            //TODO: Get invFPS from timeout
+            float invFPS = ( 1.0f / 60.0f );
             if ( rb->currentDataPoint < 2 * SMOOTHING + 1 )
             {
                 rb->velocities[rb->currentDataPoint] = ( position - rb->previousPosition ) * invFPS;
-
-                ofVec3f diff = ( rb->previousOrientation * rotation.inverse() ).getEuler();
+                glm::vec3 diff = glm::eulerAngles( rb->previousOrientation * glm::inverse(rotation) );
                 rb->angularVelocities[rb->currentDataPoint] = ( diff * invFPS );
 
                 rb->currentDataPoint++;
@@ -344,8 +348,8 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
             {
                 int count = 0;
                 int maxDist = SMOOTHING;
-                ofVec3f totalVelocity;
-                ofVec3f totalAngularVelocity;
+                glm::vec3 totalVelocity;
+                glm::vec3 totalAngularVelocity;
                 //calculate smoothed velocity
                 for( int x = 0; x < SMOOTHING * 2 + 1; ++x )
                 {
@@ -355,15 +359,15 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
                     int infl = ( maxDist - dist ) + 1;
 
                     //add all
-                    totalVelocity += rb->velocities[x] * infl;
-                    totalAngularVelocity += rb->angularVelocities[x] * infl;
+                    totalVelocity += rb->velocities[x] * glm::vec3(infl);
+                    totalAngularVelocity += rb->angularVelocities[x] * glm::vec3(infl);
                     //count "influences"
                     count += infl;
                 }
 
                 //divide by total data point influences
-                velocity = totalVelocity / count;
-                angularVelocity = totalAngularVelocity / count;
+                velocity = totalVelocity / glm::vec3(count);
+                angularVelocity = totalAngularVelocity / glm::vec3(count);
 
                 for( int x = 0; x < rb->currentDataPoint - 1; ++x )
                 {
@@ -372,14 +376,13 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
                 }
                 rb->velocities[rb->currentDataPoint-1] = ( position - rb->previousPosition ) * invFPS;
 
-                ofVec3f diff = ( rb->previousOrientation * rotation.inverse() ).getEuler();
+                glm::vec3 diff = glm::eulerAngles(( rb->previousOrientation * glm::inverse(rotation) ));
                 rb->angularVelocities[rb->currentDataPoint-1] = ( diff * invFPS );
             }
 
             rb->previousPosition = position;
             rb->previousOrientation = rotation;
         }
-        */
 
         std::string address = "/rigidbody";
         if ( sendHierarchy ) {
@@ -403,9 +406,9 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
         {
             zosc_append(oscMsg, "fffff",
                         //velocity over SMOOTHING * 2 + 1 frames
-                        0, 0, 0,    //TODO: velocity.x/y/z * 1000
+                        velocity.x * 1000, velocity.y * 1000, velocity.z * 1000,
                         //angular velocity (euler), also smoothed
-                        0, 0, 0 );  //TODO: angularVelocity.x/y/z * 1000
+                        angularVelocity.x * 1000, angularVelocity.y * 1000, angularVelocity.z * 1000 );
         }
 
 
@@ -510,22 +513,22 @@ void NatNet::addSkeletons(zmsg_t *zmsg)
     }
 }
 
-void NatNet::fixRanges( Vec3 *euler )
+void NatNet::fixRanges( glm::vec3 *euler )
 {
-    if ((*euler)[0] < -180.0f)
-        (*euler)[0] += 360.0f;
-    else if ((*euler)[0] > 180.0f)
-        (*euler)[0] -= 360.0f;
+    if (euler->x < -180.0f)
+        euler->x += 360.0f;
+    else if (euler->x > 180.0f)
+        euler->x -= 360.0f;
 
-    if ((*euler)[1] < -180.0f)
-        (*euler)[1] += 360.0f;
-    else if ((*euler)[1] > 180.0f)
-        (*euler)[1] -= 360.0f;
+    if (euler->y < -180.0f)
+        euler->y += 360.0f;
+    else if (euler->y > 180.0f)
+        euler->y -= 360.0f;
 
-    if ((*euler)[2] < -180.0f)
-        (*euler)[2] += 360.0f;
-    else if ((*euler)[2] > 180.0f)
-        (*euler)[2] -= 360.0f;
+    if (euler->z < -180.0f)
+        euler->z += 360.0f;
+    else if (euler->z > 180.0f)
+        euler->z -= 360.0f;
 }
 
 // NatNet implementation
@@ -578,7 +581,7 @@ char* NatNet::unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers)
         memcpy(&p[2], ptr, 4);
         ptr += 4;
 
-        //TODO: Matrix
+        //TODO: Matrix, only used for scale previously
         //p = transform.preMult(p);
 
         ref_markers[j] = p;
@@ -591,10 +594,8 @@ char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodi
 {
     int major = NatNetVersion[0];
     int minor = NatNetVersion[1];
-    //it was --> int major = NatNetVersion[0];
-    //it was --> int minor = NatNetVersion[1];
 
-    //TODO: Matrix, ofQuaternion?
+    //TODO: Matrix, only used for scale previously
     //ofQuaternion rot = transform.getRotate();
 
     int nRigidBodies = 0;
@@ -607,8 +608,8 @@ char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodi
     {
         RigidBody& RB = ref_rigidbodies[j];
 
-        Vec3 pp;
-        Vec4 q;
+        glm::vec3 pp;
+        glm::vec4 q;
 
         int ID = 0;
         memcpy(&ID, ptr, 4);
@@ -639,7 +640,7 @@ char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodi
         RB.position = pp;
         RB.rotation = q;
 
-        //TODO: Matrix, what does preMult do? Is it even necessary?
+        //TODO: Matrix, only used for scale previously
         //pp = transform.preMult(pp);
         //
         //ofMatrix4x4 mat;
@@ -676,8 +677,8 @@ char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodi
             float y = markerData[k * 3 + 1];
             float z = markerData[k * 3 + 2];
 
-            Vec3 pp(x, y, z);
-            //TODO: Matrix?
+            glm::vec3 pp(x, y, z);
+            //TODO: Matrix, only used for scale previously
             //pp = transform.preMult(pp);
             RB.markers[k] = pp;
         }
@@ -714,7 +715,7 @@ void NatNet::Unpack( char * pData ) {
     int major = NatNetVersion[0];
     int minor = NatNetVersion[1];
 
-    //TODO: Matrix?
+    //TODO: Matrix, only used for scale previously
     //Vec4 rotation = transform.getRotate();
 
     char *ptr = pData;
@@ -822,8 +823,8 @@ void NatNet::Unpack( char * pData ) {
                 //zsys_info("pos : [%3.2f,%3.2f,%3.2f]\n", x,y,z);
                 //zsys_info("size: [%3.2f]\n", size);
 
-                Vec3 pp(x, y, z);
-                //TODO: Matrix?
+                glm::vec3 pp(x, y, z);
+                //TODO: Matrix, only used for scale previously
                 //pp = transform.preMult(pp);
                 tmp_markers.push_back(pp);
             }
@@ -894,8 +895,7 @@ void NatNet::Unpack( char * pData ) {
         //zsys_info("End Packet\n-------------\n");
 
         // filter markers
-        // TODO: re-implement marker filtering (?)
-        /*
+        // TODO: Test re-implemented marker filtering (replaced remove_dups)
         if (duplicated_point_removal_distance > 0)
         {
             std::map<int, RigidBody>::iterator it =
@@ -906,7 +906,7 @@ void NatNet::Unpack( char * pData ) {
 
                 for (int i = 0; i < RB.markers.size(); i++)
                 {
-                    Vec3& v = RB.markers[i];
+                    glm::vec3& v = RB.markers[i];
                     std::vector<Marker>::iterator it = remove_if(
                             tmp_filtered_markers.begin(), tmp_filtered_markers.end(),
                             remove_dups(v, duplicated_point_removal_distance));
@@ -916,7 +916,6 @@ void NatNet::Unpack( char * pData ) {
                 it++;
             }
         }
-         */
 
         //Copy data to instance...
         this->latency = latency;
