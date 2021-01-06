@@ -47,6 +47,7 @@ enum MenuAction
 //   a "generic node" class for types defined outside of this codebase.
 ImVector<char*> actor_types;
 std::vector<ActorContainer*> actors;
+std::map<std::string, int> max_actors_by_type;
 
 bool Save( const char* configFile );
 bool Load( const char* configFile );
@@ -72,6 +73,9 @@ void RegisterActors() {
     sphactor_register<OSCInput>( "OSC Input" );
     sphactor_register<Pulse>( "Pulse" );
 
+    //enforcable maximum actor counts
+    max_actors_by_type.insert(std::make_pair("NatNet", 1));
+
     UpdateRegisteredActorsCache();
 }
 
@@ -83,6 +87,18 @@ ActorContainer * CreateFromType( const char* typeStr, const char* uuidStr ) {
     sphactor_t *actor = sphactor_new_by_type(typeStr, uuidStr, uuid);
     sphactor_ask_set_actor_type(actor, typeStr);
     return new ActorContainer(actor);
+}
+
+int CountActorsOfType( const char* type ) {
+    int count = 0;
+    for (auto it = actors.begin(); it != actors.end(); it++)
+    {
+        ActorContainer* actor = *it;
+        if ( streq( actor->title, type ) ) {
+            count++;
+        }
+    }
+    return count;
 }
 
 void ShowConfigWindow(bool * showLog) {
@@ -370,9 +386,19 @@ int UpdateActors(float deltaTime, bool * showLog)
             {
                 if (ImGui::MenuItem(desc))
                 {
-                    ActorContainer* actor = CreateFromType(desc, nullptr);
-                    actors.push_back(actor);
-                    ImNodes::AutoPositionNode(actors.back());
+                    if ( max_actors_by_type.find(desc) != max_actors_by_type.end() ) {
+                        int max = max_actors_by_type.at(desc);
+                        if ( CountActorsOfType(desc) < max ) {
+                            ActorContainer *actor = CreateFromType(desc, nullptr);
+                            actors.push_back(actor);
+                            ImNodes::AutoPositionNode(actors.back());
+                        }
+                    }
+                    else {
+                        ActorContainer *actor = CreateFromType(desc, nullptr);
+                        actors.push_back(actor);
+                        ImNodes::AutoPositionNode(actors.back());
+                    }
                 }
             }
 
