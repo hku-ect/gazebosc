@@ -87,8 +87,6 @@ NatNet2OSC::handleMsg( sphactor_event_t *ev ) {
         addSkeletons(oscMsg);
 
         if ( zmsg_content_size(oscMsg) != 0 ){
-            //zsys_info("NatNet: sending data");
-            zmsg_destroy(&ev->msg);
             return oscMsg;
         }
 
