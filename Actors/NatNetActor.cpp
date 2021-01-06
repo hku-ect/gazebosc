@@ -151,14 +151,17 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     //Parse packet
                     zmsg_t* zmsg = zmsg_recv(DataSocket);
 
+                    // We're still unpacking the data here because it might contain definitions we need to store
+                    // TODO: Find a way to optimize getting definitions
                     if ( zmsg ) {
-                        return zmsg;
-                        //zframe_t *zframe = zmsg_pop(zmsg);
-                        //if (zframe) {
-                        //    Unpack((char *) zframe_data(zframe));
-                        //    zframe_destroy(&zframe);
-                        //}
+                        zframe_t *zframe = zmsg_pop(zmsg);
+                        if (zframe) {
+                            Unpack((char *) zframe_data(zframe));
+                            //zframe_destroy(&zframe);
+                        }
                         //zmsg_destroy(&zmsg);
+
+                        return zmsg;
                     }
 
                     return NULL;
@@ -598,8 +601,6 @@ void NatNet::Unpack( char * pData ) {
         this->markers_set = tmp_markers_set;
         this->markers = tmp_markers;
         this->filtered_markers = tmp_filtered_markers;
-        //this->rigidbodies_arr = tmp_rigidbodies;
-        //this->skeletons_arr = tmp_skeletons;
 
         // fill the rigidbodies map
         {

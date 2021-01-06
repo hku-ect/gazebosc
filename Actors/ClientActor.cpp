@@ -4,6 +4,12 @@
 const char * clientCapabilities =
                                 "capabilities\n"
                                 "    data\n"
+                                "        name = \"name\"\n"
+                                "        type = \"string\"\n"
+                                "        value = \"default\"\n"
+                                "        api_call = \"SET NAME\"\n"
+                                "        api_value = \"s\"\n"
+                                "    data\n"
                                 "        name = \"ip\"\n"
                                 "        type = \"string\"\n"
                                 "        value = \"192.168.0.1\"\n"
@@ -71,7 +77,12 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
         //pop msg for command
         char * cmd = zmsg_popstr(ev->msg);
         if (cmd) {
-            if ( streq(cmd, "SET PORT") ) {
+            if ( streq(cmd, "SET NAME") ) {
+                char * name = zmsg_popstr(ev->msg);
+                this->name = name;
+                zstr_free(&name);
+            }
+            else if ( streq(cmd, "SET PORT") ) {
                 char * port = zmsg_popstr(ev->msg);
                 this->port = port;
                 std::string url = ("udp://" + this->host + ":" + this->port);

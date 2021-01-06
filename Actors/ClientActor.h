@@ -7,6 +7,7 @@
 struct Client {
     zsock_t* dgrams = NULL;
 
+    std::string name = "";
     std::string host = "";
     std::string port = "";
 

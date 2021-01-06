@@ -726,7 +726,6 @@ void NatNet2OSC::Unpack( char * pData ) {
         this->markers_set = tmp_markers_set;
         this->markers = tmp_markers;
         this->filtered_markers = tmp_filtered_markers;
-
         // fill the rigidbodies map
         {
             for (int i = 0; i < tmp_rigidbodies.size(); i++) {
