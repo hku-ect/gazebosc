@@ -82,11 +82,6 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
         assert(rc == 0);
     }
-    else if ( streq( ev->type, "DESTROY")) {
-        delete this;
-        zmsg_destroy(&ev->msg);
-        return NULL;
-    }
     else if ( streq(ev->type, "DESTROY") ) {
         if ( CommandSocket != NULL ) {
             sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
@@ -101,7 +96,9 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
             dataFD = -1;
         }
 
-        return ev->msg;
+        delete this;
+        zmsg_destroy(&ev->msg);
+        return NULL;
     }
     else if ( streq(ev->type, "API")) {
         //pop msg for command
