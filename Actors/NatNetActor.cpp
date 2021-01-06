@@ -2,10 +2,17 @@
 #include <string>
 #include <algorithm>
 
+//static variable definitions
+int* NatNet::NatNetVersion;
+int* NatNet::ServerVersion;
+std::vector<RigidBodyDescription> NatNet::rigidbody_descs;
+std::vector<SkeletonDescription> NatNet::skeleton_descs;
+std::vector<MarkerSetDescription> NatNet::markerset_descs;
+
 const char * natnetCapabilities =
                                 "capabilities\n"
                                 "    data\n"
-                                "        name = \"motive ip\"\n"
+                                "        name = \"motive_ip\"\n"
                                 "        type = \"string\"\n"
                                 "        value = \"192.168.10.30\"\n"
                                 "        api_call = \"SET HOST\"\n"
@@ -16,42 +23,6 @@ const char * natnetCapabilities =
                                 "        value = \"60\"\n"
                                 "        api_call = \"SET TIMEOUT\"\n"
                                 "        api_value = \"i\"\n"           // optional picture format used in zsock_send
-                                "    data\n"
-                                "        name = \"markers\"\n"
-                                "        type = \"bool\"\n"
-                                "        value = \"False\"\n"
-                                "        api_call = \"SET MARKERS\"\n"
-                                "        api_value = \"s\"\n"
-                                "    data\n"
-                                "        name = \"rigidbodies\"\n"
-                                "        type = \"bool\"\n"
-                                "        value = \"False\"\n"
-                                "        api_call = \"SET RIGIDBODIES\"\n"
-                                "        api_value = \"s\"\n"
-                                "    data\n"
-                                "        name = \"skeletons\"\n"
-                                "        type = \"bool\"\n"
-                                "        value = \"False\"\n"
-                                "        api_call = \"SET SKELETONS\"\n"
-                                "        api_value = \"s\"\n"
-                                "    data\n"
-                                "        name = \"rbVelocities\"\n"
-                                "        type = \"bool\"\n"
-                                "        value = \"False\"\n"
-                                "        api_call = \"SET VELOCITIES\"\n"
-                                "        api_value = \"s\"\n"
-                                "    data\n"
-                                "        name = \"hierarchy\"\n"
-                                "        type = \"bool\"\n"
-                                "        value = \"True\"\n"
-                                "        api_call = \"SET HIERARCHY\"\n"
-                                "        api_value = \"s\"\n"
-                                "    data\n"
-                                "        name = \"sendSkeletonDefinitions\"\n"
-                                "        type = \"bool\"\n"
-                                "        value = \"False\"\n"
-                                "        api_call = \"SET SKELETONDEF\"\n"
-                                "        api_value = \"s\"\n"
                                 "outputs\n"
                                 "    output\n"
                                 //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -105,7 +76,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         char * cmd = zmsg_popstr(ev->msg);
         if (cmd) {
             if ( streq(cmd, "SET HOST") ) {
-                char * host_addr = zmsg_popstr(ev->msg);
+                char *host_addr = zmsg_popstr(ev->msg);
                 host = host_addr;
                 zsys_info("SET HOST: %s", host_addr);
                 zstr_free(&host_addr);
@@ -116,47 +87,16 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                 PacketOut.iMessage = NAT_PING;
                 PacketOut.nDataBytes = 0;
                 int nTries = 3;
-                while (nTries--)
-                {
+                while (nTries--) {
                     //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-                    std::string url = host+":"+PORT_COMMAND_STR;
+                    std::string url = host + ":" + PORT_COMMAND_STR;
                     zstr_sendm(CommandSocket, url.c_str());
-                    int rc = zsock_send(CommandSocket,  "b", (char*)&PacketOut, 4 + PacketOut.nDataBytes);
+                    int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
                     //if(rc != SOCKET_ERROR) {
-                        zsys_info("Sent ping to %s", url.c_str());
+                    zsys_info("Sent ping to %s", url.c_str());
                     //    break;
                     //}
                 }
-            }
-            else if ( streq(cmd, "SET MARKERS") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendMarkers = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendMarkers ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET RIGIDBODIES") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendRigidbodies = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendRigidbodies ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET SKELETONS") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendSkeletons = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendSkeletons ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET VELOCITIES") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendVelocities = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendVelocities ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET HIERARCHY") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendHierarchy = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendHierarchy ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET SKELETONDEF") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendSkeletonDefinitions = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendSkeletonDefinitions ? "True" : "False");
             }
 
             zstr_free(&cmd);
@@ -204,20 +144,23 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                 else if ( sockFD == dataFD ) {
                     zsys_info("DATA SOCKET");
 
+                    zmsg_destroy(&ev->msg);
+
                     //TODO: Send data packet to connected natnet2osc clients
                     //          this will allow for multiple filters
                     //Parse packet
                     zmsg_t* zmsg = zmsg_recv(DataSocket);
+
                     if ( zmsg ) {
-                        zframe_t *zframe = zmsg_pop(zmsg);
-                        if (zframe) {
-                            Unpack((char *) zframe_data(zframe));
-                            zframe_destroy(&zframe);
-                        }
-                        zmsg_destroy(&zmsg);
+                        return zmsg;
+                        //zframe_t *zframe = zmsg_pop(zmsg);
+                        //if (zframe) {
+                        //    Unpack((char *) zframe_data(zframe));
+                        //    zframe_destroy(&zframe);
+                        //}
+                        //zmsg_destroy(&zmsg);
                     }
 
-                    zmsg_destroy(&ev->msg);
                     return NULL;
                 }
             }
@@ -257,283 +200,10 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         }
 
         if (sentRequest > 0) sentRequest--;
-
-        zmsg_t* oscMsg = zmsg_new();
-
-        //markers
-        for (int i = 0; i < markers.size(); i++)
-        {
-            zosc_t * osc = zosc_create("/marker", "ifff", i, markers[i][0], markers[i][1], markers[i][2]);
-            zmsg_add(oscMsg, zosc_pack(osc));
-            //TODO: clean up osc* ?
-        }
-
-        //rigidbodies
-        addRigidbodies(oscMsg);
-
-        //skeletons
-        addSkeletons(oscMsg);
-
-        if ( zmsg_content_size(oscMsg) != 0 ){
-            //zsys_info("NatNet: sending data");
-            zmsg_destroy(&ev->msg);
-            return oscMsg;
-        }
-        else {
-            //zsys_info("NatNet: nothing to send");
-            zmsg_destroy(&oscMsg);
-        }
     }
 
     zmsg_destroy(&ev->msg);
     return NULL;
-}
-
-void NatNet::addRigidbodies(zmsg_t *zmsg)
-{
-    for (int i = 0; i < rigidbodies.size(); i++)
-    {
-        RigidBody &RB = rigidbodies[i];
-
-        // Decompose to get the different elements
-        glm::vec3 position = RB.position;
-        glm::quat rotation;
-        rotation.x = RB.rotation[0];
-        rotation.y = RB.rotation[1];
-        rotation.z = RB.rotation[2];
-        rotation.w = RB.rotation[3];
-
-        //we're going to fetch or create this
-        //TODO: TEST re-implemented rigidbody histories for velocity data
-        RigidBodyHistory *rb;
-
-        //Get or create rigidbodyhistory
-        bool found = false;
-        for( int r = 0; r < rbHistory.size(); ++r )
-        {
-            if ( rbHistory[r].rigidBodyId == RB.id )
-            {
-                rb = &rbHistory[r];
-                found = true;
-            }
-        }
-
-        if ( !found )
-        {
-            rb = new RigidBodyHistory( RB.id, position, rotation );
-            rbHistory.push_back(*rb);
-        }
-
-        glm::vec3 velocity;
-        glm::vec3 angularVelocity;
-
-        if ( rb->firstRun == true )
-        {
-            rb->currentDataPoint = 0;
-            rb->firstRun = false;
-        }
-        else
-        {
-            //TODO: Get invFPS from timeout
-            float invFPS = ( 1.0f / 60.0f );
-            if ( rb->currentDataPoint < 2 * SMOOTHING + 1 )
-            {
-                rb->velocities[rb->currentDataPoint] = ( position - rb->previousPosition ) * invFPS;
-                glm::vec3 diff = glm::eulerAngles( rb->previousOrientation * glm::inverse(rotation) );
-                rb->angularVelocities[rb->currentDataPoint] = ( diff * invFPS );
-
-                rb->currentDataPoint++;
-            }
-            else
-            {
-                int count = 0;
-                int maxDist = SMOOTHING;
-                glm::vec3 totalVelocity;
-                glm::vec3 totalAngularVelocity;
-                //calculate smoothed velocity
-                for( int x = 0; x < SMOOTHING * 2 + 1; ++x )
-                {
-                    //calculate integer distance from "center"
-                    //above - maxDist = influence of data point
-                    int dist = abs( x - SMOOTHING );
-                    int infl = ( maxDist - dist ) + 1;
-
-                    //add all
-                    totalVelocity += rb->velocities[x] * glm::vec3(infl);
-                    totalAngularVelocity += rb->angularVelocities[x] * glm::vec3(infl);
-                    //count "influences"
-                    count += infl;
-                }
-
-                //divide by total data point influences
-                velocity = totalVelocity / glm::vec3(count);
-                angularVelocity = totalAngularVelocity / glm::vec3(count);
-
-                for( int x = 0; x < rb->currentDataPoint - 1; ++x )
-                {
-                    rb->velocities[x] = rb->velocities[x+1];
-                    rb->angularVelocities[x] = rb->angularVelocities[x+1];
-                }
-                rb->velocities[rb->currentDataPoint-1] = ( position - rb->previousPosition ) * invFPS;
-
-                glm::vec3 diff = glm::eulerAngles(( rb->previousOrientation * glm::inverse(rotation) ));
-                rb->angularVelocities[rb->currentDataPoint-1] = ( diff * invFPS );
-            }
-
-            rb->previousPosition = position;
-            rb->previousOrientation = rotation;
-        }
-
-        std::string address = "/rigidbody";
-        if ( sendHierarchy ) {
-            address += "/"+rigidbody_descs[i].name;
-        }
-
-        zosc_t *oscMsg = zosc_create(address.c_str(), "isfffffffi",
-                                     RB.id,
-                                     rigidbody_descs[i].name.c_str(),
-                                     position[0],
-                                     position[1],
-                                     position[2],
-                                     rotation[0],
-                                     rotation[1],
-                                     rotation[2],
-                                     rotation[3],
-                                     (RB.isActive() ? 1 : 0)
-        );
-
-        if ( sendVelocities )
-        {
-            zosc_append(oscMsg, "fffff",
-                        //velocity over SMOOTHING * 2 + 1 frames
-                        velocity.x * 1000, velocity.y * 1000, velocity.z * 1000,
-                        //angular velocity (euler), also smoothed
-                        angularVelocity.x * 1000, angularVelocity.y * 1000, angularVelocity.z * 1000 );
-        }
-
-
-        zmsg_add(zmsg, zosc_pack(oscMsg));
-    }
-}
-
-void NatNet::addSkeletons(zmsg_t *zmsg)
-{
-    for (int j = 0; j < skeletons.size(); j++)
-    {
-        const Skeleton &S = skeletons[j];
-        std::vector<RigidBodyDescription> rbd = skeleton_descs[j].joints;
-
-        if ( sendHierarchy )
-        {
-            for (int i = 0; i < S.joints.size(); i++)
-            {
-                RigidBody RB = S.joints[i];
-                std::string address = "/skeleton/" + skeleton_descs[j].name + "/" + rbd[i].name;
-
-                // Get the matirx
-                //ofMatrix4x4 matrix = RB.matrix;
-
-                // Decompose to get the different elements
-                //Vec3 position;
-                //Vec4 rotation;
-                //Vec3 scale;
-                //Vec4 so;
-                //matrix.decompose(position, rotation, scale, so);
-
-                zosc_t *oscMsg = zosc_create( address.c_str(), "sfffffff",
-                                                rbd[i].name.c_str(),
-                                                RB.position[0],
-                                                RB.position[1],
-                                                RB.position[2],
-                                                RB.rotation[0],
-                                                RB.rotation[1],
-                                                RB.rotation[2],
-                                                RB.rotation[3]
-                                            );
-
-                //needed for skeleton retargeting
-                if ( sendSkeletonDefinitions )
-                {
-                    zosc_append(oscMsg, "ifff",
-                                        rbd[i].parent_id,
-                                        rbd[i].offset[0],
-                                        rbd[i].offset[1],
-                                        rbd[i].offset[2]
-                                );
-                }
-
-                zmsg_add(zmsg, zosc_pack(oscMsg));
-            }
-        }
-        else
-        {
-            std::string address = "/skeleton";
-
-            zosc_t * oscMsg = zosc_create(address.c_str(), "si", skeleton_descs[j].name.c_str(), S.id );
-
-            for (int i = 0; i < S.joints.size(); i++)
-            {
-                RigidBody RB = S.joints[i];
-
-                // Get the matirx
-                //ofMatrix4x4 matrix = RB.matrix;
-
-                // Decompose to get the different elements
-                //ofVec3f position;
-                //ofQuaternion rotation;
-                //ofVec3f scale;
-                //ofQuaternion so;
-                //matrix.decompose(position, rotation, scale, so);
-
-                zosc_append( oscMsg, "sfffffff",
-                                  rbd[i].name.c_str(),
-                                  RB.position[0],
-                                  RB.position[1],
-                                  RB.position[2],
-                                  RB.rotation[0],
-                                  RB.rotation[1],
-                                  RB.rotation[2],
-                                  RB.rotation[3]
-                );
-
-                //needed for skeleton retargeting
-                if ( sendSkeletonDefinitions )
-                {
-                    zosc_append(oscMsg, "ifff",
-                                rbd[i].parent_id,
-                                rbd[i].offset[0],
-                                rbd[i].offset[1],
-                                rbd[i].offset[2]
-                    );
-                }
-            }
-
-            zmsg_add(zmsg, zosc_pack(oscMsg));
-        }
-    }
-}
-
-void NatNet::fixRanges( glm::vec3 *euler )
-{
-    if (euler->x < -180.0f)
-        euler->x += 360.0f;
-    else if (euler->x > 180.0f)
-        euler->x -= 360.0f;
-
-    if (euler->y < -180.0f)
-        euler->y += 360.0f;
-    else if (euler->y > 180.0f)
-        euler->y -= 360.0f;
-
-    if (euler->z < -180.0f)
-        euler->z += 360.0f;
-    else if (euler->z > 180.0f)
-        euler->z -= 360.0f;
-}
-
-// NatNet implementation
-bool NatNet::IPAddress_StringToAddr(char *szNameOrAddress, struct in_addr *Address) {
-    return false;
 }
 
 bool DecodeTimecode(unsigned int inTimecode, unsigned int inTimecodeSubframe, int* hour, int* minute, int* second, int* frame, int* subframe)
@@ -561,6 +231,11 @@ bool TimecodeStringify(unsigned int inTimecode, unsigned int inTimecodeSubframe,
             Buffer[i]='0';
 
     return bValid;
+}
+
+// NatNet implementation
+bool NatNet::IPAddress_StringToAddr(char *szNameOrAddress, struct in_addr *Address) {
+    return false;
 }
 
 char* NatNet::unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers)
@@ -923,8 +598,8 @@ void NatNet::Unpack( char * pData ) {
         this->markers_set = tmp_markers_set;
         this->markers = tmp_markers;
         this->filtered_markers = tmp_filtered_markers;
-        this->rigidbodies_arr = tmp_rigidbodies;
-        this->skeletons_arr = tmp_skeletons;
+        //this->rigidbodies_arr = tmp_rigidbodies;
+        //this->skeletons_arr = tmp_skeletons;
 
         // fill the rigidbodies map
         {

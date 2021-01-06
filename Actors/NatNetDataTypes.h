@@ -98,6 +98,10 @@ struct remove_dups
     bool operator()(const glm::vec3& t) { return glm::distance(v, t) <= dist; }
 };
 
+// time decode helper functions
+bool DecodeTimecode(unsigned int inTimecode, unsigned int inTimecodeSubframe, int* hour, int* minute, int* second, int* frame, int* subframe);
+bool TimecodeStringify(unsigned int inTimecode, unsigned int inTimecodeSubframe, char *Buffer, int BufferSize);
+
 // Natnet settings
 
 #define SMOOTHING                   2
