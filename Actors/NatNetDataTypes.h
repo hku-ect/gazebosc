@@ -68,7 +68,7 @@ public:
     std::vector<glm::vec3> velocities;
     std::vector<glm::vec3> angularVelocities;
 
-    bool firstRun = TRUE;
+    bool firstRun = true;
     int currentDataPoint = 0;
     int framesInactive = 0;
 
@@ -79,7 +79,7 @@ public:
         rigidBodyId = id;
 
         currentDataPoint = 0;
-        firstRun = TRUE;
+        firstRun = true;
         framesInactive = 0;
     }
 };
