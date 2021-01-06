@@ -41,7 +41,8 @@ enum GActorSlotTypes
     ActorSlotRotation,
     ActorSlotMatrix,
     ActorSlotInt,
-    ActorSlotOSC
+    ActorSlotOSC,
+    ActorSlotNatNet
 };
 
 struct ActorContainer {
@@ -171,6 +172,9 @@ struct ActorContainer {
             char* typeStr = zconfig_value(type);
             if ( streq(typeStr, "OSC")) {
                 list->push_back({ "OSC", ActorSlotOSC });
+            }
+            else if ( streq(typeStr, "NatNet")) {
+                list->push_back({ "NatNet", ActorSlotNatNet });
             }
             else {
                 zsys_error("Unsupported %s: %s", node, typeStr);

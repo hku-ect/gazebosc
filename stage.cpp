@@ -70,6 +70,7 @@ void RegisterActors() {
     sphactor_register<Count>( "Count" );
     sphactor_register( "Log", &LogActor, NULL, NULL );
     sphactor_register<NatNet>( "NatNet" );
+    sphactor_register<NatNet2OSC>( "NatNet2OSC" );
     sphactor_register<OSCInput>( "OSC Input" );
     sphactor_register<Pulse>( "Pulse" );
 

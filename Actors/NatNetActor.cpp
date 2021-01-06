@@ -204,7 +204,9 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                 else if ( sockFD == dataFD ) {
                     zsys_info("DATA SOCKET");
 
-                    // Parse packet
+                    //TODO: Send data packet to connected natnet2osc clients
+                    //          this will allow for multiple filters
+                    //Parse packet
                     zmsg_t* zmsg = zmsg_recv(DataSocket);
                     if ( zmsg ) {
                         zframe_t *zframe = zmsg_pop(zmsg);
