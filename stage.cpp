@@ -80,6 +80,7 @@ void RegisterActors() {
     sphactor_register<NatNet2OSC>( "NatNet2OSC" );
     sphactor_register<OSCInput>( "OSC Input" );
     sphactor_register<Pulse>( "Pulse" );
+    sphactor_register<ModPlayerActor>( "ModPlayer" );
 
     //enforcable maximum actor counts
     max_actors_by_type.insert(std::make_pair("NatNet", 1));
