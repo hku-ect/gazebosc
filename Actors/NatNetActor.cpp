@@ -1,5 +1,6 @@
 #include "NatNetActor.h"
 #include <string>
+#include <algorithm>
 
 const char * natnetCapabilities =
                                 "capabilities\n"
@@ -327,10 +328,10 @@ void NatNet::addRigidbodies(zmsg_t *zmsg)
         glm::vec3 velocity;
         glm::vec3 angularVelocity;
 
-        if ( rb->firstRun == TRUE )
+        if ( rb->firstRun == true )
         {
             rb->currentDataPoint = 0;
-            rb->firstRun = FALSE;
+            rb->firstRun = false;
         }
         else
         {
@@ -907,7 +908,7 @@ void NatNet::Unpack( char * pData ) {
                 for (int i = 0; i < RB.markers.size(); i++)
                 {
                     glm::vec3& v = RB.markers[i];
-                    std::vector<Marker>::iterator it = remove_if(
+                    std::vector<Marker>::iterator it = std::remove_if(
                             tmp_filtered_markers.begin(), tmp_filtered_markers.end(),
                             remove_dups(v, duplicated_point_removal_distance));
                     tmp_filtered_markers.erase(it, tmp_filtered_markers.end());
