@@ -7,3 +7,6 @@
 [submodule "ext/SDL-mirror"]
 	path = ext/SDL-mirror
 	url = https://github.com/spurious/SDL-mirror.git
+[submodule "ext/glm"]
+	path = ext/glm
+	url = https://github.com/g-truc/glm
