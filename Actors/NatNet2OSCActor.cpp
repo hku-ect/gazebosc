@@ -171,7 +171,7 @@ void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)
         bool found = false;
         for( int r = 0; r < rbHistory.size(); ++r )
         {
-            if ( rbHistory[r].rigidBodyId == RB.id )
+            if ( rbHistory[r].rigidBodyId == rbd.id )
             {
                 rb = &rbHistory[r];
                 found = true;
@@ -180,7 +180,7 @@ void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)
 
         if ( !found )
         {
-            rb = new RigidBodyHistory( RB.id, position, rotation );
+            rb = new RigidBodyHistory( rbd.id, position, rotation );
             rbHistory.push_back(*rb);
         }
 
@@ -250,7 +250,7 @@ void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)
         }
 
         zosc_t *oscMsg = zosc_create(address.c_str(), "isfffffff",
-                                     RB.id,
+                                     rbd.id,
                                      NatNet::rigidbody_descs[i].name.c_str(),
                                      position[0],
                                      position[1],
