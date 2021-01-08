@@ -108,7 +108,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     }
     else if ( streq(ev->type, "FDSOCK" ) )
     {
-        zsys_info("GOT FDSOCK");
+        // zsys_info("GOT FDSOCK");
 
         // Get the socket...
         assert(ev->msg);
@@ -122,7 +122,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                 SOCKET sockFD = zsock_fd(sock);
 
                 if ( sockFD == cmdFD ) {
-                    zsys_info("CMD SOCKET");
+                    // zsys_info("CMD SOCKET");
                     // Parse command
                     int addr_len;
                     int nDataBytesReceived;
@@ -133,6 +133,14 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     //int rc = zmq_recv(CommandSocket, (char *) &PacketIn, sizeof(sPacket), 0);
                     zmsg_t* zmsg = zmsg_recv(CommandSocket);
                     if ( zmsg ) {
+
+                        // pop the source address off
+                        char* zStr = zmsg_popstr(zmsg);
+                        if ( zStr ) {
+                            // zsys_info("zStr: %s", zStr );
+                            zstr_free(&zStr);
+                        }
+
                         zframe_t *zframe = zmsg_pop(zmsg);
                         if ( zframe ) {
                             HandleCommand((sPacket *) zframe_data(zframe));
@@ -142,7 +150,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     }
                 }
                 else if ( sockFD == dataFD ) {
-                    zsys_info("DATA SOCKET");
+                    // zsys_info("DATA SOCKET");
 
                     zmsg_destroy(&ev->msg);
 
@@ -154,14 +162,23 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     // We're still unpacking the data here because it might contain definitions we need to store
                     // TODO: Find a way to optimize getting definitions
                     if ( zmsg ) {
+                        // pop the source address off
+                        char* zStr = zmsg_popstr(zmsg);
+                        if ( zStr ) {
+                            // zsys_info("zStr: %s", zStr );
+                            zstr_free(&zStr);
+                        }
+
+                        // parse the remaining bytes as mocap data message
                         zframe_t *zframe = zmsg_pop(zmsg);
                         if (zframe) {
                             Unpack((char *) zframe_data(zframe));
                             //zframe_destroy(&zframe);
                         }
-                        //zmsg_destroy(&zmsg);
 
-                        return zmsg;
+                        zmsg_destroy(&zmsg);
+
+                        //return zmsg;
                     }
 
                     return NULL;
