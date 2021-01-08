@@ -36,8 +36,8 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         //receive socket on port DATA_PORT
         //Test multicast group to receive data
         //TODO: Discover network interfaces, and have user select which to bind (drop-down)
-        //         Currently you'l have to always multicast receive on your primary address
-        //          So if you want to something else, manually add "ip;" after "udp://"
+        //         This might multicast receive on the wrong interface (OS primary)
+        //          So if you want to try another one, manually add "ip;" after "udp://"
         //              example: "udp://192.168.10.124;..."
         std::string url = "udp://" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
         DataSocket = zsock_new(ZMQ_DGRAM);
@@ -70,6 +70,8 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
             dataFD = -1;
         }
 
+        //TODO: Figure out why this delete sometimes causes SIGABRT
+        //          "pointer freed was never allocated"
         //delete this; ?? SIGABRT ??
         zmsg_destroy(&ev->msg);
         return NULL;

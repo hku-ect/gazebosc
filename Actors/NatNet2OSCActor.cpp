@@ -54,7 +54,9 @@ NatNet2OSC::handleMsg( sphactor_event_t *ev ) {
         sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natNet2OSCCapabilities));
     }
     else if ( streq( ev->type, "DESTROY")) {
-        delete this;
+        //TODO: Figure out why this delete sometimes causes SIGABRT
+        //          "pointer freed was never allocated"
+        //delete this;
         zmsg_destroy(&ev->msg);
         return NULL;
     }
@@ -67,14 +69,6 @@ NatNet2OSC::handleMsg( sphactor_event_t *ev ) {
             byte *data = zframe_data(zframe);
             Unpack((char **) &data);
             zframe_destroy(&zframe);
-
-            //build report
-            zosc_t * msg = zosc_create("/report", "sisisi",
-                                       "Markers", markers.size(),
-                                       "Rigidbodies", rigidbodies.size(),
-                                       "Skeletons", skeletons.size());
-
-            sphactor_actor_set_custom_report_data( (sphactor_actor_t*)ev->actor, msg );
 
             //Send Frame
             zmsg_t *oscMsg = zmsg_new();
