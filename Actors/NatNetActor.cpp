@@ -35,7 +35,10 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
 
         //receive socket on port DATA_PORT
         //Test multicast group to receive data
-        //TODO: Discover network interfaces, and have user select which to bind (drop-down)?
+        //TODO: Discover network interfaces, and have user select which to bind (drop-down)
+        //         Currently you'l have to always multicast receive on your primary address
+        //          So if you want to something else, manually add "ip;" after "udp://"
+        //              example: "udp://192.168.10.124;..."
         std::string url = "udp://" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
         DataSocket = zsock_new(ZMQ_DGRAM);
         //zsock_connect(DataSocket, "%s", url.c_str());
@@ -67,7 +70,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
             dataFD = -1;
         }
 
-        delete this;
+        //delete this; ?? SIGABRT ??
         zmsg_destroy(&ev->msg);
         return NULL;
     }
@@ -92,10 +95,9 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     std::string url = host + ":" + PORT_COMMAND_STR;
                     zstr_sendm(CommandSocket, url.c_str());
                     int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
-                    //if(rc != SOCKET_ERROR) {
-                    zsys_info("Sent ping to %s", url.c_str());
-                    //    break;
-                    //}
+                    if (rc != 0) {
+                        zsys_info("Sent ping to %s", url.c_str());
+                    }
                 }
             }
 
@@ -108,7 +110,15 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     }
     else if ( streq(ev->type, "FDSOCK" ) )
     {
-        // zsys_info("GOT FDSOCK");
+        //build report
+        zosc_t * msg = zosc_create("/report", "sisisi",
+                                   "Markers", markers.size(),
+                                   "Rigidbodies", rigidbodies.size(),
+                                   "Skeletons", skeletons.size());
+
+        sphactor_actor_set_custom_report_data( (sphactor_actor_t*)ev->actor, msg );
+
+        //zsys_info("GOT FDSOCK");
 
         // Get the socket...
         assert(ev->msg);
@@ -133,24 +143,63 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     //int rc = zmq_recv(CommandSocket, (char *) &PacketIn, sizeof(sPacket), 0);
                     zmsg_t* zmsg = zmsg_recv(CommandSocket);
                     if ( zmsg ) {
-
                         // pop the source address off
                         char* zStr = zmsg_popstr(zmsg);
                         if ( zStr ) {
-                            // zsys_info("zStr: %s", zStr );
+                            //zsys_info("zStr: %s", zStr );
                             zstr_free(&zStr);
                         }
 
                         zframe_t *zframe = zmsg_pop(zmsg);
                         if ( zframe ) {
-                            HandleCommand((sPacket *) zframe_data(zframe));
+                            sPacket *packet = (sPacket*) zframe_data(zframe);
+                            if ( packet->iMessage == 7 ) {
+                                // zsys_info("Got frame of data");
+                                size_t len = zframe_size(zframe);
+                                Unpack((char **) &packet);
+
+                                //zsys_info("rigidbodies after handled frame: %i, %i", rigidbodies.size(), rigidbody_descs.size());
+
+                                // if there is a difference do natnet.questDescription(); to get up to date rigidbody descriptions and thus names
+                                if (rigidbody_descs.size() != rigidbodies.size())
+                                {
+                                    if (sentRequest <= 0) {
+                                        sendRequestDescription();
+                                        sentRequest = 60; //1 second
+                                    }
+                                    rigidbodiesReady = false;
+                                }
+
+                                //get & check skeletons size
+                                if (skeleton_descs.size() != skeletons.size())
+                                {
+                                    if (sentRequest <= 0) {
+                                        sendRequestDescription();
+                                        sentRequest = 60; //1 second
+                                    }
+                                    skeletonsReady = false;
+                                }
+
+                                if (sentRequest > 0) sentRequest--;
+
+                                // re-append the zframe that was popped
+                                // only send if definitions are updated
+                                if ( skeletonsReady && rigidbodiesReady ) {
+                                    zmsg_addmem(zmsg, (byte*)packet, len);
+                                    zframe_destroy(&zframe);
+                                    return zmsg;
+                                }
+                            }
+                            else {
+                                HandleCommand(packet);
+                            }
                             zframe_destroy(&zframe);
                         }
                         zmsg_destroy(&zmsg);
                     }
                 }
                 else if ( sockFD == dataFD ) {
-                    // zsys_info("DATA SOCKET");
+                    //zsys_info("DATA SOCKET");
 
                     zmsg_destroy(&ev->msg);
 
@@ -165,20 +214,51 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                         // pop the source address off
                         char* zStr = zmsg_popstr(zmsg);
                         if ( zStr ) {
-                            // zsys_info("zStr: %s", zStr );
+                            //zsys_info("zStr: %s", zStr );
                             zstr_free(&zStr);
                         }
 
                         // parse the remaining bytes as mocap data message
                         zframe_t *zframe = zmsg_pop(zmsg);
                         if (zframe) {
-                            Unpack((char *) zframe_data(zframe));
-                            //zframe_destroy(&zframe);
+                            byte *data = zframe_data(zframe);
+                            size_t len = zframe_size(zframe);
+                            Unpack((char **) &data);
+
+                            //zsys_info("rigidbodies after handled frame: %i, %i", rigidbodies.size(), rigidbody_descs.size());
+
+                            // if there is a difference do natnet.questDescription(); to get up to date rigidbody descriptions and thus names
+                            if (rigidbody_descs.size() != rigidbodies.size())
+                            {
+                                if (sentRequest <= 0) {
+                                    sendRequestDescription();
+                                    sentRequest = 60; //1 second
+                                }
+                                rigidbodiesReady = false;
+                            }
+
+                            //get & check skeletons size
+                            if (skeleton_descs.size() != skeletons.size())
+                            {
+                                if (sentRequest <= 0) {
+                                    sendRequestDescription();
+                                    sentRequest = 60; //1 second
+                                }
+                                skeletonsReady = false;
+                            }
+
+                            if (sentRequest > 0) sentRequest--;
+
+                            // re-append the zframe that was popped
+                            // only send if definitions are updated
+                            if ( skeletonsReady && rigidbodiesReady ) {
+                                zmsg_addmem(zmsg, data, len);
+                                return zmsg;
+                            }
                         }
-
+                        // nothing valid or not sent on, so clean up
                         zmsg_destroy(&zmsg);
-
-                        //return zmsg;
+                        return NULL;
                     }
 
                     return NULL;
@@ -192,34 +272,6 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         zframe_destroy(&frame);
 
         return NULL;
-    }
-    else if ( streq( ev->type, "TIME")) {
-
-        //set to false if number of skels/rb's needs updating
-        bool rigidbodiesReady = true;
-        bool skeletonsReady = true;
-
-        // if there is a difference do natnet.sendRequestDescription(); to get up to date rigidbodie descriptions and thus names
-        if (rigidbody_descs.size() != rigidbodies.size())
-        {
-            if (sentRequest <= 0) {
-                sendRequestDescription();
-                sentRequest = 60; //1 second
-            }
-            rigidbodiesReady = false;
-        }
-
-        //get & check skeletons size
-        if (skeleton_descs.size() != skeletons.size())
-        {
-            if (sentRequest <= 0) {
-                sendRequestDescription();
-                sentRequest = 60; //1 second
-            }
-            skeletonsReady = false;
-        }
-
-        if (sentRequest > 0) sentRequest--;
     }
 
     zmsg_destroy(&ev->msg);
@@ -406,14 +458,16 @@ char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodi
     return ptr;
 }
 
-void NatNet::Unpack( char * pData ) {
+void NatNet::Unpack( char ** pData ) {
     int major = NatNetVersion[0];
     int minor = NatNetVersion[1];
 
     //TODO: Matrix, only used for scale previously
     //Vec4 rotation = transform.getRotate();
 
-    char *ptr = pData;
+    char *ptr = *pData;
+
+    sPacket* packet = (sPacket*)*pData;
 
     //zsys_info("Begin Packet\n-------\n");
 
@@ -781,7 +835,7 @@ void NatNet::Unpack( char * pData ) {
     }
     else
     {
-        zsys_info("Unrecognized Packet Type.\n");
+        zsys_info("Unrecognized Packet Type: %i\n", MessageID);
     }
 }
 
@@ -790,6 +844,7 @@ int NatNet::GetLocalIPAddresses(unsigned long Addresses[], int nMax) {
 }
 
 void NatNet::sendRequestDescription() {
+    zsys_info("requesting description");
     sPacket packet;
     packet.iMessage = NAT_REQUEST_MODELDEF;
     packet.nDataBytes = 0;
@@ -832,10 +887,12 @@ void NatNet::HandleCommand( sPacket *PacketIn ) {
     switch (PacketIn->iMessage)
     {
         case NAT_MODELDEF:
-            Unpack((char*)&PacketIn);
+            Unpack((char**)&PacketIn);
+            rigidbodiesReady = true;
+            skeletonsReady = true;
             break;
         case NAT_FRAMEOFDATA:
-            Unpack((char*)&PacketIn);
+            Unpack((char**)&PacketIn);
             break;
         case NAT_PINGRESPONSE:
             for(int i=0; i<4; i++)

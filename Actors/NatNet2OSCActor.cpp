@@ -59,39 +59,54 @@ NatNet2OSC::handleMsg( sphactor_event_t *ev ) {
         return NULL;
     }
     else if ( streq(ev->type, "SOCK")) {
-        zmsg_destroy(&ev->msg);
+        //zsys_info("SOCK");
 
-        //TODO: unpack msg and parse into OSC
+        //TODO: unpack msg and parse intozStr OSC
         zframe_t *zframe = zmsg_pop(ev->msg);
         if (zframe) {
-            //TODO: Move Unpack here
-            Unpack((char *) zframe_data(zframe));
+            byte *data = zframe_data(zframe);
+            Unpack((char **) &data);
             zframe_destroy(&zframe);
+
+            //build report
+            zosc_t * msg = zosc_create("/report", "sisisi",
+                                       "Markers", markers.size(),
+                                       "Rigidbodies", rigidbodies.size(),
+                                       "Skeletons", skeletons.size());
+
+            sphactor_actor_set_custom_report_data( (sphactor_actor_t*)ev->actor, msg );
+
+            //Send Frame
+            zmsg_t *oscMsg = zmsg_new();
+
+            //markers
+            if ( sendMarkers ) {
+                for (int i = 0; i < markers.size(); i++) {
+                    zosc_t *osc = zosc_create("/marker", "ifff", i, markers[i][0], markers[i][1], markers[i][2]);
+                    zmsg_add(oscMsg, zosc_pack(osc));
+                    //TODO: clean up osc* ?
+                }
+            }
+
+            //rigidbodies
+            if ( sendRigidbodies )
+                addRigidbodies(oscMsg);
+
+            //skeletons
+            if ( sendSkeletons )
+                addSkeletons(oscMsg);
+
+            if ( zmsg_content_size(oscMsg) != 0 ){
+                //zsys_info("Sending zmsg of size: %i", zmsg_content_size(oscMsg));
+                zmsg_destroy(&ev->msg);
+                return oscMsg;
+            }
+
+            // Nothing to send, destroy and return NULL
+            zmsg_destroy(&oscMsg);
         }
 
-        //Send Frame
-        zmsg_t* oscMsg = zmsg_new();
-
-        //markers
-        for (int i = 0; i < markers.size(); i++)
-        {
-            zosc_t * osc = zosc_create("/marker", "ifff", i, markers[i][0], markers[i][1], markers[i][2]);
-            zmsg_add(oscMsg, zosc_pack(osc));
-            //TODO: clean up osc* ?
-        }
-
-        //rigidbodies
-        addRigidbodies(oscMsg);
-
-        //skeletons
-        addSkeletons(oscMsg);
-
-        if ( zmsg_content_size(oscMsg) != 0 ){
-            return oscMsg;
-        }
-
-        // Nothing to send, destroy and return NULL
-        zmsg_destroy(&oscMsg);
+        zmsg_destroy(&ev->msg);
         return NULL;
     }
     else if ( streq(ev->type, "API")) {
@@ -143,7 +158,8 @@ void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)
 {
     for (int i = 0; i < rigidbodies.size(); i++)
     {
-        RigidBody &RB = rigidbodies[i];
+        RigidBodyDescription rbd = NatNet::rigidbody_descs[i];
+        RigidBody &RB = rigidbodies[rbd.id];
 
         // Decompose to get the different elements
         glm::vec3 position = RB.position;
@@ -234,12 +250,12 @@ void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)
             rb->previousOrientation = rotation;
         }
 
-        std::string address = "/rigidbody";
+        std::string address = "/rigidBody";
         if ( sendHierarchy ) {
             address += "/"+NatNet::rigidbody_descs[i].name;
         }
 
-        zosc_t *oscMsg = zosc_create(address.c_str(), "isfffffffi",
+        zosc_t *oscMsg = zosc_create(address.c_str(), "isfffffff",
                                      RB.id,
                                      NatNet::rigidbody_descs[i].name.c_str(),
                                      position[0],
@@ -248,19 +264,19 @@ void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)
                                      rotation[0],
                                      rotation[1],
                                      rotation[2],
-                                     rotation[3],
-                                     (RB.isActive() ? 1 : 0)
+                                     rotation[3]
         );
 
         if ( sendVelocities )
         {
-            zosc_append(oscMsg, "fffff",
+            zosc_append(oscMsg, "ffffff",
                         //velocity over SMOOTHING * 2 + 1 frames
                         velocity.x * 1000, velocity.y * 1000, velocity.z * 1000,
                         //angular velocity (euler), also smoothed
                         angularVelocity.x * 1000, angularVelocity.y * 1000, angularVelocity.z * 1000 );
         }
 
+        zosc_append(oscMsg, "ii", (RB.isActive() ? 1 : 0), 0 );
 
         zmsg_add(zmsg, zosc_pack(oscMsg));
     }
@@ -270,7 +286,7 @@ void NatNet2OSC::addSkeletons(zmsg_t *zmsg)
 {
     for (int j = 0; j < skeletons.size(); j++)
     {
-        const Skeleton &S = skeletons[j];
+        const Skeleton &S = skeletons[NatNet::skeleton_descs[j].id];
         std::vector<RigidBodyDescription> rbd = NatNet::skeleton_descs[j].joints;
 
         if ( sendHierarchy )
@@ -512,14 +528,14 @@ char* NatNet2OSC::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigid
     return ptr;
 }
 
-void NatNet2OSC::Unpack( char * pData ) {
+void NatNet2OSC::Unpack( char ** pData ) {
     int major = NatNet::NatNetVersion[0];
     int minor = NatNet::NatNetVersion[1];
 
     //TODO: Matrix, only used for scale previously
     //Vec4 rotation = transform.getRotate();
 
-    char *ptr = pData;
+    char *ptr = *pData;
 
     //zsys_info("Begin Packet\n-------\n");
 
@@ -888,7 +904,7 @@ void NatNet2OSC::Unpack( char * pData ) {
     }
     else
     {
-        zsys_info("Unrecognized Packet Type.\n");
+        zsys_info("Unrecognized Packet Type: %i.\n", MessageID);
     }
 }
 

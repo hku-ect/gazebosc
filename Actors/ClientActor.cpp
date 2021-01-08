@@ -52,7 +52,7 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
         zframe_t* frame;
 
         do {
-        frame = zmsg_pop(ev->msg);
+            frame = zmsg_pop(ev->msg);
             if ( frame ) {
                 msgBuffer = zframe_data(frame);
                 size_t len = zframe_size(frame);
@@ -62,9 +62,6 @@ zmsg_t* Client::handleMsg( sphactor_event_t * ev ) {
                 int rc = zsock_send(dgrams,  "b", msgBuffer, len);
                 if ( rc != 0 ) {
                     zsys_info("Error sending zosc message to: %s, %i", url.c_str(), rc);
-                }
-                else {
-                    zsys_info( "Sent message to %s", url.c_str());
                 }
             }
         } while (frame != NULL );

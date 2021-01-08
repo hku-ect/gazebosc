@@ -23,6 +23,8 @@ struct NatNet {
     // NatNet vars
     static int* NatNetVersion;// = {0,0,0,0};
     static int* ServerVersion;// = {0,0,0,0};
+    bool rigidbodiesReady = true;
+    bool skeletonsReady = true;
 
     int gCommandResponse = 0;
     int gCommandResponseSize = 0;
@@ -52,7 +54,7 @@ struct NatNet {
     int SendCommand(char* szCOmmand);
     void HandleCommand(sPacket *PacketIn);
 
-    void Unpack( char * pData );
+    void Unpack( char ** pData );
     char* unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies);
     char* unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers);
     void sendRequestDescription();

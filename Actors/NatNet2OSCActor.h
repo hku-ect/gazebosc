@@ -29,7 +29,7 @@ struct NatNet2OSC {
     zmsg_t *handleMsg( sphactor_event_t *ev );
 
     //NatNet parse functions
-    void Unpack( char * pData );
+    void Unpack( char ** pData );
     char* unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies);
     char* unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers);
     void sendRequestDescription();

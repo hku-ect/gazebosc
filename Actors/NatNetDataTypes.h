@@ -8,6 +8,7 @@
 #include "../ext/glm/glm/gtc/quaternion.hpp"
 
 // Custom data structs
+#define SMOOTHING                   2
 
 typedef glm::vec3 Marker;
 
@@ -81,6 +82,9 @@ public:
         currentDataPoint = 0;
         firstRun = true;
         framesInactive = 0;
+
+        velocities.resize(2 * SMOOTHING + 1);
+        angularVelocities.resize(2 * SMOOTHING + 1);
     }
 };
 
@@ -104,7 +108,7 @@ bool TimecodeStringify(unsigned int inTimecode, unsigned int inTimecodeSubframe,
 
 // Natnet settings
 
-#define SMOOTHING                   2
+
 
 #define MAX_NAMELENGTH              256
 
@@ -122,6 +126,12 @@ bool TimecodeStringify(unsigned int inTimecode, unsigned int inTimecodeSubframe,
 #define UNDEFINED                   999999.9999
 
 #define MAX_PACKETSIZE				100000	// max size of packet (actual packet size is dynamic)
+
+// This is needed to enhance portability for struct padding
+// a compiler will pad the struct at will to optimize it
+// for the compiled architecture
+// ref: https://forums.naturalpoint.com/viewtopic.php?f=59&t=13272
+#pragma pack(push,1)
 
 // sender
 typedef struct
