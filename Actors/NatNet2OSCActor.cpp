@@ -2,6 +2,7 @@
 #include "NatNet2OSCActor.h"
 #include "NatNetActor.h"
 #include <map>
+#include <algorithm>
 
 //TODO: Add filter options
 const char * natNet2OSCCapabilities = "capabilities\n"

@@ -3,8 +3,8 @@
 #include <algorithm>
 
 //static variable definitions
-int* NatNet::NatNetVersion;
-int* NatNet::ServerVersion;
+int* NatNet::NatNetVersion = new int[4]{0,0,0,0};
+int* NatNet::ServerVersion = new int[4]{0,0,0,0};
 std::vector<RigidBodyDescription> NatNet::rigidbody_descs;
 std::vector<SkeletonDescription> NatNet::skeleton_descs;
 std::vector<MarkerSetDescription> NatNet::markerset_descs;

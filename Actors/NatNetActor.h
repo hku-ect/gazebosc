@@ -21,8 +21,8 @@ struct NatNet {
     std::string host = "";
 
     // NatNet vars
-    static int* NatNetVersion;// = {0,0,0,0};
-    static int* ServerVersion;// = {0,0,0,0};
+    static int* NatNetVersion;
+    static int* ServerVersion;
     bool rigidbodiesReady = true;
     bool skeletonsReady = true;
 
@@ -64,8 +64,7 @@ struct NatNet {
     int GetLocalIPAddresses(unsigned long Addresses[], int nMax);
 
     NatNet() {
-        NatNetVersion = new int[]{0,0,0,0};
-        ServerVersion = new int[]{0,0,0,0};
+
     }
 };
 
