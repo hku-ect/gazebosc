@@ -1,19 +1,26 @@
 #ifndef CLIENTACTOR_H
 #define CLIENTACTOR_H
 
-#include "libsphactor.h"
+#include "libsphactor.hpp"
 #include <string>
 
-struct Client {
+class Client : public Sphactor {
+public:
     zsock_t* dgrams = NULL;
 
     std::string name = "";
     std::string host = "";
     std::string port = "";
 
-    zmsg_t * handleMsg( sphactor_event_t * ev );
+    zmsg_t *handleInit(sphactor_event_t *ev);
 
-    Client() {
+    zmsg_t *handleAPI(sphactor_event_t *ev);
+
+    zmsg_t *handleSocket(sphactor_event_t *ev);
+
+    zmsg_t *handleStop(sphactor_event_t *ev);
+
+    Client() : Sphactor() {
 
     }
 
