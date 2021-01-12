@@ -117,6 +117,8 @@ if (UNIX)
         ${DEP_IMNODES_DIR}/ImNodes.cpp
         ${DEP_IMNODES_DIR}/ImNodesEz.h
         ${DEP_IMNODES_DIR}/ImNodesEz.cpp
+        ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h
+        ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
         RtMidi.h
         RtMidi.cpp
         rtmidi_c.h
