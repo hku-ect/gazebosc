@@ -252,13 +252,13 @@ void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)
         zosc_t *oscMsg = zosc_create(address.c_str(), "isfffffff",
                                      rbd.id,
                                      NatNet::rigidbody_descs[i].name.c_str(),
-                                     position[0],
-                                     position[1],
-                                     position[2],
-                                     rotation[0],
-                                     rotation[1],
-                                     rotation[2],
-                                     rotation[3]
+                                     position.x,
+                                     position.y,
+                                     position.z,
+                                     rotation.x,
+                                     rotation.y,
+                                     rotation.z,
+                                     rotation.w
         );
 
         if ( sendVelocities )
@@ -270,7 +270,7 @@ void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)
                         angularVelocity.x * 1000, angularVelocity.y * 1000, angularVelocity.z * 1000 );
         }
 
-        zosc_append(oscMsg, "ii", (RB.isActive() ? 1 : 0), 0 );
+        zosc_append(oscMsg, "i", (RB.isActive() ? 1 : 0));
 
         zmsg_add(zmsg, zosc_pack(oscMsg));
     }
@@ -302,13 +302,13 @@ void NatNet2OSC::addSkeletons(zmsg_t *zmsg)
 
                 zosc_t *oscMsg = zosc_create( address.c_str(), "sfffffff",
                                               rbd[i].name.c_str(),
-                                              RB.position[0],
-                                              RB.position[1],
-                                              RB.position[2],
-                                              RB.rotation[0],
-                                              RB.rotation[1],
-                                              RB.rotation[2],
-                                              RB.rotation[3]
+                                              RB.position.x,
+                                              RB.position.y,
+                                              RB.position.z,
+                                              RB.rotation.x,
+                                              RB.rotation.y,
+                                              RB.rotation.z,
+                                              RB.rotation.w
                 );
 
                 //needed for skeleton retargeting
@@ -316,9 +316,9 @@ void NatNet2OSC::addSkeletons(zmsg_t *zmsg)
                 {
                     zosc_append(oscMsg, "ifff",
                                 rbd[i].parent_id,
-                                rbd[i].offset[0],
-                                rbd[i].offset[1],
-                                rbd[i].offset[2]
+                                rbd[i].offset.x,
+                                rbd[i].offset.y,
+                                rbd[i].offset.z
                     );
                 }
 
@@ -347,13 +347,13 @@ void NatNet2OSC::addSkeletons(zmsg_t *zmsg)
 
                 zosc_append( oscMsg, "sfffffff",
                              rbd[i].name.c_str(),
-                             RB.position[0],
-                             RB.position[1],
-                             RB.position[2],
-                             RB.rotation[0],
-                             RB.rotation[1],
-                             RB.rotation[2],
-                             RB.rotation[3]
+                             RB.position.x,
+                             RB.position.y,
+                             RB.position.z,
+                             RB.rotation.x,
+                             RB.rotation.y,
+                             RB.rotation.z,
+                             RB.rotation.w
                 );
 
                 //needed for skeleton retargeting
@@ -361,9 +361,9 @@ void NatNet2OSC::addSkeletons(zmsg_t *zmsg)
                 {
                     zosc_append(oscMsg, "ifff",
                                 rbd[i].parent_id,
-                                rbd[i].offset[0],
-                                rbd[i].offset[1],
-                                rbd[i].offset[2]
+                                rbd[i].offset.x,
+                                rbd[i].offset.y,
+                                rbd[i].offset.z
                     );
                 }
             }
