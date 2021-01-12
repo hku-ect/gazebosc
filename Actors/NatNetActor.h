@@ -20,18 +20,11 @@ struct NatNet {
     // ServerAddress
     std::string host = "";
 
-    // Temporary settings for feature parity
-    // TODO: Move these to a filter node? Figure out how to share the natnet data efficiently
-    bool sendMarkers = false;
-    bool sendRigidbodies = false;
-    bool sendSkeletons = false;
-    bool sendSkeletonDefinitions = false;
-    bool sendVelocities = false;
-    bool sendHierarchy = true;
-
     // NatNet vars
-    int NatNetVersion[4] = {0,0,0,0};
-    int ServerVersion[4] = {0,0,0,0};
+    static int* NatNetVersion;// = {0,0,0,0};
+    static int* ServerVersion;// = {0,0,0,0};
+    bool rigidbodiesReady = true;
+    bool skeletonsReady = true;
 
     int gCommandResponse = 0;
     int gCommandResponseSize = 0;
@@ -49,40 +42,30 @@ struct NatNet {
     std::vector<Marker> markers;
 
     std::map<int, RigidBody> rigidbodies;
-    std::vector<RigidBody> rigidbodies_arr;
-
     std::map<int, Skeleton> skeletons;
-    std::vector<Skeleton> skeletons_arr;
 
-    std::vector<RigidBodyDescription> rigidbody_descs;
-    std::vector<SkeletonDescription> skeleton_descs;
-    std::vector<MarkerSetDescription> markerset_descs;
-
-    std::vector<RigidBodyHistory> rbHistory;
+    static std::vector<RigidBodyDescription> rigidbody_descs;
+    static std::vector<SkeletonDescription> skeleton_descs;
+    static std::vector<MarkerSetDescription> markerset_descs;
 
     zmsg_t * handleMsg( sphactor_event_t *ev );
 
     //NatNet parse functions
-    void Unpack( char * pData );
     int SendCommand(char* szCOmmand);
     void HandleCommand(sPacket *PacketIn);
 
-    // ofxNatNet borrowed functions
+    void Unpack( char ** pData );
     char* unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies);
     char* unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers);
     void sendRequestDescription();
-
-    //OSC Sending Functions
-    void addRigidbodies(zmsg_t *zmsg);
-    void addSkeletons(zmsg_t *zmsg);
-    void fixRanges( glm::vec3 *euler );
 
     //TODO: necessary?
     bool IPAddress_StringToAddr(char *szNameOrAddress, struct in_addr *Address);
     int GetLocalIPAddresses(unsigned long Addresses[], int nMax);
 
     NatNet() {
-
+        NatNetVersion = new int[]{0,0,0,0};
+        ServerVersion = new int[]{0,0,0,0};
     }
 };
 

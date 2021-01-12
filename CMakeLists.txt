@@ -15,6 +15,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(gazebosc)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
+
 ##  Test availability of git and fetch submodules if needed
 #find_package(Git QUIET)
 #if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -35,6 +38,7 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/czmq/CMakeLists.txt")
     message(FATAL_ERROR "The submodules in the ext directory are not available! GIT_SUBMODULE was turned off or failed. Please update submodules using \"git submodule update --init --recursive\" and try again.")
 endif()
 ## End getting the submodules
+
 
 set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")

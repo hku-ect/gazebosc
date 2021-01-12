@@ -8,6 +8,7 @@
 #include "../ext/glm/glm/gtc/quaternion.hpp"
 
 // Custom data structs
+#define SMOOTHING                   2
 
 typedef glm::vec3 Marker;
 
@@ -81,6 +82,9 @@ public:
         currentDataPoint = 0;
         firstRun = true;
         framesInactive = 0;
+
+        velocities.resize(2 * SMOOTHING + 1);
+        angularVelocities.resize(2 * SMOOTHING + 1);
     }
 };
 
@@ -98,9 +102,13 @@ struct remove_dups
     bool operator()(const glm::vec3& t) { return glm::distance(v, t) <= dist; }
 };
 
+// time decode helper functions
+bool DecodeTimecode(unsigned int inTimecode, unsigned int inTimecodeSubframe, int* hour, int* minute, int* second, int* frame, int* subframe);
+bool TimecodeStringify(unsigned int inTimecode, unsigned int inTimecodeSubframe, char *Buffer, int BufferSize);
+
 // Natnet settings
 
-#define SMOOTHING                   2
+
 
 #define MAX_NAMELENGTH              256
 
@@ -118,6 +126,12 @@ struct remove_dups
 #define UNDEFINED                   999999.9999
 
 #define MAX_PACKETSIZE				100000	// max size of packet (actual packet size is dynamic)
+
+// This is needed to enhance portability for struct padding
+// a compiler will pad the struct at will to optimize it
+// for the compiled architecture
+// ref: https://forums.naturalpoint.com/viewtopic.php?f=59&t=13272
+#pragma pack(push,1)
 
 // sender
 typedef struct
