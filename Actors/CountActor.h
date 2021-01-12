@@ -1,13 +1,15 @@
 #ifndef COUNTACTOR_H
 #define COUNTACTOR_H
-#include "libsphactor.h"
+#include "libsphactor.hpp"
 
-struct Count {
+class Count : public Sphactor {
+public:
     int msgCount;
 
-    zmsg_t *handleMsg( sphactor_event_t *ev );
+    zmsg_t *handleInit( sphactor_event_t *ev );
+    zmsg_t *handleSocket( sphactor_event_t *ev );
 
-    Count() {
+    Count() : Sphactor() {
         msgCount = 0;
     }
 };

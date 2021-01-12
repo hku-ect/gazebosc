@@ -1,14 +1,20 @@
 #ifndef PULSEACTOR_H
 #define PULSEACTOR_H
 
-struct Pulse {
+#include "libsphactor.hpp"
+
+class Pulse : public Sphactor {
+private:
     int rate;
 
-    zmsg_t * handleMsg( sphactor_event_t *ev );
-
-    Pulse() {
+public:
+    Pulse() : Sphactor() {
 
     }
+
+    zmsg_t * handleInit( sphactor_event_t *ev );
+    zmsg_t * handleTimer( sphactor_event_t *ev );
+
 };
 
 #endif // PULSEACTOR_H

@@ -28,27 +28,22 @@ const char * pulseCapabilities =
                                 "    output\n"
                                 "        type = \"OSC\"\n";
 
-zmsg_t * Pulse::handleMsg( sphactor_event_t *ev ) {
-    if ( streq(ev->type, "INIT")) {
-        sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pulseCapabilities));
-        return ev->msg;
-    }
-    else if ( streq( ev->type, "DESTROY")) {
-        delete this;
-        zmsg_destroy(&ev->msg);
-        return NULL;
-    }
-    else
-    if ( streq(ev->type, "TIME")) {
-        zosc_t * osc = zosc_create("/pulse", "s", "PULSE");
+zmsg_t * Pulse::handleInit( sphactor_event_t *ev ) {
+    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pulseCapabilities));
+    return Sphactor::handleInit(ev);
+}
 
-        zmsg_t *msg = zmsg_new();
-        zframe_t *frame = zframe_new(zosc_data(osc), zosc_size(osc));
-        zmsg_append(msg, &frame);
+zmsg_t * Pulse::handleTimer( sphactor_event_t *ev ) {
+    zosc_t * osc = zosc_create("/pulse", "s", "PULSE");
 
-        zframe_destroy(&frame);
+    zmsg_t *msg = zmsg_new();
+    zframe_t *frame = zframe_new(zosc_data(osc), zosc_size(osc));
+    zmsg_append(msg, &frame);
 
-        return msg;
-    }
-    else return nullptr;
+    // clean up
+    zframe_destroy(&frame);
+    zmsg_destroy(&ev->msg);
+
+    // publish new msg
+    return msg;
 }
