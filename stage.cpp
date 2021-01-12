@@ -31,6 +31,7 @@
 #include "libsphactor.h"
 #include "ActorContainer.h"
 #include "actors.h"
+#include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
 
 //enum for menu actions
 enum MenuAction
@@ -39,6 +40,7 @@ enum MenuAction
     MenuAction_Load,
     MenuAction_Clear,
     MenuAction_Exit,
+    MenuAction_SaveAs,
     MenuAction_None
 };
 
@@ -48,6 +50,11 @@ enum MenuAction
 ImVector<char*> actor_types;
 std::vector<ActorContainer*> actors;
 std::map<std::string, int> max_actors_by_type;
+
+// File browser instance
+imgui_addons::ImGuiFileBrowser file_dialog;
+std::string editingFile = "";
+std::string editingPath = "";
 
 bool Save( const char* configFile );
 bool Load( const char* configFile );
@@ -181,6 +188,9 @@ int RenderMenuBar( bool * showLog ) {
         if ( ImGui::MenuItem("Save") ) {
             action = MenuAction_Save;
         }
+        if ( ImGui::MenuItem("Save As") ) {
+            action = MenuAction_SaveAs;
+        }
         if ( ImGui::MenuItem("Load") ) {
             //TODO: support checking if changes were made
             action = MenuAction_Load;
@@ -213,11 +223,11 @@ int RenderMenuBar( bool * showLog ) {
     ImGui::Separator();
     ImGui::Separator();
 
-    if ( configFile[0] == 0 ) {
+    if ( streq( editingFile.c_str(), "" ) ) {
         ImGui::TextColored( ImVec4(.7,.9,.7,1), "   Editing: New Stage");
     }
     else {
-        ImGui::TextColored( ImVec4(.7,.9,.7,1), "   Editing: %s", configFile);
+        ImGui::TextColored( ImVec4(.7,.9,.7,1), "   Editing: %s", editingFile.c_str());
     }
 
     ImGui::EndMainMenuBar();
@@ -228,53 +238,43 @@ int RenderMenuBar( bool * showLog ) {
         keyFocus = 2;
     }
     else if ( action == MenuAction_Save ) {
-        if ( configFile[0] == 0 ) {
+        if ( streq( editingFile.c_str(), "" ) ) {
             ImGui::OpenPopup("MenuAction_Save");
-            keyFocus = 2;
         }
         else {
-            Save(configFile);
+            Save(editingPath.c_str());
             ImGui::CloseCurrentPopup();
         }
     }
+    else if ( action == MenuAction_SaveAs ) {
+        ImGui::OpenPopup("MenuAction_Save");
+    }
     else if ( action == MenuAction_Clear ) {
         Clear();
-        memset(configFile,0,64);
+        editingFile = "";
+        editingPath = "";
     }
     else if ( action == MenuAction_Exit ) {
         return -1;
     }
 
-    if ( ImGui::BeginPopup("MenuAction_Load")) {
-        ImGui::Text("Load stage");
-
-        if ( keyFocus > 0 )
-            ImGui::SetKeyboardFocusHere();
-        ImGui::InputText("Filename", configFile, 128);
-
-        if (ImGui::Button("Load")) {
-            Load(configFile);
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
+    if(file_dialog.showFileDialog("MenuAction_Load", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), "*.*"))
+    {
+        Load(file_dialog.selected_path.c_str());
+        editingFile = file_dialog.selected_fn;
+        editingPath = file_dialog.selected_path;
     }
 
-    if ( ImGui::BeginPopup("MenuAction_Save")) {
-        ImGui::Text("Save stage");
-
-        if ( keyFocus > 0 )
-            ImGui::SetKeyboardFocusHere();
-        ImGui::InputText("Filename", configFile, 128);
-
-        if (ImGui::Button("Save")) {
-            if ( !Save(configFile) ) {
-                memset(configFile,0,64);
-            }
-            ImGui::CloseCurrentPopup();
+    if(file_dialog.showFileDialog("MenuAction_Save", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), "*.*"))
+    {
+        if ( !Save(file_dialog.selected_path.c_str()) ) {
+            editingFile = "";
+            editingPath = "";
         }
-
-        ImGui::EndPopup();
+        else {
+            editingFile = file_dialog.selected_fn;
+            editingPath = file_dialog.selected_path;
+        }
     }
 
     return 0;
