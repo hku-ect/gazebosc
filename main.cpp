@@ -59,6 +59,7 @@ using namespace gl;
 #else
 #include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #endif
+#define SDL_MAIN_HANDLED
 
 // Forward declare to keep main func on top for readability
 int SDLInit(SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version);
