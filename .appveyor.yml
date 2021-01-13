@@ -43,6 +43,8 @@ clone_folder: C:\projects\libsphactor
 build_script:
   - cmd: |
       set GZB_BUILDDIR="%APPVEYOR_BUILD_FOLDER%\build"
+      cd "%APPVEYOR_BUILD_FOLDER%"
+      git submodule update --init --recursive
       md "%GZB_BUILDDIR%"
       cd "%GZB_BUILDDIR%"
       cmake .. -DCMAKE_PREFIX_PATH="C:\tmp\ci_build" -DCMAKE_INSTALL_PREFIX="%INSTALL_PREFIX%"
