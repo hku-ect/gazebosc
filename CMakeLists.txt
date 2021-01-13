@@ -61,6 +61,8 @@ add_subdirectory("ext/glm" EXCLUDE_FROM_ALL)
 ## External system libraries through find_package
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 find_package(libzmq REQUIRED)
+message(WARNING ${libzmq_INCLUDE_DIRS})
+message(WARNING ${libzmq_LIBRARIES})
 if (NOT libzmq_FOUND)
     message (FATAL_ERROR "Cannot find libzmq, make sure it is available on the system")
 endif()
@@ -128,7 +130,7 @@ add_executable(gazebosc
     ${ACTOR_HEADERS}
 )
 target_include_directories(gazebosc PUBLIC
-    ${ZMQ_INCLUDE_DIRS}
+    ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
@@ -140,7 +142,7 @@ if (APPLE)
         SDL2-static
         czmq-static
         sphactor-static
-        ${ZMQ_LIBRARIES}
+        ${libzmq_LIBRARIES}
         ${LO_LIBRARIES}
         ${Python3_LIBRARIES}
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
@@ -150,7 +152,7 @@ elseif (WIN32)
         SDL2-static
         czmq-static
         sphactor-static
-        ${ZMQ_LIBRARIES}
+        ${libzmq_LIBRARIES}
         ${LO_LIBRARIES}
         ${Python3_LIBRARIES}
         opengl32.lib)
@@ -159,7 +161,7 @@ else()
         SDL2-static
         czmq-static
         sphactor-static
-        ${ZMQ_LIBRARIES}
+        ${libzmq_LIBRARIES}
         ${LO_LIBRARIES}
         ${Python3_LIBRARIES}
         -lasound -ldl -lGL -lGLEW)
