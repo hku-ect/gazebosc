@@ -21,6 +21,7 @@ public:
 
     int queueAudio();
     void mixAudio(Uint8 *stream, int len);
+    zmsg_t *getPatternEventMsg();
 
     uint32_t *buffer_dat;
     modcontext modctx;
