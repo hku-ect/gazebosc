@@ -45,9 +45,8 @@ enum GActorSlotTypes
     ActorSlotNatNet
 };
 
+#define MAX_STR_DEFAULT 256 // Default value UI strings will have if no maximum is set
 struct ActorContainer {
-    /// Default value UI strings will have if no maximum is set
-    const int MAX_STR_DEFAULT = 256;
     /// Title which will be displayed at the center-top of the actor.
     const char* title = nullptr;
     /// Flag indicating that actor is selected by the user.

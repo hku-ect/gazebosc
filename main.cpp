@@ -22,6 +22,7 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
 #include <stdio.h>
+#define SDL_MAIN_HANDLED
 #include <SDL.h>
 
 #include <chrono>
