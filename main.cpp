@@ -22,6 +22,7 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
 #include <stdio.h>
+#define SDL_MAIN_HANDLED
 #include <SDL.h>
 
 #include <chrono>
@@ -59,7 +60,6 @@ using namespace gl;
 #else
 #include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #endif
-#define SDL_MAIN_HANDLED
 
 // Forward declare to keep main func on top for readability
 int SDLInit(SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version);
