@@ -82,7 +82,39 @@ ModPlayerActor::queueAudio()
         msample stream[buffersize];
         hxcmod_fillbuffer(&modctx, (msample*)stream, buffersize / 4, &trackbuf_state1);
         SDL_QueueAudio(audiodev, stream, buffersize);
+
+        return SDL_GetQueuedAudioSize(audiodev);
     }
+    return -1;
+}
+
+zmsg_t *
+ModPlayerActor::getPatternEventMsg()
+{
+    tracker_state *state = this->trackbuf_state1.track_state_buf;
+    zosc_t *oscm = zosc_create("/patternevent", "iiiiii",
+                                      state->cur_pattern_pos,
+                                      state->cur_pattern_table_pos,
+                                      state->tracks[0].cur_period,   // note
+                                      state->tracks[0].instrument_number,
+                                      state->tracks[0].cur_effect,
+                                      state->tracks[0].cur_parameffect
+                                     );
+    assert(oscm);
+    //append rest of the tracks
+    for (int i=1;i<state->number_of_tracks;i++)
+    {
+        zosc_append(oscm, "iiii",
+                          state->tracks[i].cur_period,   // note
+                          state->tracks[i].instrument_number,
+                          state->tracks[i].cur_effect,
+                          state->tracks[i].cur_parameffect
+                        );
+    }
+    zmsg_t *ret = zmsg_new();
+    zframe_t *data = zosc_packx(&oscm);
+    zmsg_append(ret, &data);
+    return ret;
 }
 
 zmsg_t *
@@ -173,14 +205,17 @@ ModPlayerActor::handleMsg( sphactor_event_t *event )
         {
             queueAudio();
             SDL_PauseAudioDevice(audiodev, 0);
-            zosc_t *msg = zosc_create("/loaded", "sssisisi",
+            zosc_t *msg = zosc_create("/loaded", "sssisisisisi",
                                       "title", this->modctx.song.title,
                                       "length", int(this->modctx.song.length),
                                       "speed", int(this->modctx.song.speed),
-                                      "bpm", int(this->modctx.bpm));
+                                      "bpm", int(this->modctx.bpm),
+                                      "position", this->modctx.tablepos,
+                                      "pattern", this->modctx.song.patterntable[this->modctx.tablepos] );
             sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
             // determine next timeout based on speed and bpm of the song! 2500ms/bpm*speed
             sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
+            return getPatternEventMsg();
         }
     }
     else if ( streq( event->type, "STOP"))
