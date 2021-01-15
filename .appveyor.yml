@@ -52,7 +52,7 @@ build_script:
 #      ctest -C %Configuration% -V
 after_build:
   - cmd: cd "%GZB_BUILDDIR%\%Configuration%"
-  - cmd: copy "%INSTALL_PREFIX%\bin\*.*" .
+  - cmd: copy "%INSTALL_PREFIX%\bin\*.dll" .
   - cmd: 7z a -y -bd -mx=9 gazebosc.zip *.exe libzmq*.dll libczmq*.dll libsphactor*.dll
   - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc-${env:Platform}-${env:Configuration}.zip"
 
