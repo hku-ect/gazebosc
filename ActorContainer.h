@@ -282,11 +282,12 @@ struct ActorContainer {
                                 clock_t got = (clock_t)value;
                                 clock_t diff = now - got;
                                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                                ImNodes::CanvasState* canvas = ImNodes::GetCurrentCanvas();
                                 if (now - got < CLOCKS_PER_SEC * .1) {
-                                    draw_list->AddCircleFilled(pos + ImVec2(5,5), 5, ImColor(0, 255, 0), 4);
+                                    draw_list->AddCircleFilled(canvas->offset + pos * canvas->zoom + ImVec2(5,5) * canvas->zoom, 5 * canvas->zoom , ImColor(0, 255, 0), 4);
                                 }
                                 else {
-                                    draw_list->AddCircleFilled(pos + ImVec2(5, 5), 5, ImColor(127, 127, 127), 4);
+                                    draw_list->AddCircleFilled(canvas->offset + pos * canvas->zoom + ImVec2(5, 5) * canvas->zoom, 5 * canvas->zoom, ImColor(127, 127, 127), 4);
                                 }
                             }
                             else {
