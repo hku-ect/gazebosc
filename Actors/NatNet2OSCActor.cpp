@@ -44,7 +44,7 @@ const char * natNet2OSCCapabilities = "capabilities\n"
                                 "        api_value = \"s\"\n"
                                 "inputs\n"
                                 "    input\n"
-                                "        type = \"OSC\"\n" //TODO: NatNet input?
+                                "        type = \"NatNet\"\n" //TODO: NatNet input?
                                 "outputs\n"
                                 "    output\n"
                                 "        type = \"OSC\"\n";

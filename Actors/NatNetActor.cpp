@@ -26,7 +26,7 @@ const char * natnetCapabilities =
                                 "outputs\n"
                                 "    output\n"
                                 //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
-                                "        type = \"OSC\"\n";
+                                "        type = \"NatNet\"\n";
 
 zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     if ( streq(ev->type, "INIT") ) {
