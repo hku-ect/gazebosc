@@ -51,9 +51,9 @@ build_script:
       cmake --build . --config %Configuration% --target install
 #      ctest -C %Configuration% -V
 after_build:
-  - cmd: cd "%GZB_BUILDDIR%\%Configuration%"
+  - cmd: cd "%GZB_BUILDDIR%\bin\%Configuration%"
   - cmd: copy "%INSTALL_PREFIX%\bin\*.dll" .
-  - cmd: 7z a -y -bd -mx=9 gazebosc.zip *.exe libzmq*.dll libczmq*.dll libsphactor*.dll
+  - cmd: 7z a -r gazebosc.zip *.*
   - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc-${env:Platform}-${env:Configuration}.zip"
 
 test:

@@ -168,7 +168,7 @@ If you want to work on Gazebosc it's easiest to use QtCreator. Just load the CMa
 ```
 git clone http://github.com/hku-ect/gazebosc.git
 ```
-* Run "x86 Native Tools Command Prompt for VS 2019" as Administrator
+* Run "x64 Native Tools Command Prompt for VS 2019" as Administrator
 	- Navigate to gazebosc project root
     	- Run "build_windows.bat"
 * Run Visual Studio, and select Open -> CMake
