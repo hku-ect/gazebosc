@@ -7,6 +7,7 @@
 #include "ImNodes.h"
 #include "ImNodesEz.h"
 #include <czmq.h>
+#include <time.h>
 
 /// A structure defining a connection between two slots of two actors.
 struct Connection
@@ -208,7 +209,7 @@ struct ActorContainer {
                 RenderFloat( nameStr, data );
             }
             else if ( streq(typeStr, "string")) {
-                RenderString( nameStr, data );
+                RenderString(nameStr, data);
             }
             else if ( streq(typeStr, "bool")) {
                 RenderBool( nameStr, data );
@@ -227,26 +228,27 @@ struct ActorContainer {
         zosc_t * customData = sphactor_report_custom(report);
         if ( customData ) {
             const char* address = zosc_address(customData);
-            ImGui::Text("%s", address);
+            //ImGui::Text("%s", address);
 
             char type = '0';
             const void *data = zosc_first(customData, &type);
             bool name = true;
+            char* nameStr = nullptr;
             while( data ) {
                 if ( name ) {
                     //expecting a name string for each piece of data
                     assert(type == 's');
 
-                    char* nameStr;
                     int rc = zosc_pop_string(customData, &nameStr);
                     if (rc == 0 )
                     {
                         ImGui::BeginGroup();
-                        ImGui::SetNextItemWidth(LABEL_WIDTH);
-                        ImGui::Text("%s:", nameStr);
-                        ImGui::SameLine();
-                        ImGui::SetNextItemWidth(VALUE_WIDTH);
-                        zstr_free(&nameStr);
+                        if (!streq(nameStr, "lastActive")) {
+                            ImGui::SetNextItemWidth(LABEL_WIDTH);
+                            ImGui::Text("%s:", nameStr);
+                            ImGui::SameLine();
+                            ImGui::SetNextItemWidth(VALUE_WIDTH);
+                        }
                     }
                 }
                 else {
@@ -273,7 +275,23 @@ struct ActorContainer {
                         case 'h': {
                             int64_t value;
                             zosc_pop_int64(customData, &value);
-                            ImGui::Text("%lli", value);
+
+                            if (streq(nameStr, "lastActive")) {
+                                // render something to indicate the actor is currently active
+                                clock_t now = clock();
+                                clock_t got = (clock_t)value;
+                                clock_t diff = now - got;
+                                ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                                if (now - got < CLOCKS_PER_SEC * .1) {
+                                    draw_list->AddCircleFilled(pos + ImVec2(5,5), 5, ImColor(0, 255, 0), 4);
+                                }
+                                else {
+                                    draw_list->AddCircleFilled(pos + ImVec2(5, 5), 5, ImColor(127, 127, 127), 4);
+                                }
+                            }
+                            else {
+                                ImGui::Text("%lli", value);
+                            }
                         } break;
                         case 'f': {
                             float value;
@@ -294,6 +312,9 @@ struct ActorContainer {
                     }
 
                     ImGui::EndGroup();
+
+                    //free the nameStr here so we can use it up to this point
+                    zstr_free(&nameStr);
                 }
 
                 //flip expecting name or value

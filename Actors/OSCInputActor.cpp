@@ -1,4 +1,5 @@
 #include "OSCInputActor.h"
+#include <time.h>
 
 const char * oscInputCapabilities =
         "capabilities\n"
@@ -73,5 +74,12 @@ zmsg_t * OSCInput::handleCustomSocket( sphactor_event_t *ev )
     zmsg_add(oscMsg, oscFrame);
 
     zmsg_destroy(&ev->msg);
+
+    // set timestamp of last received packet in report
+    zosc_t* msg = zosc_create("/report", "sh",
+        "lastActive", (int64_t)clock());
+
+    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+
     return oscMsg;
 }
