@@ -29,6 +29,12 @@ const char * clientCapabilities =
                                 "        type = \"OSC\"\n";
 
 zmsg_t* Client::handleInit( sphactor_event_t * ev ) {
+    // Initialize report timestamp
+    zosc_t* msg = zosc_create("/report", "sh",
+        "lastActive", (int64_t)0);
+
+    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+
     //init capabilities
     sphactor_actor_set_capability((sphactor_actor_t *) ev->actor, zconfig_str_load(clientCapabilities));
     this->dgrams = zsock_new_dgram("udp://*:*");
