@@ -350,9 +350,10 @@ struct ActorContainer {
         if ( ImGui::Checkbox( name, &value ) ) {
             zconfig_set_value(zvalue, "%s", value ? "True" : "False");
 
-            char *buf = new char[4];
+            char *buf = new char[6];
             const char *zvalueStr = zconfig_value(zvalue);
             strcpy(buf, zvalueStr);
+            buf[4] = '\n';
             SendAPI<char *>(zapic, zapiv, zvalue, &buf);
             zstr_free(&buf);
         }
