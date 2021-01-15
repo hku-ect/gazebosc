@@ -62,23 +62,18 @@ make
 
 #### Building on Windows
 
-* Install Visual Studio 2019: https://visualstudio.microsoft.com/downloads/
-When installing, make sure to include:
-- CMake
-- Git
-
+* Install Visual Studio 2019: https://visualstudio.microsoft.com/downloads/ , make sure to include:
+	- CMake
+	- Git
 * Clone gazebosc repository
 ```
 git clone http://github.com/hku-ect/gazebosc.git
 ```
-
 * Run "x86 Native Tools Command Prompt for VS 2019" as Administrator
-* Navigate to gazebosc project root
-    Run "build_windows.bat"
-
+	- Navigate to gazebosc project root
+    	- Run "build_windows.bat"
 * Run Visual Studio, and select Open -> CMake
-    Navigate to gazebosc/CMakeListst.txt
-
+	- Navigate to gazebosc/CMakeListst.txt
 * Select "gazebosc.vcxproj" from debug targets
 
 You are now ready to debug as normal!
