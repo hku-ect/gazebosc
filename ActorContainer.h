@@ -354,7 +354,6 @@ struct ActorContainer {
             char *buf = new char[6];
             const char *zvalueStr = zconfig_value(zvalue);
             strcpy(buf, zvalueStr);
-            buf[4] = '\n';
             SendAPI<char *>(zapic, zapiv, zvalue, &buf);
             zstr_free(&buf);
         }
