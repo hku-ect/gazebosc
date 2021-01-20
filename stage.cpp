@@ -446,7 +446,7 @@ bool Save( const char* configFile ) {
             ActorContainer *out = (ActorContainer*)connection.output_node;
             ActorContainer *in = (ActorContainer*)connection.input_node;
 
-            zconfig_set_value(item,"%s,%s", sphactor_ask_endpoint(out->actor), sphactor_ask_endpoint(in->actor));
+            zconfig_set_value(item,"%s,%s,%s", sphactor_ask_endpoint(out->actor), sphactor_ask_endpoint(in->actor), connection.output_slot );
         }
     }
     zconfig_save(config, configFile);
@@ -518,12 +518,15 @@ bool Load( const char* configFile ) {
 
         char* output = new char[i+1];
         char* input = new char[strlen(conVal)-i];
+        char* type = new char[64];
 
         char * pch;
         pch = strtok (conVal,",");
         sprintf(output, "%s", pch);
         pch = strtok (NULL, ",");
         sprintf(input, "%s", pch);
+        pch = strtok(NULL, ",");
+        sprintf(type, "%s", pch);
 
         // Loop actors and find output actor
         for (auto it = actors.begin(); it != actors.end();)
@@ -538,9 +541,8 @@ bool Load( const char* configFile ) {
 
                 connection.output_node = actor;
                 connection.input_node = inputActor;
-                //TODO: Fix OSC type assumption -> part of the connection list?
-                connection.input_slot = "OSC";
-                connection.output_slot = "OSC";
+                connection.input_slot = type;
+                connection.output_slot = type;
 
                 actor->connections.push_back(connection);
                 inputActor->connections.push_back(connection);

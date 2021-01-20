@@ -1,6 +1,7 @@
 #include "NatNetActor.h"
 #include <string>
 #include <algorithm>
+#include <time.h>
 
 //static variable definitions
 int* NatNet::NatNetVersion = new int[4]{0,0,0,0};
@@ -26,7 +27,7 @@ const char * natnetCapabilities =
                                 "outputs\n"
                                 "    output\n"
                                 //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
-                                "        type = \"OSC\"\n";
+                                "        type = \"NatNet\"\n";
 
 zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     if ( streq(ev->type, "INIT") ) {
@@ -55,6 +56,12 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         cmdFD = zsock_fd(CommandSocket);
         rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
         assert(rc == 0);
+
+        // Initialize report timestamp
+        zosc_t* msg = zosc_create("/report", "sh",
+            "lastActive", (int64_t)0);
+
+        sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
     }
     else if ( streq(ev->type, "DESTROY") ) {
         if ( CommandSocket != NULL ) {
@@ -187,6 +194,12 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                                 // re-append the zframe that was popped
                                 // only send if definitions are updated
                                 if ( skeletonsReady && rigidbodiesReady ) {
+                                    // set timestamp of last sent packet in report
+                                    zosc_t* msg = zosc_create("/report", "sh",
+                                        "lastActive", (int64_t)clock());
+
+                                    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+
                                     zmsg_addmem(zmsg, (byte*)packet, len);
                                     zframe_destroy(&zframe);
                                     return zmsg;
@@ -202,7 +215,6 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                 }
                 else if ( sockFD == dataFD ) {
                     //zsys_info("DATA SOCKET");
-
                     zmsg_destroy(&ev->msg);
 
                     //TODO: Send data packet to connected natnet2osc clients
@@ -254,6 +266,12 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                             // re-append the zframe that was popped
                             // only send if definitions are updated
                             if ( skeletonsReady && rigidbodiesReady ) {
+                                // set timestamp of last received packet in report
+                                zosc_t* msg = zosc_create("/report", "sh",
+                                    "lastActive", (int64_t)clock());
+
+                                sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+
                                 zmsg_addmem(zmsg, data, len);
                                 return zmsg;
                             }
