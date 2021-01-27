@@ -2,7 +2,7 @@
 #define MODPLAYERACTOR_H
 
 #include "libsphactor.hpp"
-#include "SDL2/SDL_audio.h"
+#include "SDL_audio.h"
 
 extern "C" {
 #include "hxcmod.h"
