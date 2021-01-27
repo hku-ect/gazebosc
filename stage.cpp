@@ -186,19 +186,19 @@ int RenderMenuBar( bool * showLog ) {
     ImGui::BeginMainMenuBar();
 
     if ( ImGui::BeginMenu("File") ) {
-        if ( ImGui::MenuItem("Save") ) {
-            action = MenuAction_Save;
-        }
-        if ( ImGui::MenuItem("Save As") ) {
-            action = MenuAction_SaveAs;
-        }
-        if ( ImGui::MenuItem("Load") ) {
+        if ( ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Load") ) {
             //TODO: support checking if changes were made
             action = MenuAction_Load;
         }
+        if ( ImGui::MenuItem(ICON_FA_SAVE " Save") ) {
+            action = MenuAction_Save;
+        }
+        if ( ImGui::MenuItem(ICON_FA_SAVE " Save As") ) {
+            action = MenuAction_SaveAs;
+        }
         ImGui::Separator();
         ImGui::Separator();
-        if ( ImGui::MenuItem("Exit") ) {
+        if ( ImGui::MenuItem(ICON_FA_WINDOW_CLOSE " Exit") ) {
             //TODO: support checking if changes were made
             action = MenuAction_Exit;
         }
@@ -207,14 +207,14 @@ int RenderMenuBar( bool * showLog ) {
     }
 
     if ( ImGui::BeginMenu("Stage") ) {
-        if ( ImGui::MenuItem("Clear") ) {
+        if ( ImGui::MenuItem(ICON_FA_TRASH_ALT " Clear") ) {
             action = MenuAction_Clear;
         }
         ImGui::EndMenu();
     }
 
     if ( ImGui::BeginMenu("Tools") ) {
-        if ( ImGui::MenuItem("Toggle Console") ) {
+        if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Console") ) {
             *showLog = !(*showLog);
         }
         ImGui::EndMenu();
@@ -225,10 +225,10 @@ int RenderMenuBar( bool * showLog ) {
     ImGui::Separator();
 
     if ( streq( editingFile.c_str(), "" ) ) {
-        ImGui::TextColored( ImVec4(.7,.9,.7,1), "   Editing: New Stage");
+        ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": New Stage");
     }
     else {
-        ImGui::TextColored( ImVec4(.7,.9,.7,1), "   Editing: %s", editingFile.c_str());
+        ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": %s", editingFile.c_str());
     }
 
     ImGui::EndMainMenuBar();

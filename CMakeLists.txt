@@ -123,6 +123,7 @@ add_executable(gazebosc
     ${DEP_IMNODES_DIR}/ImNodesEz.cpp
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
+    fontawesome5.h
     stage.cpp
     ActorContainer.h
     actors.h
