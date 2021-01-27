@@ -1,7 +1,7 @@
 #ifndef MODPLAYERACTOR_H
 #define MODPLAYERACTOR_H
 
-#include "libsphactor.h"
+#include "libsphactor.hpp"
 #include "SDL2/SDL_audio.h"
 
 extern "C" {
@@ -11,13 +11,21 @@ extern "C" {
 #define SAMPLERATE 48000
 #define NBSTEREO16BITSAMPLES 16384
 
-class ModPlayerActor
+struct ModPlayerActor : Sphactor
 {
-public:
-    ModPlayerActor() {};
+    ModPlayerActor() {}
 
     zmsg_t *
-    handleMsg( sphactor_event_t *event );
+    handleInit(sphactor_event_t *ev);
+
+    zmsg_t *
+    handleAPI(sphactor_event_t *ev);
+
+    zmsg_t *
+    handleTimer(sphactor_event_t *ev);
+
+    zmsg_t *
+    handleStop(sphactor_event_t *ev);
 
     int queueAudio();
     void mixAudio(Uint8 *stream, int len);
