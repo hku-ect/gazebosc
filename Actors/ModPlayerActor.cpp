@@ -79,10 +79,16 @@ ModPlayerActor::queueAudio()
                 buffersize = fillsize;
         }
         //zsys_info("fill len %i, qs %i", buffersize, qs );
+#ifdef _MSC_VER
+        msample *stream = (msample *)_malloca( buffersize * sizeof(msample) );
+        hxcmod_fillbuffer(&modctx, stream, buffersize / 4, &trackbuf_state1);
+        SDL_QueueAudio(audiodev, stream, buffersize);
+        _freea(stream);
+#else
         msample stream[buffersize];
         hxcmod_fillbuffer(&modctx, (msample*)stream, buffersize / 4, &trackbuf_state1);
         SDL_QueueAudio(audiodev, stream, buffersize);
-
+#endif
         return SDL_GetQueuedAudioSize(audiodev);
     }
     return -1;
@@ -221,6 +227,8 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
         sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
         return getPatternEventMsg();
     }
+
+    return nullptr;
 }
 
 zmsg_t *
