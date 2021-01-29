@@ -16,11 +16,8 @@ const char * modplayercapabilities =
         "        api_call = \"SET MOD\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
         "    data\n"
-        "        name = \"playTrigger\"\n"
-        "        type = \"bool\"\n"
-        "        value = \"False\"\n"
-        "        api_call = \"SET PLAY\"\n"
-        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "        name = \"playback\"\n"
+        "        type = \"mediacontrol\"\n"
         "outputs\n"
         "    output\n"
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -130,6 +127,10 @@ ModPlayerActor::handleInit( sphactor_event_t *event )
     //init capabilities
     sphactor_actor_set_capability((sphactor_actor_t*)event->actor, zconfig_str_load(modplayercapabilities));
     sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/144)*31);
+    // init hxcmod player
+    hxcmod_init(&this->modctx);
+
+    if ( event->msg ) zmsg_destroy(&event->msg);
     return nullptr;
 }
 
@@ -140,8 +141,16 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
     if ( streq(cmd, "SET MOD") )
     {
         char *file = zmsg_popstr(event->msg);
+        bool error = false;
         if (strlen(file) )
         {
+            if ( this->modctx.mod_loaded == 1 )
+            {
+                hxcmod_unload( &this->modctx );
+                // free modfile
+                free( this->modfile );
+            }
+
             FILE *f;
             int filesize = 0;
             f = fopen(file,"rb");
@@ -150,60 +159,75 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
             fseek(f,0,SEEK_END);
             filesize = ftell(f);
             fseek(f,0,SEEK_SET);
-            unsigned char *mod = (unsigned char *)malloc(filesize);
-            fread(mod,filesize,1,f);
-            hxcmod_init(&this->modctx);
+            this->modfile = (unsigned char *)malloc(filesize);
+            fread(this->modfile,filesize,1,f);
             hxcmod_setcfg(&this->modctx, SAMPLERATE, 0, 0);
-            hxcmod_load(&this->modctx,(void*)mod,filesize);
-
+            hxcmod_load(&this->modctx,(void*)this->modfile,filesize);
             fclose(f);
-            zosc_t *msg = zosc_create("/loaded", "sssisisi",
-                                      "title", this->modctx.song.title,
-                                      "length", int(this->modctx.song.length),
-                                      "speed", int(this->modctx.song.speed),
-                                      "bpm", int(this->modctx.bpm));
-            sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
-            sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
+
+            if ( this->modctx.mod_loaded == 1 )
+            {
+                zosc_t *msg = zosc_create("/loaded", "sssisisi",
+                                          "title", this->modctx.song.title,
+                                          "length", int(this->modctx.song.length),
+                                          "speed", int(this->modctx.song.speed),
+                                          "bpm", int(this->modctx.bpm));
+                sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
+                sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
+
+                if (audiodev == -1 ) // init audio
+                {
+
+                    fmt.freq = 48000;
+                    fmt.format = AUDIO_S16;
+                    fmt.channels = 2;
+                    fmt.samples = NBSTEREO16BITSAMPLES/4;
+                    fmt.callback = NULL;
+                    fmt.userdata = NULL;
+
+                    memset(&this->trackbuf_state1,0,sizeof(tracker_buffer_state));
+                    trackbuf_state1.nb_max_of_state = 100;
+                    trackbuf_state1.track_state_buf = (tracker_state *)malloc(sizeof(tracker_state) * trackbuf_state1.nb_max_of_state);
+                    memset(trackbuf_state1.track_state_buf,0,sizeof(tracker_state) * trackbuf_state1.nb_max_of_state);
+                    trackbuf_state1.sample_step = ( NBSTEREO16BITSAMPLES ) / trackbuf_state1.nb_max_of_state;
+                    audiodev = SDL_OpenAudioDevice(NULL, 0, &fmt, NULL, 0);
+                    if ( audiodev < 1 )
+                    {
+                        zsys_error("Cannot open Audio: %s\n", SDL_GetError());
+                    }
+                }
+            }
+            else
+            {
+                hxcmod_unload(&this->modctx);
+                free(this->modfile);
+                error = true;
+            }
         }
         else
+        {
+            error = true;
+        }
+
+        if (error)
         {
             zosc_t *msg = zosc_create("/report", "ss", "error loading file:", file);
             sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
         }
         zstr_free(&file);
-
-        if (audiodev == -1 )
-        {
-
-            fmt.freq = 48000;
-            fmt.format = AUDIO_S16;
-            fmt.channels = 2;
-            fmt.samples = NBSTEREO16BITSAMPLES/4;
-            fmt.callback = NULL;
-            fmt.userdata = NULL;
-
-            memset(&this->trackbuf_state1,0,sizeof(tracker_buffer_state));
-            trackbuf_state1.nb_max_of_state = 100;
-            trackbuf_state1.track_state_buf = (tracker_state *)malloc(sizeof(tracker_state) * trackbuf_state1.nb_max_of_state);
-            memset(trackbuf_state1.track_state_buf,0,sizeof(tracker_state) * trackbuf_state1.nb_max_of_state);
-            trackbuf_state1.sample_step = ( NBSTEREO16BITSAMPLES ) / trackbuf_state1.nb_max_of_state;
-            audiodev = SDL_OpenAudioDevice(NULL, 0, &fmt, NULL, 0);
-            if ( audiodev < 1 )
-            {
-                zsys_error("Cannot open Audio: %s\n", SDL_GetError());
-            }
-        }
     }
-    else if ( streq(cmd, "SET PLAY") )
+    else if ( streq(cmd, "PLAY") )
+        this->playing = true;
+    else if ( streq(cmd, "PAUSE") )
+        this->playing = false;
+    else if ( streq(cmd, "BACK") )
     {
-        char *val = zmsg_popstr(event->msg);
-        if ( streq( val, "True" ) )
-        {
-            this->playing = true;
-        }
-        else
-            this->playing = false;
+        this->modctx.tablepos = 0;
     }
+
+    if ( cmd )
+        zstr_free(&cmd);
+
     zmsg_destroy(&event->msg);
     return NULL;
 }
@@ -227,14 +251,21 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
         sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
         return getPatternEventMsg();
     }
-
+    if ( event->msg ) zmsg_destroy(&event->msg);
     return nullptr;
 }
 
 zmsg_t *
 ModPlayerActor::handleStop(sphactor_event_t *event)
 {
+    if ( this->modctx.mod_loaded == 1 )
+        free( this->modfile ); // free modfile
+
+    hxcmod_unload(&this->modctx);
+    if (audiodev != -1 )
+        free( trackbuf_state1.track_state_buf ); // free tracker state buf
+
     SDL_CloseAudio();
-    zmsg_destroy(&event->msg);
+    if ( event->msg ) zmsg_destroy(&event->msg);
     return NULL;
 }
