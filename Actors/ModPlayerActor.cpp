@@ -12,7 +12,7 @@ const char * modplayercapabilities =
         "    data\n"
         "        name = \"modfile\"\n"
         "        type = \"filename\"\n"
-        "        value = \"/home/arnaud/cndmcrrp.mod\"\n"
+        "        value = \"\"\n"
         "        api_call = \"SET MOD\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
         "    data\n"
@@ -141,7 +141,6 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
     if ( streq(cmd, "SET MOD") )
     {
         char *file = zmsg_popstr(event->msg);
-        bool error = false;
         if (strlen(file) )
         {
             if ( this->modctx.mod_loaded == 1 )
@@ -201,23 +200,17 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
             {
                 hxcmod_unload(&this->modctx);
                 free(this->modfile);
-                error = true;
+                zosc_t *msg = zosc_create("/report", "ss", "error loading file:", file);
+                sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
             }
-        }
-        else
-        {
-            error = true;
-        }
-
-        if (error)
-        {
-            zosc_t *msg = zosc_create("/report", "ss", "error loading file:", file);
-            sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
         }
         zstr_free(&file);
     }
     else if ( streq(cmd, "PLAY") )
-        this->playing = true;
+    {
+        if ( this->modctx.mod_loaded == 1)
+            this->playing = true;
+    }
     else if ( streq(cmd, "PAUSE") )
         this->playing = false;
     else if ( streq(cmd, "BACK") )
