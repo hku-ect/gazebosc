@@ -220,6 +220,9 @@ struct ActorContainer {
             else if ( streq(typeStr, "filename")) {
                 RenderFilename( nameStr, data );
             }
+            else if ( streq(typeStr, "mediacontrol")) {
+                RenderMediacontrol( nameStr, data );
+            }
 
             data = zconfig_next(data);
         }
@@ -342,6 +345,18 @@ struct ActorContainer {
     void RenderValue(T *value, const byte * bytes, int *position) {
         memcpy(value, bytes+*position, sizeof(T));
         *position += sizeof(T);
+    }
+
+    void RenderMediacontrol(const char* name, zconfig_t *data)
+    {
+        if ( ImGui::Button(ICON_FA_BACKWARD) )
+            zstr_send(sphactor_socket(this->actor), "BACK");
+        ImGui::SameLine();
+        if ( ImGui::Button(ICON_FA_PLAY) )
+            zstr_send(sphactor_socket(this->actor), "PLAY");
+        ImGui::SameLine();
+        if ( ImGui::Button(ICON_FA_PAUSE) )
+            zstr_send(sphactor_socket(this->actor), "PAUSE");
     }
 
     void RenderFilename(const char* name, zconfig_t *data) {
