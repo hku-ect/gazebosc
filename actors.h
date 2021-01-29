@@ -7,6 +7,7 @@
 #include "Actors/NatNet2OSCActor.h"
 #include "Actors/OSCInputActor.h"
 #include "Actors/PulseActor.h"
+#include "Actors/ModPlayerActor.h"
 
 zmsg_t * LogActor( sphactor_event_t *ev, void* args  );
 

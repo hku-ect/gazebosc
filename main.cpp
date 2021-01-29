@@ -21,6 +21,7 @@
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
+#include "fontawesome5.h"
 #include <stdio.h>
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
@@ -85,6 +86,7 @@ SDL_Window* window;
 SDL_GLContext gl_context;
 ImGuiIO io;
 const char* glsl_version;
+static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
 
 // Logging
 bool logWindow = false;
@@ -200,7 +202,7 @@ int main(int argc, char** argv)
 
 int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version ) {
     // Setup SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) != 0)
     {
         zsys_info("Error: %s", SDL_GetError());
         return -1;
@@ -289,6 +291,13 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     font_cfg.EllipsisChar = (ImWchar)0x0085;
     font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / 13.0f);  // Add +1 offset per 13 units
     io.Fonts->AddFontFromFileTTF("misc/fonts/ProggyCleanSZ.ttf", 13.0f, &font_cfg);
+
+    // Add character ranges and merge into main font
+    ImFontConfig config;
+    config.MergeMode = true;
+    config.GlyphMinAdvanceX = 13.0f; // Use if you want to make the icon monospaced
+    config.GlyphOffset.y = 1.0f;     // slightly lower than the main font
+    io.Fonts->AddFontFromFileTTF("misc/fonts/fa-solid-900.ttf", 13.0f, &config, ranges);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);

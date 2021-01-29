@@ -8,6 +8,11 @@
 #include "ImNodesEz.h"
 #include <czmq.h>
 #include <time.h>
+#include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
+#include "fontawesome5.h"
+
+// actor file browser
+imgui_addons::ImGuiFileBrowser actor_file_dialog;
 
 /// A structure defining a connection between two slots of two actors.
 struct Connection
@@ -129,11 +134,8 @@ struct ActorContainer {
                         SendAPI<float>(zapic, zapiv, zvalue, &fval);
                     } break;
                     case 's': {
-                        char *buf = new char[MAX_STR_DEFAULT];
                         const char *zvalueStr = zconfig_value(zvalue);
-                        strcpy(buf, zvalueStr);
-                        SendAPI<char *>(zapic, zapiv, zvalue, &buf);
-                        zstr_free(&buf);
+                        SendAPI<char *>(zapic, zapiv, zvalue, const_cast<char **>(&zvalueStr));
                     } break;
                 }
             }
@@ -185,8 +187,6 @@ struct ActorContainer {
     }
 
     void Render(float deltaTime) {
-        RenderCustomReport();
-
         //loop through each data element in capabilities
         if ( this->capabilities == NULL ) return;
 
@@ -214,9 +214,16 @@ struct ActorContainer {
             else if ( streq(typeStr, "bool")) {
                 RenderBool( nameStr, data );
             }
+            else if ( streq(typeStr, "filename")) {
+                RenderFilename( nameStr, data );
+            }
+            else if ( streq(typeStr, "mediacontrol")) {
+                RenderMediacontrol( nameStr, data );
+            }
 
             data = zconfig_next(data);
         }
+        RenderCustomReport();
     }
 
     void RenderCustomReport() {
@@ -335,6 +342,60 @@ struct ActorContainer {
     void RenderValue(T *value, const byte * bytes, int *position) {
         memcpy(value, bytes+*position, sizeof(T));
         *position += sizeof(T);
+    }
+
+    void RenderMediacontrol(const char* name, zconfig_t *data)
+    {
+        if ( ImGui::Button(ICON_FA_BACKWARD) )
+            zstr_send(sphactor_socket(this->actor), "BACK");
+        ImGui::SameLine();
+        if ( ImGui::Button(ICON_FA_PLAY) )
+            zstr_send(sphactor_socket(this->actor), "PLAY");
+        ImGui::SameLine();
+        if ( ImGui::Button(ICON_FA_PAUSE) )
+            zstr_send(sphactor_socket(this->actor), "PAUSE");
+    }
+
+    void RenderFilename(const char* name, zconfig_t *data) {
+        int max = MAX_STR_DEFAULT;
+
+        zconfig_t * zvalue = zconfig_locate(data, "value");
+        zconfig_t * ztype_hint = zconfig_locate(data, "type_hint");
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+        zconfig_t * zapiv = zconfig_locate(data, "api_value");
+        assert(zvalue);
+
+        zconfig_t * zmax = zconfig_locate(data, "max");
+
+        ReadInt( &max, zmax );
+
+        char buf[MAX_STR_DEFAULT];
+        const char* zvalueStr = zconfig_value(zvalue);
+        strcpy(buf, zvalueStr);
+        char *p = &buf[0];
+        bool file_selected = false;
+
+        ImGui::SetNextItemWidth(180);
+        if ( ImGui::InputTextWithHint("", name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
+            zconfig_set_value(zvalue, "%s", buf);
+            SendAPI<char*>(zapic, zapiv, zvalue, &(p));
+        }
+        ImGui::SameLine();
+        if ( ImGui::Button( ICON_FA_FOLDER_OPEN ) )
+            file_selected = true;
+
+        if ( file_selected )
+            ImGui::OpenPopup("Actor Open File");
+
+        if ( actor_file_dialog.showFileDialog("Actor Open File",
+                                              imgui_addons::ImGuiFileBrowser::DialogMode::OPEN,
+                                              ImVec2(700, 310),
+                                              "*.*") ) // TODO: perhaps add type hint for extensions?
+        {
+            zconfig_set_value(zvalue, "%s", actor_file_dialog.selected_path.c_str() );
+            strcpy(buf, actor_file_dialog.selected_path.c_str());
+            SendAPI<char*>(zapic, zapiv, zvalue, &(p) );
+        }
     }
 
     void RenderBool(const char* name, zconfig_t *data) {
