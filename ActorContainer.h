@@ -134,11 +134,8 @@ struct ActorContainer {
                         SendAPI<float>(zapic, zapiv, zvalue, &fval);
                     } break;
                     case 's': {
-                        char *buf = new char[MAX_STR_DEFAULT];
                         const char *zvalueStr = zconfig_value(zvalue);
-                        strcpy(buf, zvalueStr);
-                        SendAPI<char *>(zapic, zapiv, zvalue, &buf);
-                        zstr_free(&buf);
+                        SendAPI<char *>(zapic, zapiv, zvalue, const_cast<char **>(&zvalueStr));
                     } break;
                 }
             }
