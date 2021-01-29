@@ -84,6 +84,7 @@ void RegisterActors() {
 #ifdef PYTHON3_FOUND
     python_init();
     sphactor_register("Python", pythonactor_handler, pythonactor_construct, NULL);
+#endif
     //enforcable maximum actor counts
     max_actors_by_type.insert(std::make_pair("NatNet", 1));
 

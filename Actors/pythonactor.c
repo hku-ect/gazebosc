@@ -107,7 +107,7 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
         {
             if(self->main_filename)
                 zstr_free(&self->main_filename);
-            strcpy(self->main_filename, filename);
+            self->main_filename = filename;
             //  Acquire the GIL
             PyGILState_STATE gstate;
             gstate = PyGILState_Ensure();
