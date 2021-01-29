@@ -81,7 +81,9 @@ void RegisterActors() {
     sphactor_register<OSCInput>( "OSC Input" );
     sphactor_register<Pulse>( "Pulse" );
     sphactor_register<ModPlayerActor>( "ModPlayer" );
-
+#ifdef PYTHON3_FOUND
+    python_init();
+    sphactor_register("Python", pythonactor_handler, pythonactor_construct, NULL);
     //enforcable maximum actor counts
     max_actors_by_type.insert(std::make_pair("NatNet", 1));
 
