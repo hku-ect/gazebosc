@@ -272,11 +272,19 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
         if (PyBytes_Check(pReturn))
         {
             // handle python bytes
-            zmsg_t *ret = zmsg_new();
+            zmsg_t *ret = NULL;
             Py_ssize_t size = PyBytes_Size(pReturn);
-            char buf[size];// = new char[size];
-            memcpy(buf, PyBytes_AsString(pReturn), size);
-            zmsg_addmem(ret, buf, size);
+            if ( size > 0 )
+            {
+                ret = zmsg_new();
+                char buf[size];// = new char[size];
+                memcpy(buf, PyBytes_AsString(pReturn), size);
+                zmsg_addmem(ret, buf, size);
+            }
+            else
+            {
+                zsys_warning("PyBytes has zero size");
+            }
             Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
             // Release the GIL again as we are ready with Python
             PyGILState_Release(gstate);
