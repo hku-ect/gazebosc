@@ -1,6 +1,54 @@
 #include "pythonactor.h"
 #include "pyzmsg.h"
 
+// https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
+static char *
+s_remove_ext(const char* myStr) {
+    char *retStr;
+    char *lastExt;
+    if (myStr == NULL) return NULL;
+    if ((retStr = malloc (strlen (myStr) + 1)) == NULL) return NULL;
+    strcpy (retStr, myStr);
+    lastExt = strrchr (retStr, '.');
+    if (lastExt != NULL)
+        *lastExt = '\0';
+    return retStr;
+}
+
+static char *
+s_basename(char const *path)
+{
+    char *s = strrchr(path, '/');
+    if (!s)
+        return strdup(path);
+    else
+        return strdup(s + 1);
+}
+
+static zosc_t *
+s_py_zosc(PyObject *pAddress, PyObject *pData)
+{
+    assert( PyUnicode_Check(pAddress) );
+    assert( PyList_Check(pData) );
+    PyObject *stringbytes = PyUnicode_AsASCIIString(pAddress);
+    zosc_t *ret = zosc_new( PyBytes_AsString( stringbytes) );
+    // iterate
+    for ( Py_ssize_t i=0;i<PyList_Size(pData);++i )
+    {
+        PyObject *item = PyList_GetItem(pData, i);
+        assert(item);
+        // determine type
+        if ( PyLong_Check(item) )
+        {
+            long v = PyLong_AsLong(item);
+            zosc_append(ret, "h", v);
+        }
+        else
+            zsys_warning("unsupported python type");
+    }
+    return ret;
+}
+
 int python_init()
 {
     Py_UnbufferedStdioFlag = 1;
@@ -41,6 +89,9 @@ const char * pythonactorcapabilities =
         "        value = \"\"\n"
         "        api_call = \"SET FILE\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "inputs\n"
+        "    input\n"
+        "        type = \"OSC\"\n"
         "outputs\n"
         "    output\n"
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -49,13 +100,13 @@ const char * pythonactorcapabilities =
 // this is needed because we have to conform to returning a void * thus we need to wrap
 // the pythonactor_new method, unless some know a better method?
 void *
-pythonactor_construct(void *args)
+pythonactor_new_helper(void *args)
 {
-    return (void *)pythonactor_new(args);
+    return (void *)pythonactor_new();
 }
 
 pythonactor_t *
-pythonactor_new(void *args)
+pythonactor_new()
 {
     pythonactor_t *self = (pythonactor_t *) zmalloc (sizeof (pythonactor_t));
     assert (self);
@@ -108,19 +159,25 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
             if(self->main_filename)
                 zstr_free(&self->main_filename);
             self->main_filename = filename;
+
+            char *filebasename = s_basename(filename);
+            char *pyname = s_remove_ext(filebasename);
+
             //  Acquire the GIL
             PyGILState_STATE gstate;
             gstate = PyGILState_Ensure();
 
             //  import our python file
             PyObject *pClass, *pModule, *pName;
-            pName = PyUnicode_DecodeFSDefault( filename );
+            pName = PyUnicode_DecodeFSDefault( pyname );
             if ( pName == NULL )
             {
                 if ( PyErr_Occurred() )
                     PyErr_Print();
-                zsys_error("error loading %s", filename);
+                zsys_error("error loading %s", pyname);
                 PyGILState_Release(gstate);
+                zstr_free(&pyname);
+                zstr_free(&filebasename);
                 return NULL;
             }
 
@@ -132,17 +189,21 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
                     PyErr_Print();
                 zsys_error("error importing %s", filename);
                 PyGILState_Release(gstate);
+                zstr_free(&pyname);
+                zstr_free(&filebasename);
                 return NULL;
             }
 
             //  get the class with the same name as the filename
-            pClass = PyObject_GetAttrString(pModule, filename );
+            pClass = PyObject_GetAttrString(pModule, pyname );
             if (pClass == NULL )
             {
                 if (PyErr_Occurred())
                     PyErr_Print();
                 zsys_error("pClass is NULL");
                 PyGILState_Release(gstate);
+                zstr_free(&pyname);
+                zstr_free(&filebasename);
                 return NULL;
             }
 
@@ -154,6 +215,8 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
                     PyErr_Print();
                 zsys_error("pClassInstance is NULL");
                 PyGILState_Release(gstate);
+                zstr_free(&pyname);
+                zstr_free(&filebasename);
                 return NULL;
             }
 
@@ -162,6 +225,8 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
             // Release the GIL again as we are ready with Python
             zsys_info("Successfully loaded %s", filename);
             PyGILState_Release(gstate);
+            zstr_free(&pyname);
+            zstr_free(&filebasename);
             return NULL;
         }
         zstr_free(&filename);
@@ -218,6 +283,40 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
             // already destroyed: zmsg_destroy(&ev->msg);
             return ret;
         }
+        else if ( PyTuple_Check(pReturn) )
+        {
+            zmsg_t *ret = NULL; // our return
+            // convert the tuple to an osc message
+            Py_ssize_t tuple_len = PyTuple_Size(pReturn);
+            assert(tuple_len > 0 );
+            // first item must be the address string
+            PyObject *pAddress = PyTuple_GetItem(pReturn, 0);
+            assert(pAddress);
+            if ( ! PyUnicode_Check(pAddress) )
+            {
+                zsys_error("first item in the tuple is not a string, first item should be the address string");
+            }
+            else
+            {
+                PyObject *pData = PyTuple_GetItem(pReturn, 1);
+                assert(pData);
+                if ( PyList_Check(pData) )
+                {
+                    zosc_t *retosc = s_py_zosc(pAddress, pData);
+                    assert(retosc);
+                    ret = zmsg_new();
+                    assert(ret);
+                    zframe_t *data = zosc_packx(&retosc);
+                    assert(data);
+                    zmsg_append(ret, &data);
+                }
+            }
+            Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
+            // Release the GIL again as we are ready with Python
+            PyGILState_Release(gstate);
+            // already destroyed: zmsg_destroy(&ev->msg);
+            return ret;
+        }
         else // we expect a zmsg type
         {
             // check whether we received our own message
@@ -244,15 +343,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
     }
     // Release the GIL again as we are ready with Python
     PyGILState_Release(gstate); // TODO: didn't we already do this?
-    // if there are things left publish them
-    if ( ev->msg && zmsg_size(ev->msg) > 0 )
-    {
-        return ev->msg;
-    }
-    else
-    {
-        zmsg_destroy(&ev->msg);
-    }
+
     return NULL;
 }
 

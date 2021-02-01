@@ -11,7 +11,7 @@ extern "C" {
 
 struct _pythonactor_t
 {
-    char     *main_filename;  // the main python source file
+    char     *main_filename;  // the full path to the main python source file
     PyObject *pyinstance;     // our python instance
 };
 
@@ -19,8 +19,8 @@ typedef struct _pythonactor_t pythonactor_t;
 
 int python_init();
 
-void * pythonactor_construct(void *args);
-pythonactor_t * pythonactor_new(void *args);
+void * pythonactor_new_helper(void *args);
+pythonactor_t * pythonactor_new();
 void pythonactor_destroy(pythonactor_t **self_p);
 
 zmsg_t *pythonactor_init(pythonactor_t *self, sphactor_event_t *ev);
