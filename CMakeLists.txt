@@ -44,6 +44,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")
 set(DEP_IMNODES_DIR ".")
 
+option (WITH_UNWIND "Enable libunwind support" ON)
+
 ## Definitions for draft API's of submodules
 set(ENABLE_DRAFTS ON CACHE BOOL "enable zmq projects draft apis" FORCE)
 add_definitions(-DZMQ_BUILD_DRAFT_API=1)
@@ -75,6 +77,15 @@ if(Python3_FOUND)
 else()
     message (FATAL_ERROR "Cannot find Python3, make sure the development packages of Python are available on the system")
 endif()
+
+if (WITH_UNWIND)
+    find_package (Unwind)
+endif (WITH_UNWIND)
+if (Unwind_FOUND)
+    add_definitions(-DHAVE_LIBUNWIND)
+    set (HAVE_LIBUNWIND 1)
+    set (HAVE_UNWIND_H 1)
+endif (Unwind_FOUND)
 
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -131,6 +142,7 @@ add_executable(gazebosc
     ${ACTOR_HEADERS}
 )
 target_include_directories(gazebosc PUBLIC
+    ${Unwind_INCLUDE_DIRS}
     ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
@@ -138,6 +150,11 @@ target_include_directories(gazebosc PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
     ${DEP_IMNODES_DIR}
 )
+
+if (Unwind_FOUND)
+  target_link_libraries (gazebosc PUBLIC unwind::unwind)
+endif (Unwind_FOUND)
+
 if (APPLE)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
