@@ -134,6 +134,7 @@ pythonactor_init(pythonactor_t *self, sphactor_event_t *ev)
 {
     sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pythonactorcapabilities));
 
+    // if file loaded execute init!
     if ( ev->msg ) zmsg_destroy(&ev->msg);
     return NULL;
 }
@@ -259,7 +260,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
         evmsg->msg = ev->msg;
     }
     // call member 'handleMsg' with event arguments
-    PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleMsg", "Osss", evmsg, ev->type, ev->name, ev->uuid);
+    PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "Osss", evmsg, ev->type, ev->name, ev->uuid);
     Py_XINCREF(pReturn);  // increase refcount to prevent destroy
     if (!pReturn)
     {
@@ -291,7 +292,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
             // already destroyed: zmsg_destroy(&ev->msg);
             return ret;
         }
-        else if ( PyTuple_Check(pReturn) )
+        else if ( PyTuple_Check(pReturn) ) // we expect a tuple in the format ( address, [data])
         {
             zmsg_t *ret = NULL; // our return
             // convert the tuple to an osc message
@@ -364,6 +365,18 @@ pythonactor_custom_socket(pythonactor_t *self, sphactor_event_t *ev)
 zmsg_t *
 pythonactor_stop(pythonactor_t *self, sphactor_event_t *ev)
 {
+    assert(self);
+    assert(self->pyinstance);
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+    PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleStop", "Osss", Py_None, ev->type, ev->name, ev->uuid);
+    Py_XINCREF(pReturn);  // increase refcount to prevent destroy
+    if (!pReturn)
+    {
+        PyErr_Print();
+        zsys_error("pythonactor: error calling handleStop method");
+    }
+    Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
     return NULL;
 }
 
