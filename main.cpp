@@ -23,6 +23,8 @@
 #include "imgui_internal.h"
 #include "fontawesome5.h"
 #include <stdio.h>
+#include <execinfo.h>
+#include <signal.h>
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 
@@ -105,9 +107,65 @@ ImGuiTextBuffer& getBuffer(){
     return sLogBuffer;
 }
 
+/* Obtain a backtrace and print it to stdout. */
+void
+print_trace (int)
+{
+#ifdef __WIN32__
+    //https://stackoverflow.com/questions/22465253/symgetlinefromaddr-not-working-properly
+    unsigned int   i;
+    void         * stack[ 100 ];
+    unsigned short frames;
+    SYMBOL_INFO  * symbol;
+    HANDLE         process;
+
+    process = GetCurrentProcess();
+
+    SymInitialize( process, NULL, TRUE );
+
+    frames               = CaptureStackBackTrace( 0, 100, stack, NULL );
+    symbol               = ( SYMBOL_INFO * )calloc( sizeof( SYMBOL_INFO ) + 256 * sizeof( char ), 1 );
+    symbol->MaxNameLen   = 255;
+    symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
+
+    IMAGEHLP_LINE *line = (IMAGEHLP_LINE *)malloc(sizeof(IMAGEHLP_LINE));
+    line->SizeOfStruct = sizeof(IMAGEHLP_LINE);
+
+    for( i = 0; i < frames; i++ )
+    {
+        SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
+        DWORD dwDisplacement;
+        SymGetLineFromAddr(process, (DWORD)(stack[i]), &dwDisplacement, line);
+        printf("at %s in %s, address 0x%0X\n", symbol->Name, line->FileName, symbol->Address);
+        //printf( "%i: %s - 0x%0X\n", frames - i - 1, symbol->Name, symbol->Address );
+    }
+    free( symbol );
+    free( line );
+}
+#else
+  void *array[100];
+  char **strings;
+  int size, i;
+
+  size = backtrace (array, 100);
+  strings = backtrace_symbols (array, size);
+  if (strings != NULL)
+  {
+
+    printf ("Obtained %d stack frames.\n", size);
+    for (i = 0; i < size; i++)
+      printf ("%s\n", strings[i]);
+  }
+
+  free (strings);
+}
+#endif
+
 // Main code
 int main(int argc, char** argv)
 {
+    signal(SIGSEGV, print_trace);
+    signal(SIGABRT, print_trace);
     RegisterActors();
 
     // Argument capture
@@ -185,7 +243,6 @@ int main(int argc, char** argv)
 
         zsys_info("VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
-
         // Blocking UI loop
         UILoop(window, io);
 
