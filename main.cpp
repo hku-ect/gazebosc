@@ -23,7 +23,6 @@
 #include "imgui_internal.h"
 #include "fontawesome5.h"
 #include <stdio.h>
-#include <execinfo.h>
 #include <signal.h>
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
@@ -106,66 +105,50 @@ ImGuiTextBuffer& getBuffer(){
 
     return sLogBuffer;
 }
-
 /* Obtain a backtrace and print it to stdout. */
+#if defined(HAVE_LIBUNWIND)
+
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+
 void
-print_trace (int)
+print_backtrace (int sig)
 {
-#ifdef __WIN32__
-    //https://stackoverflow.com/questions/22465253/symgetlinefromaddr-not-working-properly
-    unsigned int   i;
-    void         * stack[ 100 ];
-    unsigned short frames;
-    SYMBOL_INFO  * symbol;
-    HANDLE         process;
+    unw_cursor_t cursor;
+    unw_context_t context;
 
-    process = GetCurrentProcess();
+    // grab the machine context and initialize the cursor
+    if (unw_getcontext(&context) < 0)
+        zsys_error("ERROR: cannot get local machine state\n");
+    if (unw_init_local(&cursor, &context) < 0)
+        zsys_error("ERROR: cannot initialize cursor for local unwinding\n");
 
-    SymInitialize( process, NULL, TRUE );
 
-    frames               = CaptureStackBackTrace( 0, 100, stack, NULL );
-    symbol               = ( SYMBOL_INFO * )calloc( sizeof( SYMBOL_INFO ) + 256 * sizeof( char ), 1 );
-    symbol->MaxNameLen   = 255;
-    symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
+    // currently the IP is within backtrace() itself so this loop
+    // deliberately skips the first frame.
+    while (unw_step(&cursor) > 0) {
+        unw_word_t offset, pc;
+        char sym[4096];
+        if (unw_get_reg(&cursor, UNW_REG_IP, &pc))
+            zsys_error("ERROR: cannot read program counter\n");
 
-    IMAGEHLP_LINE *line = (IMAGEHLP_LINE *)malloc(sizeof(IMAGEHLP_LINE));
-    line->SizeOfStruct = sizeof(IMAGEHLP_LINE);
+        printf("0x%lx: ", pc);
 
-    for( i = 0; i < frames; i++ )
-    {
-        SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
-        DWORD dwDisplacement;
-        SymGetLineFromAddr(process, (DWORD)(stack[i]), &dwDisplacement, line);
-        printf("at %s in %s, address 0x%0X\n", symbol->Name, line->FileName, symbol->Address);
-        //printf( "%i: %s - 0x%0X\n", frames - i - 1, symbol->Name, symbol->Address );
+        if (unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0)
+            printf("(%s+0x%lx)\n", sym, offset);
+        else
+            printf("-- no symbol name found\n");
     }
-    free( symbol );
-    free( line );
 }
 #else
-  void *array[100];
-  char **strings;
-  int size, i;
-
-  size = backtrace (array, 100);
-  strings = backtrace_symbols (array, size);
-  if (strings != NULL)
-  {
-
-    printf ("Obtained %d stack frames.\n", size);
-    for (i = 0; i < size; i++)
-      printf ("%s\n", strings[i]);
-  }
-
-  free (strings);
-}
+void print_backtrace (int sig) {}
 #endif
 
 // Main code
 int main(int argc, char** argv)
 {
-    signal(SIGSEGV, print_trace);
-    signal(SIGABRT, print_trace);
+    signal(SIGSEGV, print_backtrace);
+    signal(SIGABRT, print_backtrace);
     RegisterActors();
 
     // Argument capture
