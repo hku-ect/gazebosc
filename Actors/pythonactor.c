@@ -279,7 +279,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
             {
                 ret = zmsg_new();
 #ifdef _MSC_VER
-                char buf* = (char *)_malloca( size );
+                char *buf = (char *)_malloca( size );
                 memcpy(buf, PyBytes_AsString(pReturn), size);
                 zmsg_addmem(ret, buf, size);
                 _freea(buf);
