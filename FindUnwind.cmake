@@ -9,6 +9,10 @@ include (FindPackageHandleStandardArgs)
 find_path (Unwind_INCLUDE_DIR NAMES unwind.h libunwind.h DOC "unwind include directory")
 find_library (Unwind_LIBRARY NAMES unwind DOC "unwind library")
 
+if (APPLE AND Unwind_INCLUDE_DIR)
+  set (Unwind_LIBRARY "-framework System")
+endif (APPLE AND Unwind_INCLUDE_DIR)
+
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
     set (Unwind_ARCH "arm")
 elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64")
@@ -34,32 +38,12 @@ endif (CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
 find_library (Unwind_PLATFORM_LIBRARY NAMES "unwind-${Unwind_ARCH}"
   DOC "unwind library platform")
 
-mark_as_advanced (Unwind_INCLUDE_DIR Unwind_LIBRARY Unwind_PLATFORM_LIBRARY)
-
-# Extract version information
-if (Unwind_LIBRARY)
-  set (_Unwind_VERSION_HEADER ${Unwind_INCLUDE_DIR}/libunwind-common.h)
-
-  if (EXISTS ${_Unwind_VERSION_HEADER})
-    FILE (READ ${_Unwind_VERSION_HEADER} _Unwind_VERSION_CONTENTS)
-
-    string (REGEX REPLACE ".*#define UNW_VERSION_MAJOR[ \t]+([0-9]+).*" "\\1"
-      Unwind_VERSION_MAJOR "${_Unwind_VERSION_CONTENTS}")
-    string (REGEX REPLACE ".*#define UNW_VERSION_MINOR[ \t]+([0-9]+).*" "\\1"
-      Unwind_VERSION_MINOR "${_Unwind_VERSION_CONTENTS}")
-    string (REGEX REPLACE ".*#define UNW_VERSION_EXTRA[ \t]+([0-9]+).*" "\\1"
-      Unwind_VERSION_PATCH "${_Unwind_VERSION_CONTENTS}")
-
-    set (Unwind_VERSION
-      ${Unwind_VERSION_MAJOR}.${Unwind_VERSION_MINOR}.${Unwind_VERSION_PATCH})
-    set (Unwind_VERSION_COMPONENTS 3)
-  endif (EXISTS ${_Unwind_VERSION_HEADER})
-endif (Unwind_LIBRARY)
+mark_as_advanced (Unwind_INCLUDE_DIR Unwind_LIBRARY)
 
 # handle the QUIETLY and REQUIRED arguments and set Unwind_FOUND to TRUE
 # if all listed variables are TRUE
 find_package_handle_standard_args (Unwind REQUIRED_VARS Unwind_INCLUDE_DIR
-  Unwind_LIBRARY Unwind_PLATFORM_LIBRARY VERSION_VAR Unwind_VERSION)
+  Unwind_LIBRARY)
 
 if (Unwind_FOUND)
   if (NOT TARGET unwind::unwind)
@@ -69,7 +53,7 @@ if (Unwind_FOUND)
       INTERFACE_INCLUDE_DIRECTORIES ${Unwind_INCLUDE_DIR}
     )
     set_property (TARGET unwind::unwind PROPERTY
-      INTERFACE_LINK_LIBRARIES ${Unwind_LIBRARY} ${Unwind_PLATFORM_LIBRARY}
+      INTERFACE_LINK_LIBRARIES ${Unwind_LIBRARY}
     )
     set_property (TARGET unwind::unwind PROPERTY
       IMPORTED_CONFIGURATIONS RELEASE
