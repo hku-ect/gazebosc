@@ -81,7 +81,10 @@ void RegisterActors() {
     sphactor_register<OSCInput>( "OSC Input" );
     sphactor_register<Pulse>( "Pulse" );
     sphactor_register<ModPlayerActor>( "ModPlayer" );
-
+#ifdef PYTHON3_FOUND
+    python_init();
+    sphactor_register("Python", pythonactor_handler, pythonactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
+#endif
     //enforcable maximum actor counts
     max_actors_by_type.insert(std::make_pair("NatNet", 1));
 

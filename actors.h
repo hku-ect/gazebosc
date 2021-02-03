@@ -8,6 +8,9 @@
 #include "Actors/OSCInputActor.h"
 #include "Actors/PulseActor.h"
 #include "Actors/ModPlayerActor.h"
+#ifdef PYTHON3_FOUND
+#include "Actors/pythonactor.h"
+#endif
 
 zmsg_t * LogActor( sphactor_event_t *ev, void* args  );
 

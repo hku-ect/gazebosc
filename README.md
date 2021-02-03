@@ -8,13 +8,9 @@ The UI based on ImGui, but we will eventually also support headless running of p
 
 ## Building
 
-There are four main dependencies:
+There is one main dependencies:
 
  * libzmq
- * czmq
- * sdl2
- * libsphactor
- * liblo
 
 Dependencies for the build process / dependencies are:
 
@@ -26,22 +22,28 @@ Dependencies for the build process / dependencies are:
 
  * Get build dependencies via brew:
 ```
-brew install libtool autoconf automake pkg-config cmake make zeromq czmq sdl2 liblo
+brew install libtool autoconf automake pkg-config cmake make
 ```
-
+Clone and build libzmq
+```
+git clone https://github.com/zeromq/libzmq.git
+cd libzmq
+./autogen.sh && ./configure --without-documentation
+make
+sudo make install
+```
 #### Building Gazebosc
 
 Once the above dependencies are installed, you are ready to build Gazebosc. 
 
 * Clone the repo
 ```
-git clone http://github.com/hku-ect/gazebosc.git
+git clone --recurse-submodules http://github.com/hku-ect/gazebosc.git
 ```
-You can now build using cmake/make or generate an Xcode project file.
 
-* Creating an XCode project
+##### Build with XCode
 
-To create an xcode project, perform the following commands from the root git folder:
+To create an XCode project, perform the following commands from the root gazebosc git folder:
 
 ```
 mkdir xcodeproj
@@ -50,90 +52,29 @@ cmake -G Xcode ..
 ```
 This should generate a valid Xcode project that can run and pass tests.
 
-* Build using make
+##### Build using make
 
-In the repository root:
+In the root gazebosc git folder:
 ```
 mkdir build
 cd build
 cmake ..
 make
 ```
-
-#### Alternatively install dependencies from source
-
- * Clone & build libzmq, czmq, libsphactor & liblo
-```
-git clone git://github.com/zeromq/libzmq.git
-cd libzmq
-./autogen.sh
-./configure
-make check
-sudo make install
-cd ..
-
-git clone git://github.com/zeromq/czmq.git
-cd czmq
-./autogen.sh 
-./configure 
-make check
-sudo make install
-cd ..
-
-git clone git://github.com/hku-ect/libsphactor.git
-cd libsphactor
-./autogen.sh
-./configure 
-make check
-sudo make install
-cd ..
-
-git clone git://liblo.git.sourceforge.net/gitroot/liblo/liblo
-cd liblo
-./autogen.sh
-./configure 
-make check
-sudo make install
-cd ..
-```
+The gazebosc executable will be in the bin folder!
 
 ### (Debian/Ubuntu) Linux
 
 *(tested on Ubuntu 16.04)*
 
-* First install required dependencies *(don't install liblo on Ubuntu 16.04, see below)*
+* First install required dependencies
 
 ```
 sudo apt-get update
 sudo apt-get install -y \
     build-essential libtool cmake \
     pkg-config autotools-dev autoconf automake \
-    uuid-dev libpcre3-dev libsodium-dev libzmq5-dev \
-    libczmq-dev liblo-dev libsdl2-dev
-```
-
-* Clone & build libsphactor
-
-```
-git clone git://github.com/hku-ect/libsphactor.git
-cd libsphactor
-./autogen.sh
-./configure
-make check
-sudo make install
-cd ..
-```
-
-On Ubuntu 16.04 liblo is broken, install liblo from source:
-
-```
-git clone git://liblo.git.sourceforge.net/gitroot/liblo/liblo
-cd liblo
-./autogen.sh
-./configure 
-make check
-sudo make install
-cd ..
+    uuid-dev libpcre3-dev libsodium-dev 
 ```
 
 #### Building Gazebosc
@@ -142,7 +83,7 @@ Once the above dependencies are installed, you are ready to build Gazebosc:
 
 * Clone the repo and build Gazebosc
 ```
-git clone http://github.com/hku-ect/gazebosc.git
+git clone --recurse-submodules http://github.com/hku-ect/gazebosc.git
 cd gazebosc
 mkdir build
 cd build
@@ -157,16 +98,15 @@ cd bin
 
 If you want to work on Gazebosc it's easiest to use QtCreator. Just load the CMakeLists.txt as a project in QtCreator and run from there.
 
----
-
 ### Windows
 
 * Install Visual Studio 2019: https://visualstudio.microsoft.com/downloads/ , make sure to include:
 	- CMake
 	- Git
 * Clone gazebosc repository
+
 ```
-git clone http://github.com/hku-ect/gazebosc.git
+git clone --recurse-submodules http://github.com/hku-ect/gazebosc.git
 ```
 * Run "x64 Native Tools Command Prompt for VS 2019" as Administrator
 	- Navigate to gazebosc project root
@@ -178,6 +118,8 @@ git clone http://github.com/hku-ect/gazebosc.git
 You are now ready to code/debug as normal!
 
 ## Adding new nodes
+
+*This is deprecated, see libsphactor documentation*
 
 ### GNode inheritance, important bits
 
@@ -233,101 +175,3 @@ Throughout the lifetime of the actor, the GNode class will receive events, and p
 #### Destruction
 When deleting nodes or clearing sketches, the node instance will be destroyed and its actor stopped.
 
-## QtCreator example
-
-Create a new class in Nodes:
-
-* right click the nodes folder, Add new
-* Select C++ class
-* Enter HelloWorldNomnbvcxzzxcvb8de as the name
-* Enter GNode as the base class
-* Finish the wizard
-
-It will probably ask you to add the source file to the CMakeLists.txt. Do so as follows:
-```
-    ...
-	GNode.h
-	GNode.cpp
-	Nodes/DefaultNodes.h
-	Nodes/UtilityNodes.cpp
-	Nodes/MidiNode.cpp
-	Nodes/UDPSendNode.cpp
-	Nodes/OSCListenerNode.cpp
-    Nodes/HelloWorldNode.h
-    Nodes/HelloWorldNode.cpp
-)
-```
-You'll now have an empty skeleton class. In the .h file make the header file look like this:
-```
-#ifndef HELLOWORLDNODE_H
-#define HELLOWORLDNODE_H
-
-#include "GNode.h"
-
-class HelloWorldNode : public GNode
-{
-public:
-    explicit HelloWorldNode(const char* uuid) : GNode(   "MyCustomNodeName",              // title
-                                                          { {"OSC", NodeSlotOSC} },       // Input slots
-                                                          { {"OSC", NodeSlotOSC} },       // Output slots
-                                                            uuid )                        // uuid pass-through
-    {
-
-    }
-    
-    //  this the method which will be called on an event
-    zmsg_t *ActorMessage( sphactor_event_t *ev );
-};
-
-#endif // HELLOWORLDNODE_H
-```
-
-Open "nodes.cpp" and add this node to the registration block and include it:
-```
-#include "Nodes/HelloWorldNode.h"
-
-...
-
-void RegisterCPPNodes() {
-    ...
-    
-    RegisterNode( "HelloWorldNodeName", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new HelloWorldNode(uuid); });
-    
-    ...
-}
-```
-
-Now we can finalize the implementation in HelloWorldNode.cpp. See the comments in the source:
-```
-#include "HelloWorldNode.h"
-#include <iostream>     //  needed for cout
-#include <lo/lo_cpp.h>  //  needed to construct an OSC message
-
-zmsg_t *
-HelloWorldNode::ActorMessage(sphactor_event_t *ev)
-{
-    //  just print the event fields
-    std::cout << "Hello World Node: name=" << ev->name << " type=" << ev->type << " uuid=" << ev->uuid << "\n";
-
-    //  create a new OSC message
-    lo_message oscmsg = lo_message_new();
-    //  add a string to the message
-    lo_message_add_string(oscmsg, "Hello World");
-
-    //  create a buffer for the message
-    byte* buf = new byte[2048];
-    size_t len = sizeof(buf);
-
-    //  place the osc message in the buffer
-    lo_message_serialise(oscmsg, "hello", buf, &len);
-    lo_message_free(oscmsg);
-
-    //  create a zmsg to return
-    zmsg_t *returnMsg = zmsg_new();
-    //  place the buffer in the zmsg
-    zmsg_pushmem(returnMsg, buf, len);
-    return returnMsg;
-}
-```
-
----
