@@ -99,14 +99,6 @@ install:
   - sudo make install
   - cd -
 
-  # liblo
-  - git clone --depth=1 --branch=master git://liblo.git.sourceforge.net/gitroot/liblo/liblo
-  - cd liblo
-  - ./autogen.sh
-  - ./configure
-  - sudo make install
-  - cd -
-
 script:
   ############################################################################
   # Build main and tests
@@ -117,11 +109,11 @@ script:
     - make
 
   # test
-
-    - mv ../test.txt ./bin/test.txt
-    - cd bin
-    - if [ "$BUILD_TYPE" == "valgrind" ] ; then valgrind --leak-check=yes ./gazebosc -test ; fi
-    - if [ "$BUILD_TYPE" != "valgrind" ] ; then ./gazebosc -test ; fi
+# Skip for now!
+#    - mv ../test.txt ./bin/test.txt
+#    - cd bin
+#    - if [ "$BUILD_TYPE" == "valgrind" ] ; then valgrind --leak-check=yes ./gazebosc -test ; fi
+#    - if [ "$BUILD_TYPE" != "valgrind" ] ; then ./gazebosc -test ; fi
 
 git:
   depth: 256
