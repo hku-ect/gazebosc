@@ -23,6 +23,7 @@
 #include "imgui_internal.h"
 #include "fontawesome5.h"
 #include <stdio.h>
+#include <signal.h>
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 
@@ -104,10 +105,55 @@ ImGuiTextBuffer& getBuffer(){
 
     return sLogBuffer;
 }
+/* Obtain a backtrace and print it to stdout. */
+#if defined(HAVE_LIBUNWIND)
+
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+
+void
+print_backtrace (int sig)
+{
+    unw_cursor_t cursor;
+    unw_context_t context;
+
+    // grab the machine context and initialize the cursor
+    if (unw_getcontext(&context) < 0)
+        zsys_error("ERROR: cannot get local machine state\n");
+    if (unw_init_local(&cursor, &context) < 0)
+        zsys_error("ERROR: cannot initialize cursor for local unwinding\n");
+
+
+    // currently the IP is within backtrace() itself so this loop
+    // deliberately skips the first frame.
+    while (unw_step(&cursor) > 0) {
+        unw_word_t offset, pc;
+        char sym[4096];
+        if (unw_get_reg(&cursor, UNW_REG_IP, &pc))
+            zsys_error("ERROR: cannot read program counter\n");
+
+        printf("0x%lx: ", pc);
+
+        if (unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) == 0)
+            printf("(%s+0x%lx)\n", sym, offset);
+        else
+            printf("-- no symbol name found\n");
+    }
+}
+#else
+void print_backtrace (int sig) {}
+#endif
 
 // Main code
 int main(int argc, char** argv)
 {
+    signal(SIGSEGV, print_backtrace); // Invalid memory reference
+    signal(SIGABRT, print_backtrace); // Abort signal from abort(3)
+    signal(SIGBUS,  print_backtrace); // Bus error (bad memory access)
+    signal(SIGFPE,  print_backtrace); // Floating-point exception
+    signal(SIGSYS,  print_backtrace); // Bad system call (SVr4);
+    signal(SIGXCPU, print_backtrace); // CPU time limit exceeded (4.2BSD)
+    //signal(SIGFSZ,  print_backtrace); // File size limit exceeded (4.2BSD)
     RegisterActors();
 
     // Argument capture
