@@ -130,6 +130,7 @@ add_executable(gazebosc
     ${ACTOR_SOURCES}
     ${ACTOR_HEADERS}
 )
+
 target_include_directories(gazebosc PUBLIC
     ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
@@ -148,6 +149,44 @@ if (APPLE)
         ${Python3_LIBRARIES}
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
     add_definitions(-D__MACOSX_CORE__)
+    SET_TARGET_PROPERTIES(gazebosc PROPERTIES 
+        MACOSX_BUNDLE TRUE 
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Info.plist.in
+    )
+    SET(MACOSX_BUNDLE_BUNDLE_NAME gazebosc)
+    set(MACOSX_BUNDLE_COPYRIGHT "Gazebosc is licensed under the MPLv2 License")
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc"
+    set(MACOSX_BUNDLE_ICON_FILE "AppIcon")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/distribution/macos/AppIcon.iconset DESTINATION ${CMAKE_BINARY_DIR})
+    set(ICON_TARGET "${CMAKE_BINARY_DIR}/AppIcon.iconset")
+    set(ICON_OUTPUT "${CMAKE_BINARY_DIR}/AppIcon.icns")
+    set(SOURCE_ICON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/misc/logo")
+    add_custom_command(OUTPUT ${ICON_OUTPUT}
+        COMMAND cp icon_x16.png   ${ICON_TARGET}/icon_16x16.png
+        COMMAND cp icon_x32.png   ${ICON_TARGET}/icon_16x16@2x.png
+        COMMAND cp icon_x32.png   ${ICON_TARGET}/icon_32x32.png
+        COMMAND cp icon_x64.png   ${ICON_TARGET}/icon_32x32@2x.png
+        COMMAND cp icon_x128.png  ${ICON_TARGET}/icon_128x128.png
+        COMMAND cp icon_x256.png  ${ICON_TARGET}/icon_128x128@2x.png
+        COMMAND cp icon_x256.png  ${ICON_TARGET}/icon_256x256.png
+        COMMAND cp icon_x512.png  ${ICON_TARGET}/icon_256x256@2x.png
+        COMMAND cp icon_x512.png  ${ICON_TARGET}/icon_512x512.png
+        COMMAND cp icon_x1024.png ${ICON_TARGET}/icon_512x512@2x.png
+        COMMAND iconutil -c icns ${ICON_TARGET}
+        WORKING_DIRECTORY ${SOURCE_ICON_DIR}
+    )
+    set(BUNDLE_RESOURCES ${ICON_OUTPUT})
+#    list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md)
+#    list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CONTRIBUTORS.MD)
+    set_target_properties(${PROJECT} PROPERTIES RESOURCE "${BUNDLE_RESOURCES}")
+    target_sources(${PROJECT} PUBLIC ${BUNDLE_RESOURCES})
+#    file(GLOB BUNDLE_LANGUAGES "${CMAKE_CURRENT_SOURCE_DIR}/data/language/*")
+#    target_sources(${PROJECT} PUBLIC ${BUNDLE_LANGUAGES})
+#    set_property(
+#        SOURCE ${BUNDLE_LANGUAGES}
+#        PROPERTY MACOSX_PACKAGE_LOCATION "Resources/language"
+#    )
+)
 elseif (WIN32)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
