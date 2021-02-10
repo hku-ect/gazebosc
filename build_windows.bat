@@ -15,5 +15,9 @@ cd %PROJECT_ROOT%
 git submodule update --init --recursive
 md "%GZB_BUILDDIR%"
 cd "%GZB_BUILDDIR%"
-cmake .. -DCMAKE_PREFIX_PATH="%cd%/tmp/ci_build" -DCMAKE_INSTALL_PREFIX="%INSTALL_PREFIX%"
+cmake .. -DCMAKE_PREFIX_PATH="%cd%/tmp/ci_build" -DCMAKE_INSTALL_PREFIX="%INSTALL_PREFIX%" -DCMAKE_IGNORE_PATH="C:/tmp/ci_build"
 cmake --build . --config Debug --target install
+
+copy "%LIBZMQ_BUILDDIR%\bin\Debug\*.dll" "%GZB_BUILDDIR%\bin\Debug\*.dll"
+
+cd %PROJECT_ROOT%
