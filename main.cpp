@@ -156,9 +156,10 @@ int main(int argc, char** argv)
     signal(SIGBUS, print_backtrace); // Bus error (bad memory access)
     signal(SIGSYS,  print_backtrace); // Bad system call (SVr4);
     signal(SIGXCPU, print_backtrace); // CPU time limit exceeded (4.2BSD)
-#ifdef __UTYPE_OSX
-    signal(SIGFSZ,  print_backtrace); // File size limit exceeded (4.2BSD)
-#endif
+//#ifdef __UTYPE_OSX
+// not available anymore?
+//    signal(SIGFSZ,  print_backtrace); // File size limit exceeded (4.2BSD)
+//#endif
 #endif
 
     //
