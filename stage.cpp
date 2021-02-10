@@ -82,7 +82,7 @@ void RegisterActors() {
     sphactor_register<Pulse>( "Pulse" );
     sphactor_register<ModPlayerActor>( "ModPlayer" );
 #ifdef PYTHON3_FOUND
-    python_init();
+    assert( python_init() == 0);
     sphactor_register("Python", pythonactor_handler, pythonactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
 #endif
     //enforcable maximum actor counts

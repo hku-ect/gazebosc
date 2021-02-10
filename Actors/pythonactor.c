@@ -65,7 +65,6 @@ int python_init()
                     //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
                     //"print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n"
                        );
-    assert(rc == 0);
     //  import the internal wrapper module
     PyObject *imp = PyImport_ImportModule("sph");
     assert(imp);
@@ -375,17 +374,19 @@ zmsg_t *
 pythonactor_stop(pythonactor_t *self, sphactor_event_t *ev)
 {
     assert(self);
-    assert(self->pyinstance);
-    PyGILState_STATE gstate;
-    gstate = PyGILState_Ensure();
-    PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleStop", "Osss", Py_None, ev->type, ev->name, ev->uuid);
-    Py_XINCREF(pReturn);  // increase refcount to prevent destroy
-    if (!pReturn)
+    if (self->pyinstance)
     {
-        PyErr_Print();
-        zsys_error("pythonactor: error calling handleStop method");
+        PyGILState_STATE gstate;
+        gstate = PyGILState_Ensure();
+        PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleStop", "Osss", Py_None, ev->type, ev->name, ev->uuid);
+        Py_XINCREF(pReturn);  // increase refcount to prevent destroy
+        if (!pReturn)
+        {
+            PyErr_Print();
+            zsys_error("pythonactor: error calling handleStop method");
+        }
+        Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
     }
-    Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
     return NULL;
 }
 
