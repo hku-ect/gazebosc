@@ -149,10 +149,14 @@ int main(int argc, char** argv)
 {
     signal(SIGSEGV, print_backtrace); // Invalid memory reference
     signal(SIGABRT, print_backtrace); // Abort signal from abort(3)
-    signal(SIGBUS,  print_backtrace); // Bus error (bad memory access)
     signal(SIGFPE,  print_backtrace); // Floating-point exception
+
+#ifdef __APPLE__
+    signal(SIGBUS, print_backtrace); // Bus error (bad memory access)
     signal(SIGSYS,  print_backtrace); // Bad system call (SVr4);
     signal(SIGXCPU, print_backtrace); // CPU time limit exceeded (4.2BSD)
+#endif
+
     //signal(SIGFSZ,  print_backtrace); // File size limit exceeded (4.2BSD)
     RegisterActors();
 
