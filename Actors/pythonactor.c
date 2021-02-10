@@ -113,6 +113,8 @@ pythonactor_new()
 
     self->pyinstance = NULL;
     self->main_filename = NULL;
+
+    return self;
 }
 
 void
