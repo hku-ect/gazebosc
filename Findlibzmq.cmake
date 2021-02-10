@@ -4,7 +4,7 @@
 ################################################################################
 
 if (NOT MSVC)
-    include(FindPkgConfig)
+    find_package(PkgConfig)
     pkg_check_modules(PC_LIBZMQ "libzmq")
     if (PC_LIBZMQ_FOUND)
         # add CFLAGS from pkg-config file, e.g. draft api.

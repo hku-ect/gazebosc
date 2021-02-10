@@ -54,7 +54,7 @@ add_definitions(-DCZMQ_BUILD_DRAFT_API=1)
 ## External libraries in ext/
 add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
 # overrides to prevent the Findczmq.cmake script to fail
-set(CZMQ_LIBRARIES ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/)
+set(CZMQ_LIBRARIES czmq-static)
 set(CZMQ_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/include/)
 add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
@@ -63,8 +63,6 @@ add_subdirectory("ext/glm" EXCLUDE_FROM_ALL)
 ## External system libraries through find_package
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 find_package(libzmq REQUIRED)
-message(WARNING ${libzmq_INCLUDE_DIRS})
-message(WARNING ${libzmq_LIBRARIES})
 if (NOT libzmq_FOUND)
     message (FATAL_ERROR "Cannot find libzmq, make sure it is available on the system")
 endif()
@@ -159,9 +157,7 @@ endif (Unwind_FOUND)
 if (APPLE)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
-        czmq-static
         sphactor-static
-        ${libzmq_LIBRARIES}
         ${LO_LIBRARIES}
         ${Python3_LIBRARIES}
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
@@ -216,9 +212,7 @@ elseif (WIN32)
 else()
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
-        czmq-static
         sphactor-static
-        ${libzmq_LIBRARIES}
         ${LO_LIBRARIES}
         ${Python3_LIBRARIES}
         -lasound -ldl -lGL -lGLEW)
