@@ -54,8 +54,8 @@ add_definitions(-DCZMQ_BUILD_DRAFT_API=1)
 ## External libraries in ext/
 add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
 # overrides to prevent the Findczmq.cmake script to fail
-set(CZMQ_LIBRARIES czmq-static)
-set(CZMQ_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/include/)
+set(czmq_LIBRARIES czmq-static)
+set(czmq_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/include/)
 add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/glm" EXCLUDE_FROM_ALL)
