@@ -107,6 +107,7 @@ script:
   ############################################################################
   # Build main and tests
   ############################################################################
+    - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" == "true" ]; then export CMAKE_OPTIONS="-DPython3_ROOT_DIR=`pwd`/pyroot"; then
     - mkdir -p build
     - cd build
     - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage .. 
