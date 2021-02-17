@@ -221,6 +221,25 @@ endif()
 target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
+if(APPLE)
+    install(TARGETS gazebosc BUNDLE DESTINATION ${CMAKE_BINARY_DIR})
+    set(APPS "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.app")
+    set(LIBS )
+    set(DIRS "${CMAKE_BINARY_DIR}")
+    # Path used for searching by FIND_XXX(), with appropriate suffixes added
+    if(CMAKE_PREFIX_PATH)
+        foreach(dir ${CMAKE_PREFIX_PATH})
+                list(APPEND DIRS "${dir}/bin" "${dir}/lib")
+        endforeach()
+    endif()
+    install(CODE "include(BundleUtilities)
+                  fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\")
+                  verify_app(\"${PROJECT_NAME}.app\")
+           ")
+else()
+    install(TARGETS gazebosc)
+endif(APPLE)
+
 add_custom_command(
     TARGET gazebosc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
