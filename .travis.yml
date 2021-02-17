@@ -84,7 +84,6 @@ matrix:
         - libglew-dev
 
 before_install:
-- if [ "$TRAVIS_OS_NAME" == "osx" ] ; then brew install openssl xz; fi
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "valgrind" ] ; then brew install valgrind ; fi
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
