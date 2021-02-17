@@ -21,27 +21,18 @@ env:
     - CI_REQUIRE_GOOD_CLANG_FORMAT=false
     - CI_TEST_DISTCHECK=true
 
-# dist==trusty means ubuntu14
-pkg_src_zeromq_ubuntu14: &pkg_src_zeromq_ubuntu14
-  sourceline: 'deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_14.04/ ./'
-  key_url: 'http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_14.04/Release.key'
-
-# dist==xenial means ubuntu16
-pkg_src_zeromq_ubuntu16: &pkg_src_zeromq_ubuntu16
-  sourceline: 'deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_16.04/ ./'
-  key_url: 'http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_16.04/Release.key'
-
-# Also note that as of early 2017, either dist==trusty or services==docker
-# is needed for some C++11 support; docker envs are usually faster to start up
-# A newer dist==xenial completes the C++11 support with gcc-5+
 addons:
   apt:
-    packages:
+    packages: &base_deps
     - git
-    - libzmq3-dev
     - mesa-common-dev
     - libasound2-dev
     - libglew-dev
+    - libunwind-dev
+#  homebrew: &base_deps
+#    packages:
+#    - binutils
+#    - valgrind
 
 matrix:
   include:
@@ -53,39 +44,17 @@ matrix:
     compiler: clang
   - env: BUILD_TYPE=default
     os: linux
-    addons:
-      apt:
-        packages:
-        - git
-        - libzmq3-dev
-        - mesa-common-dev
-        - libasound2-dev
-        - libglew-dev
   - env: BUILD_TYPE=valgrind
     os: linux
     addons:
       apt:
         packages:
+        - *base_deps
         - valgrind
-        - git
-        - libzmq3-dev
-        - mesa-common-dev
-        - libasound2-dev
-        - libglew-dev
   - env: BUILD_TYPE=default ADDRESS_SANITIZER=enabled
     os: linux
-    addons:
-      apt:
-        packages:
-        - git
-        - libzmq3-dev
-        - mesa-common-dev
-        - libasound2-dev
-        - libglew-dev
 
 before_install:
-- if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi
-- if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "valgrind" ] ; then brew install valgrind ; fi
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
 
 install:
@@ -99,14 +68,25 @@ install:
   - sudo make install
   - cd -
 
+  # python
+  - export BUILD_DIR=$TRAVIS_BUILD_DIR/build
+  - mkdir $BUILD_DIR
+  - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" != "false" ] ; then 
+        ./dist/osx/build_python.sh $BUILD_DIR/python ; 
+    fi
+
+
 script:
   ############################################################################
   # Build main and tests
   ############################################################################
+    - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" != "false" ]; 
+        then export CMAKE_OPTIONS="-DPython3_ROOT_DIR=$BUILD_DIR/python -DPython3_FIND_STRATEGY=LOCATION"; 
+      fi
     - mkdir -p build
     - cd build
     - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage .. 
-    - make
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then make install; else make; fi
 
   # test
 # Skip for now!
@@ -116,10 +96,12 @@ script:
 #    - if [ "$BUILD_TYPE" != "valgrind" ] ; then ./gazebosc -test ; fi
 
 git:
-  depth: 256
+  depth: 100
 
 after_success:
-  # TODO?
+    #- cd build
+    # fixes the osx bundle
+    #- if [ "$TRAVIS_OS_NAME" == "osx" ] ; then make install ; fi
 
 deploy:
   # TODO

@@ -158,8 +158,7 @@ if (APPLE)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
-        ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
     add_definitions(-D__MACOSX_CORE__)
     SET_TARGET_PROPERTIES(gazebosc PROPERTIES 
@@ -168,9 +167,9 @@ if (APPLE)
     )
     SET(MACOSX_BUNDLE_BUNDLE_NAME gazebosc)
     set(MACOSX_BUNDLE_COPYRIGHT "Gazebosc is licensed under the MPLv2 License")
-    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc"
-    set(MACOSX_BUNDLE_ICON_FILE "AppIcon")
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/distribution/macos/AppIcon.iconset DESTINATION ${CMAKE_BINARY_DIR})
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc")
+    set(MACOSX_BUNDLE_ICON_FILE "AppIcon.icns")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/AppIcon.iconset DESTINATION ${CMAKE_BINARY_DIR})
     set(ICON_TARGET "${CMAKE_BINARY_DIR}/AppIcon.iconset")
     set(ICON_OUTPUT "${CMAKE_BINARY_DIR}/AppIcon.icns")
     set(SOURCE_ICON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/misc/logo")
@@ -192,40 +191,62 @@ if (APPLE)
 #    list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md)
 #    list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CONTRIBUTORS.MD)
     set_target_properties(${PROJECT} PROPERTIES RESOURCE "${BUNDLE_RESOURCES}")
-    target_sources(${PROJECT} PUBLIC ${BUNDLE_RESOURCES})
+    target_sources(gazebosc PUBLIC ${BUNDLE_RESOURCES})
 #    file(GLOB BUNDLE_LANGUAGES "${CMAKE_CURRENT_SOURCE_DIR}/data/language/*")
 #    target_sources(${PROJECT} PUBLIC ${BUNDLE_LANGUAGES})
 #    set_property(
 #        SOURCE ${BUNDLE_LANGUAGES}
 #        PROPERTY MACOSX_PACKAGE_LOCATION "Resources/language"
 #    )
-)
 elseif (WIN32)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         czmq-static
         sphactor-static
         ${libzmq_LIBRARIES}
-        ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         opengl32.lib)
 else()
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
-        ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         -lasound -ldl -lGL -lGLEW)
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 endif()
 target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
-add_custom_command(
-    TARGET gazebosc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/misc
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+if(APPLE)
+    install(TARGETS gazebosc BUNDLE DESTINATION ${CMAKE_BINARY_DIR})
+    set(APPS "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.app")
+    set(LIBS )
+    set(DIRS "${CMAKE_BINARY_DIR}")
+    # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${APPS}/Contents/Resources
+        USE_SOURCE_PERMISSIONS
+        PATTERN exe_with_* EXCLUDE
+    )
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc DESTINATION ${APPS}/Contents/Resources)
+    # Path used for searching by FIND_XXX(), with appropriate suffixes added
+    if(CMAKE_PREFIX_PATH)
+        foreach(dir ${CMAKE_PREFIX_PATH})
+                list(APPEND DIRS "${dir}/bin" "${dir}/lib")
+        endforeach()
+    endif()
+    install(CODE "
+            include(BundleUtilities)
+            fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+           )
+else()
+    install(TARGETS gazebosc DESTINATION bin)
+    add_custom_command(
+        TARGET gazebosc POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/misc
+                $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+
+endif(APPLE)
 
 add_custom_command(
     TARGET gazebosc POST_BUILD
