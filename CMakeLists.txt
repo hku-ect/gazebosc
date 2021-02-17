@@ -57,7 +57,7 @@ add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
 set(czmq_LIBRARIES czmq-static)
 set(czmq_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/ext/czmq/include/)
 add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
-add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
+#add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/glm" EXCLUDE_FROM_ALL)
 
 ## External system libraries through find_package
