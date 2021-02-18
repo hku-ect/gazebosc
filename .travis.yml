@@ -128,7 +128,7 @@ git:
 after_success:
     - cd build
     # fixes the osx bundle
-    - if [ "$TRAVIS_OS_NAME" == "osx" ] make install
+    - if [ "$TRAVIS_OS_NAME" == "osx" ] ; then make install ; fi
 
 deploy:
   # TODO
