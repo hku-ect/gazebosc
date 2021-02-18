@@ -108,7 +108,7 @@ script:
   # Build main and tests
   ############################################################################
     - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" != "false" ]; 
-        then export CMAKE_OPTIONS="-DPython3_ROOT_DIR=`pwd`/pyroot -DPython3_FIND_STRATEGY=LOCATION -DPython3_USE_STATIC_LIBS=TRUE"; 
+        then export CMAKE_OPTIONS="-DPython3_ROOT_DIR=`pwd`/pyroot -DPython3_FIND_STRATEGY=LOCATION"; 
       fi
     - mkdir -p build
     - cd build
