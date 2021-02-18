@@ -126,7 +126,9 @@ git:
   depth: 256
 
 after_success:
-  # TODO?
+    - cd build
+    # fixes the osx bundle
+    - if [ "$TRAVIS_OS_NAME" == "osx" ] make install
 
 deploy:
   # TODO
