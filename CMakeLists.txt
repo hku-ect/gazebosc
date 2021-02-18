@@ -159,7 +159,7 @@ if (APPLE)
         SDL2-static
         sphactor-static
         ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
     add_definitions(-D__MACOSX_CORE__)
     SET_TARGET_PROPERTIES(gazebosc PROPERTIES 
@@ -206,15 +206,14 @@ elseif (WIN32)
         czmq-static
         sphactor-static
         ${libzmq_LIBRARIES}
-        ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         opengl32.lib)
 else()
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
         ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         -lasound -ldl -lGL -lGLEW)
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 endif()
@@ -234,7 +233,6 @@ if(APPLE)
     endif()
     install(CODE "include(BundleUtilities)
                   fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\")
-                  verify_app(\"${PROJECT_NAME}.app\")
            ")
 else()
     install(TARGETS gazebosc)

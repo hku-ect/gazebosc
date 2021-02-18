@@ -113,7 +113,7 @@ script:
     - mkdir -p build
     - cd build
     - cmake ${CMAKE_OPTIONS} -DCMAKE_CXX_FLAGS=${CXX_FLAGS} -DCMAKE_BUILD_TYPE=Coverage .. 
-    - make
+    - if [ "$TRAVIS_OS_NAME" == "osx" ]; then make install; else make; fi
 
   # test
 # Skip for now!
@@ -126,9 +126,9 @@ git:
   depth: 256
 
 after_success:
-    - cd build
+    #- cd build
     # fixes the osx bundle
-    - if [ "$TRAVIS_OS_NAME" == "osx" ] ; then make install ; fi
+    #- if [ "$TRAVIS_OS_NAME" == "osx" ] ; then make install ; fi
 
 deploy:
   # TODO
