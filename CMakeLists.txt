@@ -222,7 +222,7 @@ if(APPLE)
     set(APPS "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.app")
     set(LIBS )
     set(DIRS "${CMAKE_BINARY_DIR}")
-    # copy embedded python to the bundle
+    # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
     install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${APPS}/Contents/Resources
         USE_SOURCE_PERMISSIONS
         PATTERN exe_with_* EXCLUDE
