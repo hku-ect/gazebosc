@@ -234,10 +234,10 @@ if(APPLE)
                 list(APPEND DIRS "${dir}/bin" "${dir}/lib")
         endforeach()
     endif()
-    install(CODE [[
+    install(CODE "
             include(BundleUtilities)
-            fixup_bundle("${APPS}" "${LIBS}" "${DIRS}")
-           ]])
+            fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\")"
+           )
 else()
     install(TARGETS gazebosc)
     add_custom_command(
