@@ -16,6 +16,10 @@
 #pragma GCC diagnostic ignored "-Wpragmas"              // warning: unknown option after '#pragma GCC diagnostic' kind
 #pragma GCC diagnostic ignored "-Wclass-memaccess"      // [__GNUC__ >= 8] warning: 'memset/memcpy' clearing/writing an object of type 'xxxx' with no trivial copy-assignment; use assignment or value-initialization instead
 #endif
+#ifdef __UTYPE_OSX
+// needed to change the wd to Resources of the app bundle
+#include "CoreFoundation/CoreFoundation.h"
+#endif
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -156,10 +160,16 @@ int main(int argc, char** argv)
     signal(SIGBUS, print_backtrace); // Bus error (bad memory access)
     signal(SIGSYS,  print_backtrace); // Bad system call (SVr4);
     signal(SIGXCPU, print_backtrace); // CPU time limit exceeded (4.2BSD)
-//#ifdef __UTYPE_OSX
+#ifdef __UTYPE_OSX
 // not available anymore?
 //    signal(SIGFSZ,  print_backtrace); // File size limit exceeded (4.2BSD)
-//#endif
+    char path[PATH_MAX];
+    CFURLRef res = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
+    CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)path, PATH_MAX);
+    CFRelease(res);
+    chdir(path);
+    zsys_info("working dir changed to %s", path);
+#endif
 #endif
 
     //
