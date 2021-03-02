@@ -38,10 +38,10 @@ addons:
   apt:
     packages:
     - git
-    - libzmq3-dev
     - mesa-common-dev
     - libasound2-dev
     - libglew-dev
+    - libunwind-dev
 
 matrix:
   include:
@@ -53,35 +53,14 @@ matrix:
     compiler: clang
   - env: BUILD_TYPE=default
     os: linux
-    addons:
-      apt:
-        packages:
-        - git
-        - libzmq3-dev
-        - mesa-common-dev
-        - libasound2-dev
-        - libglew-dev
   - env: BUILD_TYPE=valgrind
     os: linux
     addons:
       apt:
         packages:
         - valgrind
-        - git
-        - libzmq3-dev
-        - mesa-common-dev
-        - libasound2-dev
-        - libglew-dev
   - env: BUILD_TYPE=default ADDRESS_SANITIZER=enabled
     os: linux
-    addons:
-      apt:
-        packages:
-        - git
-        - libzmq3-dev
-        - mesa-common-dev
-        - libasound2-dev
-        - libglew-dev
 
 before_install:
 - if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi
