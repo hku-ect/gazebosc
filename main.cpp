@@ -16,6 +16,8 @@
 #pragma GCC diagnostic ignored "-Wpragmas"              // warning: unknown option after '#pragma GCC diagnostic' kind
 #pragma GCC diagnostic ignored "-Wclass-memaccess"      // [__GNUC__ >= 8] warning: 'memset/memcpy' clearing/writing an object of type 'xxxx' with no trivial copy-assignment; use assignment or value-initialization instead
 #endif
+
+#include "libsphactor.h"
 #ifdef __UTYPE_OSX
 // needed to change the wd to Resources of the app bundle
 #include "CoreFoundation/CoreFoundation.h"
@@ -35,7 +37,7 @@
 #include <thread>
 
 #include <signal.h>
-#include "libsphactor.h"
+
 
 #include <streambuf>
 #include <iostream>
