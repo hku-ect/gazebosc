@@ -236,7 +236,7 @@ if(APPLE)
             fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\")"
            )
 else()
-    install(TARGETS gazebosc)
+    install(TARGETS gazebosc DESTINATION bin)
     add_custom_command(
         TARGET gazebosc POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
