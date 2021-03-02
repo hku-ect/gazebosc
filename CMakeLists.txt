@@ -233,7 +233,7 @@ if(APPLE)
     endif()
     install(CODE "
             include(BundleUtilities)
-            fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\")"
+            fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
            )
 else()
     install(TARGETS gazebosc DESTINATION bin)
