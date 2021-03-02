@@ -100,7 +100,11 @@ install:
   - cd -
 
   # python
-  - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" != "false" ] ; then ./dist/osx/build_python.sh ; fi
+  - export BUILD_DIR=$TRAVIS_BUILD_DIR/build
+  - mkdir $BUILD_DIR
+  - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" != "false" ] ; then 
+        ./dist/osx/build_python.sh $BUILD_DIR/python ; 
+    fi
 
 
 script:
@@ -108,7 +112,7 @@ script:
   # Build main and tests
   ############################################################################
     - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" != "false" ]; 
-        then export CMAKE_OPTIONS="-DPython3_ROOT_DIR=`pwd`/pyroot -DPython3_FIND_STRATEGY=LOCATION"; 
+        then export CMAKE_OPTIONS="-DPython3_ROOT_DIR=$BUILD_DIR/python -DPython3_FIND_STRATEGY=LOCATION"; 
       fi
     - mkdir -p build
     - cd build

@@ -225,24 +225,28 @@ if(APPLE)
     set(APPS "${CMAKE_BINARY_DIR}/${PROJECT_NAME}.app")
     set(LIBS )
     set(DIRS "${CMAKE_BINARY_DIR}")
+    # copy embedded python to the bundle
+    install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${APPS}/Contens/Resources)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc DESTINATION ${APPS}/Contens/Resources)
     # Path used for searching by FIND_XXX(), with appropriate suffixes added
     if(CMAKE_PREFIX_PATH)
         foreach(dir ${CMAKE_PREFIX_PATH})
                 list(APPEND DIRS "${dir}/bin" "${dir}/lib")
         endforeach()
     endif()
-    install(CODE "include(BundleUtilities)
-                  fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\")
-           ")
+    install(CODE [[
+            include(BundleUtilities)
+            fixup_bundle("${APPS}" "${LIBS}" "${DIRS}")
+           ]])
 else()
     install(TARGETS gazebosc)
-endif(APPLE)
+    add_custom_command(
+        TARGET gazebosc POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/misc
+                $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
 
-add_custom_command(
-    TARGET gazebosc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/misc
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+endif(APPLE)
 
 add_custom_command(
     TARGET gazebosc POST_BUILD
