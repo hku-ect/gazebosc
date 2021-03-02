@@ -224,8 +224,8 @@ if(APPLE)
     set(DIRS "${CMAKE_BINARY_DIR}")
     # copy embedded python to the bundle
     install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${APPS}/Contents/Resources
-        PATTERN exe_with_* EXCLUDE
         USE_SOURCE_PERMISSIONS
+        PATTERN exe_with_* EXCLUDE
     )
     install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc DESTINATION ${APPS}/Contents/Resources)
     # Path used for searching by FIND_XXX(), with appropriate suffixes added
