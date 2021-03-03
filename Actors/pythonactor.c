@@ -1,6 +1,9 @@
 #include "pythonactor.h"
 #include "pyzmsg.h"
 #include <wchar.h>
+#ifdef __UTYPE_OSX
+#include "CoreFoundation/CoreFoundation.h"
+#endif
 
 // https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
 static char *
