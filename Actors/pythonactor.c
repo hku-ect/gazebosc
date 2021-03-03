@@ -1,5 +1,6 @@
 #include "pythonactor.h"
 #include "pyzmsg.h"
+#include <wchar.h>
 
 // https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
 static char *
@@ -54,6 +55,35 @@ int python_init()
     Py_UnbufferedStdioFlag = 1;
     //  add internal wrapper to available modules
     int rc = PyImport_AppendInittab("sph", PyInit_PyZmsg);
+    // TODO set the python home to our bundled python or system installed
+    // https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/python/generic/py_capi_utils.c#L894
+    char *homepath = getenv("PYTHONHOME");
+    if ( homepath == NULL ) // PYTHONHOME not set so force the embedded python
+    {
+        char path[PATH_MAX];
+#ifdef __UTYPE_OSX
+        CFURLRef res = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
+        CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)path, PATH_MAX);
+        CFRelease(res);
+#else
+        size_t pathsize;
+        long result = readlink("/proc/self/exe", path, pathsize);
+        assert(result > -1);
+        if (result > 0)
+        {
+            path[result] = 0; /* add NULL */
+        }
+        // remove program name by finding the last /
+        char *s = strrchr(path, '/');
+        if (s) *s = 0;
+#endif
+        wchar_t py_home_wchar[PATH_MAX];
+        swprintf(py_home_wchar, PATH_MAX, L"%hs/python", path);
+        //strcat(path, "/python");
+        Py_SetPythonHome(py_home_wchar);
+    }
+    //Py_IgnoreEnvironmentFlag = true;
+    //Py_NoUserSiteDirectory = true;
     Py_Initialize();
     assert(rc == 0);
     //  add some paths for importing python files
