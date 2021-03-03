@@ -21,27 +21,18 @@ env:
     - CI_REQUIRE_GOOD_CLANG_FORMAT=false
     - CI_TEST_DISTCHECK=true
 
-# dist==trusty means ubuntu14
-pkg_src_zeromq_ubuntu14: &pkg_src_zeromq_ubuntu14
-  sourceline: 'deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_14.04/ ./'
-  key_url: 'http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_14.04/Release.key'
-
-# dist==xenial means ubuntu16
-pkg_src_zeromq_ubuntu16: &pkg_src_zeromq_ubuntu16
-  sourceline: 'deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_16.04/ ./'
-  key_url: 'http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_16.04/Release.key'
-
-# Also note that as of early 2017, either dist==trusty or services==docker
-# is needed for some C++11 support; docker envs are usually faster to start up
-# A newer dist==xenial completes the C++11 support with gcc-5+
 addons:
   apt:
-    packages:
+    packages: &base_deps
     - git
     - mesa-common-dev
     - libasound2-dev
     - libglew-dev
     - libunwind-dev
+#  homebrew: &base_deps
+#    packages:
+#    - binutils
+#    - valgrind
 
 matrix:
   include:
@@ -58,13 +49,12 @@ matrix:
     addons:
       apt:
         packages:
+        - *base_deps
         - valgrind
   - env: BUILD_TYPE=default ADDRESS_SANITIZER=enabled
     os: linux
 
 before_install:
-- if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "android" ] ; then brew install binutils ; fi
-- if [ "$TRAVIS_OS_NAME" == "osx" -a "$BUILD_TYPE" == "valgrind" ] ; then brew install valgrind ; fi
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
 
 install:
@@ -106,7 +96,7 @@ script:
 #    - if [ "$BUILD_TYPE" != "valgrind" ] ; then ./gazebosc -test ; fi
 
 git:
-  depth: 256
+  depth: 100
 
 after_success:
     #- cd build
