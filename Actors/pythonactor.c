@@ -3,6 +3,10 @@
 #include <wchar.h>
 #ifdef __UTYPE_OSX
 #include "CoreFoundation/CoreFoundation.h"
+#elif defined(__WINDOWS__)
+#include <windows.h>
+#include <tchar.h>
+#include "atlstr.h"
 #endif
 
 // https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
@@ -82,7 +86,13 @@ int python_init()
         CFURLRef res = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
         CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)path, PATH_MAX);
         CFRelease(res);
-#elif defined __WINDOWS__
+        // append python to our path
+        strcat(path, "/python");
+#elif defined(__WINDOWS__)
+        TCHAR szExePath[MAX_PATH];
+        GetModuleFileName(NULL, szExePath, MAX_PATH);
+        _tcscat(szExePath, MAX_PATH, TEXT("\\python"));
+        _tcscpy(path, A2T(szExePath));      // TODO: we shouldn't be converting to char
 #else   // linux, we could check for __UTYPE_LINUX
         size_t pathsize;
         long result = readlink("/proc/self/exe", path, pathsize);
@@ -94,9 +104,9 @@ int python_init()
         // remove program name by finding the last /
         char *s = strrchr(path, '/');
         if (s) *s = 0;
-#endif
         // append python to our path
         strcat(path, "/python");
+#endif
         if ( s_dir_exists(path) )
         {
             wchar_t py_home_wchar[PATH_MAX];
