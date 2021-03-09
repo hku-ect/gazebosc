@@ -3,6 +3,8 @@
 #include <wchar.h>
 #ifdef __UTYPE_OSX
 #include "CoreFoundation/CoreFoundation.h"
+#elif defined(__WINDOWS__)
+#include <windows.h>
 #endif
 
 // https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
@@ -30,8 +32,11 @@ s_basename(char const *path)
 }
 
 static bool
-s_dir_exists(char const *path)
+s_dir_exists(const wchar_t *pypath)
 {
+    // bleeh we need to convert to char as czmq only supports char paths
+    char path[PATH_MAX];
+    wcstombs(path, pypath, PATH_MAX);
     zfile_t *dir = zfile_new(NULL, path);
     assert(dir);
     bool ret = zfile_is_directory(dir);
@@ -77,14 +82,24 @@ int python_init()
     char *homepath = getenv("PYTHONHOME");
     if ( homepath == NULL ) // PYTHONHOME not set so check for bundled python
     {
-        char path[PATH_MAX];
+        wchar_t pypath[PATH_MAX];
 #ifdef __UTYPE_OSX
+        char path[PATH_MAX];
         CFURLRef res = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
         CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)path, PATH_MAX);
         CFRelease(res);
-#elif defined __WINDOWS__
+        // append python to our path
+        swprintf(pypath, PATH_MAX, L"%hs/python", path);
+#elif defined(__WINDOWS__)
+        wchar_t path[PATH_MAX];
+        GetModuleFileName(NULL, path, PATH_MAX);
+        // remove program name by finding the last delimiter
+        wchar_t *s = wcsrchr(path, L'\\');
+        if (s) *s = 0;
+        swprintf(pypath, PATH_MAX, L"%hs\\python", path);
 #else   // linux, we could check for __UTYPE_LINUX
         size_t pathsize;
+        char path[PATH_MAX];
         long result = readlink("/proc/self/exe", path, pathsize);
         assert(result > -1);
         if (result > 0)
@@ -94,14 +109,12 @@ int python_init()
         // remove program name by finding the last /
         char *s = strrchr(path, '/');
         if (s) *s = 0;
-#endif
         // append python to our path
-        strcat(path, "/python");
-        if ( s_dir_exists(path) )
+        swprintf(pypath, PATH_MAX, L"%hs/python", path);
+#endif
+        if ( s_dir_exists(pypath) )
         {
-            wchar_t py_home_wchar[PATH_MAX];
-            swprintf(py_home_wchar, PATH_MAX, L"%hs", path);
-            Py_SetPythonHome(py_home_wchar);
+            Py_SetPythonHome(pypath);
         }
         else
             zsys_warning("No python dir found in '%s' so hoping for a system installed", path);
