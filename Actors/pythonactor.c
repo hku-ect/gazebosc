@@ -29,6 +29,16 @@ s_basename(char const *path)
         return strdup(s + 1);
 }
 
+static bool
+s_dir_exists(char const *path)
+{
+    zfile_t *dir = zfile_new(NULL, path);
+    assert(dir);
+    bool ret = zfile_is_directory(dir);
+    zfile_destroy(&dir);
+    return ret;
+}
+
 static zosc_t *
 s_py_zosc(PyObject *pAddress, PyObject *pData)
 {
@@ -59,16 +69,21 @@ int python_init()
     //  add internal wrapper to available modules
     int rc = PyImport_AppendInittab("sph", PyInit_PyZmsg);
     // TODO set the python home to our bundled python or system installed
-    // https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/python/generic/py_capi_utils.c#L894
+    // We need to check whether the PYTHONHOME env var is provided,
+    //   * if so let python handle it, we do nothing
+    //   * else check if we have a bundled python dir and set pythonhome to it
+    //   * otherwise do nothing hoping a system installed python is found?
+    //   ref: https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/python/generic/py_capi_utils.c#L894
     char *homepath = getenv("PYTHONHOME");
-    if ( homepath == NULL ) // PYTHONHOME not set so force the embedded python
+    if ( homepath == NULL ) // PYTHONHOME not set so check for bundled python
     {
         char path[PATH_MAX];
 #ifdef __UTYPE_OSX
         CFURLRef res = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
         CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)path, PATH_MAX);
         CFRelease(res);
-#else
+#elif defined __WINDOWS__
+#else   // linux, we could check for __UTYPE_LINUX
         size_t pathsize;
         long result = readlink("/proc/self/exe", path, pathsize);
         assert(result > -1);
@@ -80,10 +95,16 @@ int python_init()
         char *s = strrchr(path, '/');
         if (s) *s = 0;
 #endif
-        wchar_t py_home_wchar[PATH_MAX];
-        swprintf(py_home_wchar, PATH_MAX, L"%hs/python", path);
-        //strcat(path, "/python");
-        Py_SetPythonHome(py_home_wchar);
+        // append python to our path
+        strcat(path, "/python");
+        if ( s_dir_exists(path) )
+        {
+            wchar_t py_home_wchar[PATH_MAX];
+            swprintf(py_home_wchar, PATH_MAX, L"%hs", path);
+            Py_SetPythonHome(py_home_wchar);
+        }
+        else
+            zsys_warning("No python dir found in '%s' so hoping for a system installed", path);
     }
     //Py_IgnoreEnvironmentFlag = true;
     //Py_NoUserSiteDirectory = true;
