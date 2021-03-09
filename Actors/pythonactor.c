@@ -5,8 +5,6 @@
 #include "CoreFoundation/CoreFoundation.h"
 #elif defined(__WINDOWS__)
 #include <windows.h>
-#include <tchar.h>
-#include "atlstr.h"
 #endif
 
 // https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
