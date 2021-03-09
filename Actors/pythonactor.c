@@ -93,7 +93,7 @@ int python_init()
 #elif defined(__WINDOWS__)
         GetModuleFileName(NULL, pypath, MAX_PATH);
         // remove program name by finding the last \
-        char *s = wcsrchr(path, L"\");
+        wchar_t *s = wcsrchr(path, L'\');
         if (s) *s = 0;
         swprintf(pypath, PATH_MAX, L"%hs\\python", path);
 #else   // linux, we could check for __UTYPE_LINUX
