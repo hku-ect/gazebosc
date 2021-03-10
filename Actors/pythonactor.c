@@ -91,9 +91,10 @@ int python_init()
         // append python to our path
         swprintf(pypath, PATH_MAX, L"%hs/python", path);
 #elif defined(__WINDOWS__)
-        GetModuleFileName(NULL, pypath, MAX_PATH);
-        // remove program name by finding the last \
-        wchar_t *s = wcsrchr(path, L'\');
+        wchar_t path[PATH_MAX];
+        GetModuleFileName(NULL, path, PATH_MAX);
+        // remove program name by finding the last delimiter
+        wchar_t *s = wcsrchr(path, L'\\');
         if (s) *s = 0;
         swprintf(pypath, PATH_MAX, L"%hs\\python", path);
 #else   // linux, we could check for __UTYPE_LINUX
