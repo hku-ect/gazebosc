@@ -33,21 +33,30 @@ install:
       set LIBZMQ_BUILDDIR=%LIBZMQ_SOURCEDIR%\build
       git clone --depth 1 --quiet https://github.com/zeromq/libzmq.git "%LIBZMQ_SOURCEDIR%"
       md "%LIBZMQ_BUILDDIR%"
+  - cmd: |
+      set PYTHON_SOURCEDIR=C:\projects\cpython
+      git clone https://github.com/python/cpython.git --branch=3.8 --depth=1 "%PYTHON_SOURCEDIR%"
+      
 before_build:
   - cmd: |
       cd "%LIBZMQ_BUILDDIR%"
       cmake .. -DBUILD_STATIC=OFF -DBUILD_SHARED=ON -DZMQ_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX="%INSTALL_PREFIX%"
       cmake --build . --config %Configuration% --target install
-clone_folder: C:\projects\libsphactor
+  - cmd: |
+      set GZB_BUILDDIR="%APPVEYOR_BUILD_FOLDER%\build"
+      set PY_INSTALLDIR="%GZB_BUILDDIR%/bin/%Configuration%"
+      md "%PY_INSTALLDIR%"
+      cd "%PYTHON_SOURCEDIR%"\PCbuild
+      build.bat -p x64 -c %Configuration%
+      cd amd64
+      python.exe ../../PC/layout -b "%PYTHON_SOURCEDIR%" -b . -s "%PYTHON_SOURCEDIR%" --flat-dlls --preset-default --copy "%PY_INSTALLDIR%"
 
 build_script:
   - cmd: |
-      set GZB_BUILDDIR="%APPVEYOR_BUILD_FOLDER%\build"
       cd "%APPVEYOR_BUILD_FOLDER%"
       git submodule update --init --recursive
-      md "%GZB_BUILDDIR%"
       cd "%GZB_BUILDDIR%"
-      cmake .. -DCMAKE_PREFIX_PATH="C:\tmp\ci_build" -DCMAKE_INSTALL_PREFIX="%INSTALL_PREFIX%"
+      cmake .. -DCMAKE_PREFIX_PATH="C:\tmp\ci_build" -DPython3_ROOT_DIR="%PY_INSTALLDIR%"
       cmake --build . --config %Configuration% --target install
 #      ctest -C %Configuration% -V
 after_build:
