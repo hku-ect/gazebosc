@@ -10,19 +10,19 @@ environment:
   matrix:
     - platform: Win32
       configuration: Debug
-      PYTHON:C:\Python38
+      PYTHON: "C:\\Python38"
       PYTHON_VERSION: "3.8"
     - platform: Win32
       configuration: Release
-      PYTHON:C:\Python38
+      PYTHON: "C:\\Python38"
       PYTHON_VERSION: "3.8"
     - platform: x64
       configuration: Debug
-      PYTHON:C:\Python38-x64
+      PYTHON: "C:\\Python38-x64"
       PYTHON_VERSION: "3.8"
     - platform: x64
       configuration: Release
-      PYTHON:C:\Python38-x64
+      PYTHON: "C:\\Python38-x64"
       PYTHON_VERSION: "3.8"
 
 matrix:
