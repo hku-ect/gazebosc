@@ -55,9 +55,7 @@ before_build:
       set GZB_BUILDDIR="%APPVEYOR_BUILD_FOLDER%\build"
       set PY_INSTALLDIR="%GZB_BUILDDIR%/bin/%Configuration%"
       set PYEXE="python.exe"
-      IF "%Configuration%" == "Debug" (
-        set PYEXE="python_d.exe"
-      )
+      IF "%Configuration%" == "Debug" set PYEXE="python_d.exe"
       md "%PY_INSTALLDIR%"
       cd "%PYTHON_SOURCEDIR%"\PCbuild
       build.bat -p x64 -c %Configuration%
