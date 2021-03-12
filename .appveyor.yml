@@ -10,12 +10,20 @@ environment:
   matrix:
     - platform: Win32
       configuration: Debug
+      PYTHON:C:\Python38
+      PYTHON_VERSION: "3.8"
     - platform: Win32
       configuration: Release
+      PYTHON:C:\Python38
+      PYTHON_VERSION: "3.8"
     - platform: x64
       configuration: Debug
+      PYTHON:C:\Python38-x64
+      PYTHON_VERSION: "3.8"
     - platform: x64
       configuration: Release
+      PYTHON:C:\Python38-x64
+      PYTHON_VERSION: "3.8"
 
 matrix:
   fast_finish: false
@@ -43,16 +51,21 @@ before_build:
       cmake .. -DBUILD_STATIC=OFF -DBUILD_SHARED=ON -DZMQ_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX="%INSTALL_PREFIX%"
       cmake --build . --config %Configuration% --target install
   - cmd: |
+      python --version
       set GZB_BUILDDIR="%APPVEYOR_BUILD_FOLDER%\build"
       set PY_INSTALLDIR="%GZB_BUILDDIR%/bin/%Configuration%"
+      set PYEXE="python.exe"
+      IF "%Configuration%" == "Debug" (
+        set PYEXE="python_d.exe"
+      )
       md "%PY_INSTALLDIR%"
       cd "%PYTHON_SOURCEDIR%"\PCbuild
       build.bat -p x64 -c %Configuration%
       cd amd64
-      set PYTHONHOME="%PYTHON_SOURCEDIR%"
-      set PYTHONPATH="%PYTHON_SOURCEDIR%\Lib"
-      set PATH=%PYTHONHOME%;%PATH%
-      %PYTHON_SOURCEDIR%\PCbuild\amd64\python.exe ../../PC/layout -b "%PYTHON_SOURCEDIR%" -b . -s "%PYTHON_SOURCEDIR%" --flat-dlls --preset-default --copy "%PY_INSTALLDIR%"
+      #set PYTHONHOME="%PYTHON_SOURCEDIR%"
+      #set PYTHONPATH="%PYTHON_SOURCEDIR%\Lib"
+      #set PATH=%PYTHONHOME%;%PATH%
+      python.exe ../../PC/layout -b "%PYTHON_SOURCEDIR%" -b . -s "%PYTHON_SOURCEDIR%" --flat-dlls --preset-default --copy "%PY_INSTALLDIR%"
 
 build_script:
   - cmd: |
