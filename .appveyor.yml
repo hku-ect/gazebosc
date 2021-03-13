@@ -10,17 +10,22 @@ environment:
   matrix:
     - platform: Win32
       configuration: Debug
+      PY_DIR: C:/Python38
     - platform: Win32
       configuration: Release
+      PY_DIR: C:/Python38
     - platform: x64
       configuration: Debug
+      PY_DIR: C:/Python38-x64
     - platform: x64
       configuration: Release
+      PY_DIR: C:/Python38-x64
 
 matrix:
   fast_finish: false
 
 init:
+  - cmd: set PATH=%PY_DIR%;%PY_DIR%\Scripts;%PATH%
   - cmake --version
   - msbuild /version
   - cmd: reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f
@@ -44,7 +49,7 @@ before_build:
       cmake --build . --config %Configuration% --target install
   - cmd: |
       set
-      python3 --version
+      python --version
       set GZB_BUILDDIR="%APPVEYOR_BUILD_FOLDER%\build"
       set PY_INSTALLDIR="%GZB_BUILDDIR%/bin/%Configuration%"
       set PYEXE="python.exe"
@@ -56,7 +61,7 @@ before_build:
       #set PYTHONHOME="%PYTHON_SOURCEDIR%"
       #set PYTHONPATH="%PYTHON_SOURCEDIR%\Lib"
       #set PATH=%PYTHONHOME%;%PATH%
-      %PYTHON_SOURCEDIR%\PCbuild\amd64\%PYEXE% ../../PC/layout -b "%PYTHON_SOURCEDIR%" -b . -s "%PYTHON_SOURCEDIR%" --flat-dlls --preset-default --copy "%PY_INSTALLDIR%"
+      python ../../PC/layout -b "%PYTHON_SOURCEDIR%" -b . -s "%PYTHON_SOURCEDIR%" --flat-dlls --preset-default --copy "%PY_INSTALLDIR%"
 
 build_script:
   - cmd: |
