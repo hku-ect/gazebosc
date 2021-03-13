@@ -51,14 +51,18 @@ before_build:
       set
       python --version
       set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%\build
-      set PY_INSTALLDIR=%GZB_BUILDDIR%/bin/%Configuration%
+      set PY_INSTALLDIR=%GZB_BUILDDIR%\bin\%Configuration%
+      set PY_EXE=python.exe
+      set PY_LAYOUTOPTS=--flat-dlls
+      IF "%Configuration%" == "Debug" set PY_EXE=python_d.exe
+      IF "%Configuration%" == "Debug" set PY_LAYOUTOPTS=-d --flat-dlls
       md "%PY_INSTALLDIR%"
       cd "%PYTHON_SOURCEDIR%"\PCbuild
-      build.bat -p x64
+      build.bat -p x64 -c %Configuration%
       cd amd64
       echo "%PY_INSTALLDIR%"
       echo "%PYTHON_SOURCEDIR%"
-      .\python ../../PC/layout -b . -s %PYTHON_SOURCEDIR% --flat-dlls --preset-default --copy %PY_INSTALLDIR%
+      .\%PY_EXE% ../../PC/layout -b . -s %PYTHON_SOURCEDIR% %PY_LAYOUTOPTS% --preset-default --copy %PY_INSTALLDIR%
 
 build_script:
   - cmd: |
