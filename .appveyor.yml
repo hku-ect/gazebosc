@@ -50,17 +50,15 @@ before_build:
   - cmd: |
       set
       python --version
-      set GZB_BUILDDIR="%APPVEYOR_BUILD_FOLDER%\build"
-      set PY_INSTALLDIR="%GZB_BUILDDIR%/bin/%Configuration%"
-      set PYEXE="python.exe"
-      IF "%Configuration%" == "Debug" set PYEXE="python_d.exe"
+      set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%\build
+      set PY_INSTALLDIR=%GZB_BUILDDIR%/bin/%Configuration%
       md "%PY_INSTALLDIR%"
       cd "%PYTHON_SOURCEDIR%"\PCbuild
-      build.bat -p x64 -c %Configuration%
+      build.bat -p x64
       cd amd64
       echo "%PY_INSTALLDIR%"
       echo "%PYTHON_SOURCEDIR%"
-      python ../../PC/layout -b . -s "%PYTHON_SOURCEDIR%" --flat-dlls --preset-default --copy "%PY_INSTALLDIR%"
+      .\python ../../PC/layout -b . -s %PYTHON_SOURCEDIR% --flat-dlls --preset-default --copy %PY_INSTALLDIR%
 
 build_script:
   - cmd: |
@@ -76,8 +74,8 @@ after_build:
   - cmd: 7z a -r gazebosc.zip *.*
   - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc-${env:Platform}-${env:Configuration}.zip"
 
-on_finish:
-  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+#on_finish:
+#  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
 test:
   none
