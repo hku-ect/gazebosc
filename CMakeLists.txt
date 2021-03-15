@@ -15,9 +15,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(gazebosc)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
-
+set(CMAKE_CXX_STANDARD 14)
+set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 ##  Test availability of git and fetch submodules if needed
 #find_package(Git QUIET)
 #if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -39,19 +39,18 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/ext/czmq/CMakeLists.txt")
 endif()
 ## End getting the submodules
 
-
-set(CMAKE_CXX_STANDARD 14)
-set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")
-set(DEP_IMNODES_DIR ".")
-
+### SET OPTIONS
 option (WITH_UNWIND "Enable libunwind support" ON)
+option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" ON)
+### END SET OPTIONS
 
-## Definitions for draft API's of submodules
+### EXTERNAL LIBS
+# Definitions for draft API's of submodules
 set(ENABLE_DRAFTS ON CACHE BOOL "enable zmq projects draft apis" FORCE)
 add_definitions(-DZMQ_BUILD_DRAFT_API=1)
 add_definitions(-DCZMQ_BUILD_DRAFT_API=1)
 
-## External libraries in ext/
+# External libraries in ext/
 add_subdirectory("ext/czmq" EXCLUDE_FROM_ALL)
 # overrides to prevent the Findczmq.cmake script to fail
 set(czmq_LIBRARIES czmq-static)
@@ -60,7 +59,7 @@ add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/glm" EXCLUDE_FROM_ALL)
 
-## External system libraries through find_package
+# External system libraries through find_package
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 find_package(libzmq REQUIRED)
 if (NOT libzmq_FOUND)
@@ -68,6 +67,9 @@ if (NOT libzmq_FOUND)
 endif()
 
 # Find Python3
+if(Python3_ROOT_DIR)                        # Usually specified on command line to find python explicitly
+    set(Python3_FIND_STRATEGY "LOCATION")
+endif(Python3_ROOT_DIR)
 find_package (Python3 REQUIRED COMPONENTS Development)
 if(Python3_FOUND)
     message ("python3 found")
@@ -85,12 +87,8 @@ if (Unwind_FOUND)
     set (HAVE_UNWIND_H 1)
 endif (Unwind_FOUND)
 
+# include Dear ImGui
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-    set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-    # Build samples and pull in engine dependency only when this library is built
-    # independently. These are not necessary when user is consuming library in their
-    # own project.
     if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip")
         file(DOWNLOAD "https://github.com/ocornut/imgui/archive/v${DEP_IMGUI_VERSION}.zip" ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip)
     endif ()
@@ -99,6 +97,7 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     endif ()
 endif ()
 
+### PROJECT SOURCES
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
 file (GLOB ACTOR_HEADERS Actors/*.h)
 
@@ -126,10 +125,10 @@ add_executable(gazebosc
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.c
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.h
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/glcorearb.h
-    ${DEP_IMNODES_DIR}/ImNodes.h
-    ${DEP_IMNODES_DIR}/ImNodes.cpp
-    ${DEP_IMNODES_DIR}/ImNodesEz.h
-    ${DEP_IMNODES_DIR}/ImNodesEz.cpp
+    ImNodes.h
+    ImNodes.cpp
+    ImNodesEz.h
+    ImNodesEz.cpp
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
     fontawesome5.h
@@ -147,30 +146,32 @@ target_include_directories(gazebosc PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
-    ${DEP_IMNODES_DIR}
 )
 
 if (Unwind_FOUND)
   target_link_libraries (gazebosc PUBLIC unwind::unwind)
 endif (Unwind_FOUND)
 
+### PLATFORM SPECIFICS
 if (APPLE)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
+    add_definitions(-D__MACOSX_CORE__)
+
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
-        ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
-    add_definitions(-D__MACOSX_CORE__)
-    SET_TARGET_PROPERTIES(gazebosc PROPERTIES 
+    SET_TARGET_PROPERTIES(gazebosc PROPERTIES
         MACOSX_BUNDLE TRUE 
         MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Info.plist.in
     )
     SET(MACOSX_BUNDLE_BUNDLE_NAME gazebosc)
     set(MACOSX_BUNDLE_COPYRIGHT "Gazebosc is licensed under the MPLv2 License")
-    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc"
-    set(MACOSX_BUNDLE_ICON_FILE "AppIcon")
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/distribution/macos/AppIcon.iconset DESTINATION ${CMAKE_BINARY_DIR})
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc")
+    set(MACOSX_BUNDLE_ICON_FILE "AppIcon.icns")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/AppIcon.iconset DESTINATION ${CMAKE_BINARY_DIR})
     set(ICON_TARGET "${CMAKE_BINARY_DIR}/AppIcon.iconset")
     set(ICON_OUTPUT "${CMAKE_BINARY_DIR}/AppIcon.icns")
     set(SOURCE_ICON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/misc/logo")
@@ -192,40 +193,66 @@ if (APPLE)
 #    list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md)
 #    list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CONTRIBUTORS.MD)
     set_target_properties(${PROJECT} PROPERTIES RESOURCE "${BUNDLE_RESOURCES}")
-    target_sources(${PROJECT} PUBLIC ${BUNDLE_RESOURCES})
+    target_sources(gazebosc PUBLIC ${BUNDLE_RESOURCES})
 #    file(GLOB BUNDLE_LANGUAGES "${CMAKE_CURRENT_SOURCE_DIR}/data/language/*")
 #    target_sources(${PROJECT} PUBLIC ${BUNDLE_LANGUAGES})
 #    set_property(
 #        SOURCE ${BUNDLE_LANGUAGES}
 #        PROPERTY MACOSX_PACKAGE_LOCATION "Resources/language"
 #    )
-)
 elseif (WIN32)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         czmq-static
         sphactor-static
         ${libzmq_LIBRARIES}
-        ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         opengl32.lib)
 else()
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
-        ${LO_LIBRARIES}
-        ${Python3_LIBRARIES}
+        Python3::Python
         -lasound -ldl -lGL -lGLEW)
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 endif()
 target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
-add_custom_command(
-    TARGET gazebosc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/misc
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+### POST BUILD/INSTALL
+if(APPLE)
+    install(TARGETS gazebosc BUNDLE DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+    set(APPS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}.app")
+    set(LIBS )
+    set(DIRS "${CMAKE_BINARY_DIR}")
+    if (WITH_EMBED_PYTHON )
+        # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
+        install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${APPS}/Contents/Resources
+            USE_SOURCE_PERMISSIONS
+            PATTERN exe_with_* EXCLUDE
+        )
+    endif(WITH_EMBED_PYTHON)
+    install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc DESTINATION ${APPS}/Contents/Resources)
+    install(FILES ${CMAKE_SOURCE_DIR}/tester.py DESTINATION ${APPS}/Contents/Resources)
+    # Path used for searching by FIND_XXX(), with appropriate suffixes added
+    if(CMAKE_PREFIX_PATH)
+        foreach(dir ${CMAKE_PREFIX_PATH})
+                list(APPEND DIRS "${dir}/bin" "${dir}/lib")
+        endforeach()
+    endif()
+    install(CODE "
+            include(BundleUtilities)
+            fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+           )
+else()
+    install(TARGETS gazebosc DESTINATION bin)
+    add_custom_command(
+        TARGET gazebosc POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/misc
+                $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+
+endif(APPLE)
 
 add_custom_command(
     TARGET gazebosc POST_BUILD
