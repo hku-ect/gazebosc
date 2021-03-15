@@ -80,8 +80,10 @@ script:
   ############################################################################
   # Build main and tests
   ############################################################################
-    - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" != "false" ]; 
+    - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" == "false" ]; 
         then export CMAKE_OPTIONS="-DPython3_ROOT_DIR=$BUILD_DIR/python -DPython3_FIND_STRATEGY=LOCATION"; 
+      else;
+        export CMAKE_OPTIONS="-DWITH_EMBED_PYTHON=OFF";
       fi
     - mkdir -p build
     - cd build
