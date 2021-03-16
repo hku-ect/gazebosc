@@ -7,6 +7,9 @@ skip_tags: true
 image: Visual Studio 2019
 
 environment:
+  SIGNTOOL: '"C:\Program Files (x86)\Windows Kits\10\bin\10.0.18362.0\x64\signtool.exe"'
+  CSRTPW:
+    secure: RGIQP5FFFYx/tICrrkoiJzSXMqDz/R1H+WAAKZ0bo6E=
   matrix:
     - platform: Win32
       configuration: Debug
@@ -48,7 +51,6 @@ before_build:
       cmake .. -DBUILD_STATIC=OFF -DBUILD_SHARED=ON -DZMQ_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX="%INSTALL_PREFIX%"
       cmake --build . --config %Configuration% --target install
   - cmd: |
-      set
       python --version
       set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%\build
       set PY_INSTALLDIR=%GZB_BUILDDIR%\bin\%Configuration%
@@ -70,11 +72,17 @@ build_script:
       git submodule update --init --recursive
       cd "%GZB_BUILDDIR%"
       cmake .. -DCMAKE_PREFIX_PATH="C:\tmp\ci_build" -DPython3_ROOT_DIR="%PY_INSTALLDIR%"
-      cmake --build . --config %Configuration% --target install
+  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+#  -    cmake --build . --config %Configuration% --target install
 #      ctest -C %Configuration% -V
 after_build:
   - cmd: cd "%GZB_BUILDDIR%\bin\%Configuration%"
   - cmd: copy "%INSTALL_PREFIX%\bin\*.dll" .
+  - cmd: |
+      echo %CSCRT% > tmp64
+      certutil -decode tmp64 tmpcrt & exit 0
+      %SIGNTOOL% sign /t http://timestamp.digicert.com /f tmpcrt /p %CSRTPW% /a gazebosc.exe & exit 0
+      del tmp64 tmpcrt
   - cmd: 7z a -r gazebosc.zip *.*
   - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc-${env:Platform}-${env:Configuration}.zip"
 
