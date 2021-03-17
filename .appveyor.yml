@@ -55,16 +55,15 @@ before_build:
       set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%\build
       set PY_INSTALLDIR=%GZB_BUILDDIR%\bin\%Configuration%
       set PY_EXE=python.exe
-      set PY_LAYOUTOPTS=--flat-dlls
-      IF "%Configuration%" == "Debug" set PY_EXE=python_d.exe
-      IF "%Configuration%" == "Debug" set PY_LAYOUTOPTS=-d --flat-dlls
+      set PY_LAYOUTOPTS=--preset-default
       md "%PY_INSTALLDIR%"
       cd "%PYTHON_SOURCEDIR%"\PCbuild
-      build.bat -p x64 -c %Configuration%
+      build.bat -p x64      
+      IF "%Configuration%" == "Debug" build.bat -p x64 -c Debug
       cd amd64
-      echo "%PY_INSTALLDIR%"
-      echo "%PYTHON_SOURCEDIR%"
       .\%PY_EXE% ../../PC/layout -b . -s %PYTHON_SOURCEDIR% %PY_LAYOUTOPTS% --preset-default --copy %PY_INSTALLDIR%
+      IF "%Configuration%" == "Debug" set PY_LAYOUTOPTS=-d --preset-default
+      IF "%Configuration%" == "Debug" .\%PY_EXE% ../../PC/layout -b . -s %PYTHON_SOURCEDIR% %PY_LAYOUTOPTS% --preset-default --copy %PY_INSTALLDIR%
 
 build_script:
   - cmd: |
@@ -72,7 +71,6 @@ build_script:
       git submodule update --init --recursive
       cd "%GZB_BUILDDIR%"
       cmake .. -DCMAKE_PREFIX_PATH="C:\tmp\ci_build" -DPython3_ROOT_DIR="%PY_INSTALLDIR%"
-  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 #  -    cmake --build . --config %Configuration% --target install
 #      ctest -C %Configuration% -V
 after_build:

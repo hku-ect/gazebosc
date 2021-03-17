@@ -70,7 +70,7 @@ endif()
 if(Python3_ROOT_DIR)                        # Usually specified on command line to find python explicitly
     set(Python3_FIND_STRATEGY "LOCATION")
 endif(Python3_ROOT_DIR)
-find_package (Python3 3.8 REQUIRED COMPONENTS Development)
+find_package (Python3 REQUIRED COMPONENTS Development)
 if(Python3_FOUND)
     message ("python3 found")
     add_definitions(-DPYTHON3_FOUND)
@@ -258,4 +258,5 @@ add_custom_command(
     TARGET gazebosc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_SOURCE_DIR}/tester.py
-            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tester.py)
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>/tester.py)
+
