@@ -3,6 +3,7 @@
 
 #include "Actors/ClientActor.h"
 #include "Actors/CountActor.h"
+#include "Actors/LiveLinkActor.h"
 #include "Actors/NatNetActor.h"
 #include "Actors/NatNet2OSCActor.h"
 #include "Actors/OSCInputActor.h"

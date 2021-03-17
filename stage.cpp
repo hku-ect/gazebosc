@@ -75,6 +75,7 @@ void UpdateRegisteredActorsCache() {
 void RegisterActors() {
     sphactor_register<Client>( "OSC Output" );
     sphactor_register<Count>( "Count" );
+    sphactor_register<LiveLink>("LiveLink");
     sphactor_register( "Log", &LogActor, NULL, NULL );
     sphactor_register<NatNet>( "NatNet" );
     sphactor_register<NatNet2OSC>( "NatNet2OSC" );
