@@ -71,7 +71,7 @@ build_script:
       git submodule update --init --recursive
       cd "%GZB_BUILDDIR%"
       cmake .. -DCMAKE_PREFIX_PATH="C:\tmp\ci_build" -DPython3_ROOT_DIR="%PY_INSTALLDIR%"
-#  -    cmake --build . --config %Configuration% --target install
+  -    cmake --build . --config %Configuration% --target install
 #      ctest -C %Configuration% -V
 after_build:
   - cmd: cd "%GZB_BUILDDIR%\bin\%Configuration%"
