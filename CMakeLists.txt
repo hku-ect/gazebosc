@@ -41,7 +41,7 @@ endif()
 
 ### SET OPTIONS
 option (WITH_UNWIND "Enable libunwind support" ON)
-option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" ON)
+option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" OFF)
 ### END SET OPTIONS
 
 ### EXTERNAL LIBS
@@ -240,10 +240,13 @@ if(APPLE)
                 list(APPEND DIRS "${dir}/bin" "${dir}/lib")
         endforeach()
     endif()
-    install(CODE "
+    if (WITH_EMBED_PYTHON )
+        # only make the bundle standalone if we are embedding python
+        install(CODE "
             include(BundleUtilities)
             fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
            )
+    endif(WITH_EMBED_PYTHON)
 else()
     install(TARGETS gazebosc DESTINATION bin)
     add_custom_command(
@@ -258,4 +261,5 @@ add_custom_command(
     TARGET gazebosc POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_SOURCE_DIR}/tester.py
-            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tester.py)
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>/tester.py)
+
