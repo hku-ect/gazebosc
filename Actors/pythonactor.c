@@ -92,11 +92,11 @@ int python_init()
         swprintf(pypath, PATH_MAX, L"%hs/python", path);
 #elif defined(__WINDOWS__)
         wchar_t path[PATH_MAX];
-        GetModuleFileName(NULL, path, PATH_MAX);
+        GetModuleFileNameW(NULL, path, PATH_MAX);
         // remove program name by finding the last delimiter
         wchar_t *s = wcsrchr(path, L'\\');
         if (s) *s = 0;
-        swprintf(pypath, PATH_MAX, L"%hs\\python", path);
+        swprintf(pypath, PATH_MAX, L"%ls\\python", path);
 #else   // linux, we could check for __UTYPE_LINUX
         size_t pathsize;
         char path[PATH_MAX];
