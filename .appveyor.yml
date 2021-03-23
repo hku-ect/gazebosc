@@ -55,14 +55,14 @@ before_build:
       set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%\build
       set PY_INSTALLDIR=%GZB_BUILDDIR%\bin\%Configuration%\python
       set PY_EXE=python.exe
-      set PY_LAYOUTOPTS=--preset-embed --include-dev --include-pip
+      set PY_LAYOUTOPTS=--include-dev --include-pip
       md "%PY_INSTALLDIR%"
       cd "%PYTHON_SOURCEDIR%"\PCbuild
       build.bat -p x64      
       IF "%Configuration%" == "Debug" build.bat -p x64 -c Debug
       cd amd64
       .\%PY_EXE% ../../PC/layout -b . -s %PYTHON_SOURCEDIR% %PY_LAYOUTOPTS% --copy %PY_INSTALLDIR%
-      IF "%Configuration%" == "Debug" set PY_LAYOUTOPTS=-d --preset-embed --include-dev --include-pip
+      IF "%Configuration%" == "Debug" set PY_LAYOUTOPTS=-d --include-dev --include-pip --include-symbols
       IF "%Configuration%" == "Debug" .\%PY_EXE% ../../PC/layout -b . -s %PYTHON_SOURCEDIR% %PY_LAYOUTOPTS% --copy %PY_INSTALLDIR%
 
 build_script:
@@ -76,6 +76,7 @@ build_script:
 after_build:
   - cmd: cd "%GZB_BUILDDIR%\bin\%Configuration%"
   - cmd: copy "%INSTALL_PREFIX%\bin\*.dll" .
+  - cmd: copy python\*.dll" .
   - cmd: |
       echo %CSCRT% > tmp64
       certutil -decode tmp64 tmpcrt & exit 0
