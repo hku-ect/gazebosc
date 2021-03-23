@@ -53,7 +53,7 @@ before_build:
   - cmd: |
       python --version
       set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%\build
-      set PY_INSTALLDIR=%GZB_BUILDDIR%\bin\%Configuration%
+      set PY_INSTALLDIR=%GZB_BUILDDIR%\bin\%Configuration%\python
       set PY_EXE=python.exe
       set PY_LAYOUTOPTS=--preset-embed --include-dev --include-pip
       md "%PY_INSTALLDIR%"
@@ -61,7 +61,7 @@ before_build:
       build.bat -p x64      
       IF "%Configuration%" == "Debug" build.bat -p x64 -c Debug
       cd amd64
-      .\%PY_EXE% ../../PC/layout -b . -s %PYTHON_SOURCEDIR% %PY_LAYOUTOPTS% --preset-default --copy %PY_INSTALLDIR%
+      .\%PY_EXE% ../../PC/layout -b . -s %PYTHON_SOURCEDIR% %PY_LAYOUTOPTS% --copy %PY_INSTALLDIR%
       IF "%Configuration%" == "Debug" set PY_LAYOUTOPTS=-d --preset-embed --include-dev --include-pip
       IF "%Configuration%" == "Debug" .\%PY_EXE% ../../PC/layout -b . -s %PYTHON_SOURCEDIR% %PY_LAYOUTOPTS% --copy %PY_INSTALLDIR%
 
