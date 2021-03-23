@@ -67,12 +67,13 @@ if (NOT libzmq_FOUND)
 endif()
 
 # Find Python3
+set(Python3_USE_STATIC_LIBS FALSE)
 if(Python3_ROOT_DIR)                        # Usually specified on command line to find python explicitly
     set(Python3_FIND_STRATEGY "LOCATION")
 endif(Python3_ROOT_DIR)
 find_package (Python3 REQUIRED COMPONENTS Development)
 if(Python3_FOUND)
-    message ("python3 found")
+    message ("python3 found libs: ${Python3_LIBRARIES} incl: ${Python3_INCLUDE_DIRS}")
     add_definitions(-DPYTHON3_FOUND)
 else()
     message (FATAL_ERROR "Cannot find Python3, make sure the development packages of Python are available on the system")
@@ -152,6 +153,8 @@ if (Unwind_FOUND)
   target_link_libraries (gazebosc PUBLIC unwind::unwind)
 endif (Unwind_FOUND)
 
+
+target_link_options(gazebosc PUBLIC ${Python3_LINK_OPTIONS})
 ### PLATFORM SPECIFICS
 if (APPLE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
@@ -161,7 +164,7 @@ if (APPLE)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
-        Python3::Python
+        ${Python3_LIBRARIES}
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
     SET_TARGET_PROPERTIES(gazebosc PROPERTIES
         MACOSX_BUNDLE TRUE 
@@ -206,13 +209,13 @@ elseif (WIN32)
         czmq-static
         sphactor-static
         ${libzmq_LIBRARIES}
-        Python3::Python
+        ${Python3_LIBRARIES}
         opengl32.lib)
 else()
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
-        Python3::Python
+        ${Python3_LIBRARIES}
         -lasound -ldl -lGL -lGLEW)
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 endif()

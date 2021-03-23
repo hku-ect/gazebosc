@@ -62,6 +62,14 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             long v = PyLong_AsLong(item);
             zosc_append(ret, "h", v);
         }
+        else if (PyUnicode_Check(item))
+        {
+            PyObject* ascii = PyUnicode_AsASCIIString(item);
+            assert(ascii);
+            char* s = PyBytes_AsString(ascii);
+            zosc_append(ret, "s", s);
+            Py_DECREF(ascii);
+        }
         else
             zsys_warning("unsupported python type");
     }
@@ -92,11 +100,11 @@ int python_init()
         swprintf(pypath, PATH_MAX, L"%hs/python", path);
 #elif defined(__WINDOWS__)
         wchar_t path[PATH_MAX];
-        GetModuleFileName(NULL, path, PATH_MAX);
+        GetModuleFileNameW(NULL, path, PATH_MAX);
         // remove program name by finding the last delimiter
         wchar_t *s = wcsrchr(path, L'\\');
         if (s) *s = 0;
-        swprintf(pypath, PATH_MAX, L"%hs\\python", path);
+        swprintf(pypath, PATH_MAX, L"%ls\\python", path);
 #else   // linux, we could check for __UTYPE_LINUX
         size_t pathsize;
         char path[PATH_MAX];
@@ -470,17 +478,29 @@ pythonactor_handle_msg(pythonactor_t *self, sphactor_event_t *ev)
 {
     assert(self);
     assert(ev);
-    if ( streq(ev->type, "INIT") )
+    // these calls don't require a python instance
+    if (streq(ev->type, "API"))
+    {
+        return pythonactor_api(self, ev);
+    }
+    else if (streq(ev->type, "DESTROY"))
+    {
+        pythonactor_destroy(&self);
+        return NULL;
+    }
+    else if (streq(ev->type, "INIT"))
     {
         return pythonactor_init(self, ev);
     }
+    else if (self->pyinstance == NULL)
+    {
+        zsys_warning("No valid python file has been loaded (yet)");
+        return NULL;
+    }
+    // these calls require a pyinstance! (loaded python file)
     else if ( streq(ev->type, "TIME") )
     {
         return pythonactor_timer(self, ev);
-    }
-    else if ( streq(ev->type, "API") )
-    {
-        return pythonactor_api(self, ev);
     }
     else if ( streq(ev->type, "SOCK") )
     {
@@ -515,12 +535,9 @@ pythonactor_handle_msg(pythonactor_t *self, sphactor_event_t *ev)
     {
         return pythonactor_stop(self, ev);
     }
-    else if ( streq(ev->type, "DESTROY") )
-    {
-        pythonactor_destroy(&self);
-        return NULL;
-    }
     else
         zsys_error("Unhandled sphactor event: %s", ev->type);
+
+    return NULL;
 }
 
