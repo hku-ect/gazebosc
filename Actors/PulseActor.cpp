@@ -6,7 +6,7 @@ const char * pulseCapabilities =
                                 "    data\n"
                                 "        name = \"timeout\"\n"
                                 "        type = \"int\"\n"
-                                "        value = \"60\"\n"
+                                "        value = \"1000\"\n"
                                 "        min = \"1\"\n"
                                 "        max = \"10000\"\n"
                                 "        step = \"1\"\n"

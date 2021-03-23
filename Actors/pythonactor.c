@@ -62,6 +62,14 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             long v = PyLong_AsLong(item);
             zosc_append(ret, "h", v);
         }
+        else if (PyUnicode_Check(item))
+        {
+            PyObject* ascii = PyUnicode_AsASCIIString(item);
+            assert(ascii);
+            char* s = PyBytes_AsString(ascii);
+            zosc_append(ret, "s", s);
+            Py_DECREF(ascii);
+        }
         else
             zsys_warning("unsupported python type");
     }
