@@ -210,7 +210,7 @@ elseif (WIN32)
         sphactor-static
         ${libzmq_LIBRARIES}
         ${Python3_LIBRARIES}
-        opengl32.lib)
+        opengl32.lib DbgHelp.lib)
 else()
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
