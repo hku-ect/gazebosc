@@ -13,3 +13,6 @@
 [submodule "ext/ImGui-Addons"]
 	path = ext/ImGui-Addons
 	url = https://github.com/gallickgunner/ImGui-Addons
+[submodule "ext/StackWalker"]
+	path = ext/StackWalker
+	url = https://github.com/JochenKalmbach/StackWalker.git
