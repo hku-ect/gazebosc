@@ -163,7 +163,12 @@ protected:
 void print_backtrace(int sig);
 void print_backtrace(int sig)
 {
-    MyStackWalker sw; sw.ShowCallstack();
+    MyStackWalker sw; 
+    sw.ShowCallstack();
+    printf("====================================================================================================\n");
+    printf(" We have had a crash with the details above this line. Just hit Enter here to close the application!\n");
+    printf("====================================================================================================\n");
+    std::cin.get(); // hack to stop the console from closing
 }
 #else
 void print_backtrace (int sig) {}
