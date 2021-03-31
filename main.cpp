@@ -116,7 +116,9 @@ ImGuiTextBuffer& getBuffer(){
 
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
+#include <stdlib.h>
 
+static int tracecount = 0;
 void
 print_backtrace (int sig)
 {
@@ -132,7 +134,7 @@ print_backtrace (int sig)
 
     // currently the IP is within backtrace() itself so this loop
     // deliberately skips the first frame.
-    while (unw_step(&cursor) > 0) {
+    while (unw_step(&cursor) > 0 && tracecount < 16) {
         unw_word_t offset, pc;
         char sym[4096];
         if (unw_get_reg(&cursor, UNW_REG_IP, &pc))
@@ -144,7 +146,9 @@ print_backtrace (int sig)
             printf("(%s+0x%lx)\n", sym, offset);
         else
             printf("-- no symbol name found\n");
+        tracecount++;
     }
+    exit(13);
 }
 #else
 void print_backtrace (int sig) {}
