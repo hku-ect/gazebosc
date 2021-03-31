@@ -148,6 +148,22 @@ print_backtrace (int sig)
             printf("-- no symbol name found\n");
         tracecount++;
     }
+    wchar_t tl=0x250f;
+    wchar_t tr=0x2513;
+    wchar_t bl=0x2517;
+    wchar_t br=0x251b;
+    wchar_t vs=0x2503;
+    wchar_t hs[53]=L"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+    setlocale(LC_ALL, "");
+    fwide(stdout, 1);
+    printf("\033[5m\033[31m%lc%ls%lc\n", tl, hs, tr);
+    printf("%lc\033[0m\033[31m%s\033[5m%lc\n", vs, "  Software Failure.  Please report above details.   ", vs);
+    printf("%lc\033[0m\033[31m%s%08X%s\033[5m%lc\n", vs, "            Guru Meditation #", sig, "               ", vs);
+    printf("%lc%ls%lc\n", bl, hs, br);
+    printf("\033[39m\033[0m");
+    fflush(stdout);
+    // TODO try proper exit to close sockets
+    zsys_shutdown();
     exit(13);
 }
 #else
