@@ -66,12 +66,14 @@ if (NOT libzmq_FOUND)
     message (FATAL_ERROR "Cannot find libzmq, make sure it is available on the system")
 endif()
 
-# Find Python3
+# Find Python3 ref: https://gitlab.kitware.com/cmake/cmake/-/issues/20674
 set(Python3_USE_STATIC_LIBS FALSE)
 if(Python3_ROOT_DIR)                        # Usually specified on command line to find python explicitly
+    set(CMAKE_FIND_USE_CMAKE_PATH FALSE)
     set(Python3_FIND_STRATEGY "LOCATION")
+    set(Python3_FIND_REGISTRY NEVER)
 endif(Python3_ROOT_DIR)
-find_package (Python3 REQUIRED COMPONENTS Development)
+find_package (Python3 COMPONENTS Development REQUIRED)
 if(Python3_FOUND)
     message ("python3 found libs: ${Python3_LIBRARIES} incl: ${Python3_INCLUDE_DIRS}")
     add_definitions(-DPYTHON3_FOUND)

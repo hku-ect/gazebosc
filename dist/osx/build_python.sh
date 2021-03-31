@@ -9,6 +9,6 @@ fi
 
 git clone https://github.com/python/cpython.git --branch=3.8 --depth=1
 cd cpython
-./configure --with-openssl=$(brew --prefix openssl) --prefix=$BUILD_DIR
+./configure --with-openssl=$(brew --prefix openssl) --prefix=$BUILD_DIR --enable-shared
 make -s
 make install > /dev/null
