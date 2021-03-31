@@ -9,7 +9,7 @@ cache:
 osx_image: xcode11
 
 dist: 
-- xenial
+- bionic
 
 env:
   global:
