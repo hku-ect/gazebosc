@@ -1,4 +1,4 @@
-// Clang/GCC warnings with -Weverything
+﻿// Clang/GCC warnings with -Weverything
 #if defined(__clang__)
 #pragma clang diagnostic push
 #if __has_warning("-Wunknown-warning-option")
@@ -21,6 +21,9 @@
 #ifdef __UTYPE_OSX
 // needed to change the wd to Resources of the app bundle
 #include "CoreFoundation/CoreFoundation.h"
+#elif defined(__WINDOWS__)
+#include<dbghelp.h>
+#include"StackWalker.h"
 #endif
 
 #include "imgui.h"
@@ -145,6 +148,47 @@ print_backtrace (int sig)
         else
             printf("-- no symbol name found\n");
     }
+}
+#elif defined __WINDOWS__
+class MyStackWalker : public StackWalker
+{
+public:
+    MyStackWalker() : StackWalker(StackWalker::RetrieveLine, 
+                                    NULL, GetCurrentProcessId(),
+                                    GetCurrentProcess()) {}
+protected:
+    virtual void OnOutput(LPCSTR szText) {
+        printf(szText); StackWalker::OnOutput(szText);
+    }
+};
+
+void print_backtrace(int sig);
+void print_backtrace(int sig)
+{
+    MyStackWalker sw; 
+    sw.ShowCallstack();
+    // enable ANSI codes
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD dwMode = 0;
+    GetConsoleMode(hOut, &dwMode);
+    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+    SetConsoleMode(hOut, dwMode);
+    //SetConsoleOutputCP(437);
+    setlocale(LC_ALL, "");
+    _setmode(_fileno(stdout), _O_U16TEXT);
+    wchar_t tl = L'┏';
+    wchar_t tr = L'┓';
+    wchar_t bl = L'┗';
+    wchar_t br = L'┛';
+    wchar_t vs = L'┃';
+    wchar_t hs[53] = L"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+    // Windows does not support blinking :S
+    wprintf(L"\033[5m\033[31m%lc%ls%lc\n", tl, hs, tr);
+    wprintf(L"%lc\033[0m\033[31m%s\033[5m%lc\n", vs, L"  Software Failure.  Press enter key to continue.   ", vs);
+    wprintf(L"%lc\033[0m\033[31m%s%08X%s\033[5m%lc\n", vs, L"            Guru Meditation #", sig, L"               ", vs);
+    wprintf(L"%lc%ls%lc\n", bl, hs, br);
+    wprintf(L"\033[39m\033[0m");
+    std::cin.get(); // hack to stop the console from closing
 }
 #else
 void print_backtrace (int sig) {}

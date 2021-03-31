@@ -102,45 +102,22 @@ endif ()
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
 file (GLOB ACTOR_HEADERS Actors/*.h)
 
-if (UNIX)
-    link_directories(
-        /usr/local/lib/
-    )
-endif()
-
-add_executable(gazebosc
+list(APPEND GZB_SOURCES 
     main.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.h
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.h
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imconfig.h
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui.h
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_draw.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_widgets.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_internal.h
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_rectpack.h
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_textedit.h
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imstb_truetype.h
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.c
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.h
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/glcorearb.h
-    ImNodes.h
     ImNodes.cpp
-    ImNodesEz.h
     ImNodesEz.cpp
-    ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
-    fontawesome5.h
     stage.cpp
-    ActorContainer.h
-    actors.h
-    ${ACTOR_SOURCES}
-    ${ACTOR_HEADERS}
 )
 
-target_include_directories(gazebosc PUBLIC
+list(APPEND GZB_INCLUDEDIRS
     ${Unwind_INCLUDE_DIRS}
     ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
@@ -149,13 +126,42 @@ target_include_directories(gazebosc PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
 )
 
+if(WIN32)
+    list(APPEND GZB_SOURCES
+        ext/StackWalker/Main/StackWalker/StackWalker.h
+        ext/StackWalker/Main/StackWalker/StackWalker.cpp
+    )
+    list(APPEND GZB_INCLUDEDIRS
+        ext/StackWalker/Main/StackWalker/
+    )
+endif(WIN32)
+
+if (UNIX)
+    link_directories(
+        /usr/local/lib/
+    )
+endif()
+
+add_executable(gazebosc
+    ${GZB_SOURCES}
+    ${ACTOR_SOURCES}
+    ${ACTOR_HEADERS}
+)
+
+target_include_directories(gazebosc PUBLIC
+    ${GZB_INCLUDEDIRS}
+)
+
+### BUILD OPTIONS
 if (Unwind_FOUND)
   target_link_libraries (gazebosc PUBLIC unwind::unwind)
 endif (Unwind_FOUND)
 
-
 target_link_options(gazebosc PUBLIC ${Python3_LINK_OPTIONS})
-### PLATFORM SPECIFICS
+target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
+target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
+
+#### PLATFORM SPECIFICS
 if (APPLE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
@@ -210,7 +216,7 @@ elseif (WIN32)
         sphactor-static
         ${libzmq_LIBRARIES}
         ${Python3_LIBRARIES}
-        opengl32.lib)
+        opengl32.lib DbgHelp.lib)
 else()
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
@@ -219,8 +225,6 @@ else()
         -lasound -ldl -lGL -lGLEW)
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 endif()
-target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
-target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
 ### POST BUILD/INSTALL
 if(APPLE)
