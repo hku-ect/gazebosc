@@ -12,7 +12,7 @@
 # THE SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.13)
 project(gazebosc)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -254,6 +254,16 @@ if(APPLE)
             fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
            )
     endif(WITH_EMBED_PYTHON)
+    add_custom_command(
+        TARGET gazebosc POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_SOURCE_DIR}/tester.py
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/tester.py)
+    add_custom_command(
+        TARGET gazebosc POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/misc
+            $<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/misc)
 else()
     install(TARGETS gazebosc DESTINATION bin)
     add_custom_command(
@@ -261,12 +271,9 @@ else()
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 ${CMAKE_SOURCE_DIR}/misc
                 $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
-
-endif(APPLE)
-
-add_custom_command(
-    TARGET gazebosc POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
+    add_custom_command(
+        TARGET gazebosc POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_SOURCE_DIR}/tester.py
             $<TARGET_FILE_DIR:${PROJECT_NAME}>/tester.py)
-
+endif(APPLE)

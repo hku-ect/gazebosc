@@ -119,7 +119,9 @@ ImGuiTextBuffer& getBuffer(){
 
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
+#include <stdlib.h>
 
+static int tracecount = 0;
 void
 print_backtrace (int sig)
 {
@@ -135,7 +137,7 @@ print_backtrace (int sig)
 
     // currently the IP is within backtrace() itself so this loop
     // deliberately skips the first frame.
-    while (unw_step(&cursor) > 0) {
+    while (unw_step(&cursor) > 0 && tracecount < 16) {
         unw_word_t offset, pc;
         char sym[4096];
         if (unw_get_reg(&cursor, UNW_REG_IP, &pc))
@@ -147,7 +149,25 @@ print_backtrace (int sig)
             printf("(%s+0x%lx)\n", sym, offset);
         else
             printf("-- no symbol name found\n");
+        tracecount++;
     }
+    wchar_t tl=0x250f;
+    wchar_t tr=0x2513;
+    wchar_t bl=0x2517;
+    wchar_t br=0x251b;
+    wchar_t vs=0x2503;
+    wchar_t hs[53]=L"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+    setlocale(LC_ALL, "");
+    fwide(stdout, 1);
+    printf("\033[5m\033[31m%lc%ls%lc\n", tl, hs, tr);
+    printf("%lc\033[0m\033[31m%s\033[5m%lc\n", vs, "  Software Failure.  Please report above details.   ", vs);
+    printf("%lc\033[0m\033[31m%s%08X%s\033[5m%lc\n", vs, "            Guru Meditation #", sig, "               ", vs);
+    printf("%lc%ls%lc\n", bl, hs, br);
+    printf("\033[39m\033[0m");
+    fflush(stdout);
+    // TODO try proper exit to close sockets
+    zsys_shutdown();
+    exit(13);
 }
 #elif defined __WINDOWS__
 class MyStackWalker : public StackWalker
