@@ -71,7 +71,7 @@ install:
   # python
   - export BUILD_DIR=$TRAVIS_BUILD_DIR/build
   - mkdir $BUILD_DIR
-  - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" != "false" ] ; then 
+  - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" == "false" ] ; then 
         ./dist/osx/build_python.sh $BUILD_DIR/python ; 
     fi
 
