@@ -14,12 +14,6 @@ dist:
 env:
   global:
     - SPHACTOR_SOCKET_LIMIT=20
-    - CI_TIME=false
-    - CI_TRACE=false
-    - CI_CONFIG_QUIET=true
-    - CI_REQUIRE_GOOD_GITIGNORE=false
-    - CI_REQUIRE_GOOD_CLANG_FORMAT=false
-    - CI_TEST_DISTCHECK=true
 
 addons:
   apt:
@@ -36,22 +30,10 @@ addons:
 
 matrix:
   include:
-  - env: BUILD_TYPE=cmake
-    os: osx
-    addons:
-  - env: BUILD_TYPE=clang
-    os: osx
-    compiler: clang
   - env: BUILD_TYPE=default
-    os: linux
-  - env: BUILD_TYPE=valgrind
-    os: linux
+    os: osx
     addons:
-      apt:
-        packages:
-        - *base_deps
-        - valgrind
-  - env: BUILD_TYPE=default ADDRESS_SANITIZER=enabled
+  - env: BUILD_TYPE=default
     os: linux
 
 before_install:
