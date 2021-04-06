@@ -72,6 +72,8 @@ using namespace gl;
 #include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #endif
 
+#include "config.h"
+
 // Forward declare to keep main func on top for readability
 int SDLInit(SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version);
 ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* glsl_version);
