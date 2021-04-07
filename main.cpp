@@ -161,6 +161,7 @@ print_backtrace (int sig)
     wchar_t hs[53]=L"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
     setlocale(LC_ALL, "");
     fwide(stdout, 1);
+    printf("Gazebo version %s\n", GIT_VERSION);
     printf("\033[5m\033[31m%lc%ls%lc\n", tl, hs, tr);
     printf("%lc\033[0m\033[31m%s\033[5m%lc\n", vs, "  Software Failure.  Please report above details.   ", vs);
     printf("%lc\033[0m\033[31m%s%08X%s\033[5m%lc\n", vs, "            Guru Meditation #", sig, "               ", vs);
@@ -205,6 +206,7 @@ void print_backtrace(int sig)
     wchar_t vs = L'┃';
     wchar_t hs[53] = L"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
     // Windows does not support blinking :S
+    wprintf(L"Gazebo version %s\n", GIT_VERSION);
     wprintf(L"\033[5m\033[31m%lc%ls%lc\n", tl, hs, tr);
     wprintf(L"%lc\033[0m\033[31m%s\033[5m%lc\n", vs, L"  Software Failure.  Press enter key to continue.   ", vs);
     wprintf(L"%lc\033[0m\033[31m%s%08X%s\033[5m%lc\n", vs, L"            Guru Meditation #", sig, L"               ", vs);
@@ -315,7 +317,7 @@ int main(int argc, char** argv)
         if ( result != 0 ) {
             return result;
         }
-        SDL_SetWindowTitle(window, "Gazebosc " GIT_VERSION );
+        SDL_SetWindowTitle(window, "Gazebosc       [" GIT_VERSION "]" );
 
         zsys_info("VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
