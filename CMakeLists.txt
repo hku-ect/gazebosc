@@ -108,6 +108,7 @@ add_custom_command(
     OUTPUT config.h
     COMMAND ${CMAKE_COMMAND}
             -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+            -D GIT_PATH=${CMAKE_CURRENT_SOURCE_DIR}
             -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/config.h.in
             -D OUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/config.h
             -P ${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/Configure.cmake
