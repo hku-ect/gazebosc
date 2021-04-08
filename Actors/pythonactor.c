@@ -138,7 +138,7 @@ int python_init()
                     //"print(os.getcwd())\n"
                     "sys.path.append(os.getcwd())\n"
                     //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
-                    //"print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n"
+                    "print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n"
                        );
     //  import the internal wrapper module
     PyObject *imp = PyImport_ImportModule("sph");

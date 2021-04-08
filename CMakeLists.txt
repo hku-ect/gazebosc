@@ -18,8 +18,10 @@ project(gazebosc)
 set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/dist/cmake")
+
 ##  Test availability of git and fetch submodules if needed
-#find_package(Git QUIET)
+find_package(Git QUIET)
 #if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
 #    # Update submodules as needed
 #    option(GIT_SUBMODULE "Check submodules during build" ON)
@@ -60,7 +62,6 @@ add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/glm" EXCLUDE_FROM_ALL)
 
 # External system libraries through find_package
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
 find_package(libzmq REQUIRED)
 if (NOT libzmq_FOUND)
     message (FATAL_ERROR "Cannot find libzmq, make sure it is available on the system")
@@ -102,7 +103,18 @@ endif ()
 
 ### PROJECT SOURCES
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
-file (GLOB ACTOR_HEADERS Actors/*.h)
+
+add_custom_command(
+    OUTPUT config.h
+    COMMAND ${CMAKE_COMMAND}
+            -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+            -D GIT_PATH=${CMAKE_CURRENT_SOURCE_DIR}
+            -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/config.h.in
+            -D OUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/config.h
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/Configure.cmake
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/config.h.in
+    VERBATIM
+    )
 
 list(APPEND GZB_SOURCES 
     main.cpp
@@ -120,6 +132,7 @@ list(APPEND GZB_SOURCES
 )
 
 list(APPEND GZB_INCLUDEDIRS
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${Unwind_INCLUDE_DIRS}
     ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
@@ -145,9 +158,9 @@ if (UNIX)
 endif()
 
 add_executable(gazebosc
+    config.h
     ${GZB_SOURCES}
     ${ACTOR_SOURCES}
-    ${ACTOR_HEADERS}
 )
 
 target_include_directories(gazebosc PUBLIC
@@ -163,7 +176,7 @@ target_link_options(gazebosc PUBLIC ${Python3_LINK_OPTIONS})
 target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
-#### PLATFORM SPECIFICS
+### PLATFORM SPECIFICS
 if (APPLE)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")

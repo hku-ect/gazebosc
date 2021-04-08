@@ -1,0 +1,2 @@
+//const char *GIT_VERSION = "${GIT_REPO_VERSION}";
+#define GIT_VERSION "${GIT_REPO_VERSION}"
