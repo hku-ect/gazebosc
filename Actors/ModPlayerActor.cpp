@@ -57,11 +57,15 @@ ModPlayerActor::queueAudio()
         unsigned int maxbuffer = buffersize * 4;
         // always try to fill the buffer but not more
         unsigned int qs = SDL_GetQueuedAudioSize(audiodev);
-        if (qs <= 0)
+        if (qs <= 8192)
         {
-            zsys_warning("Buffer underrun (or just starting)!");
+            if (qs <= 0)
+            {
+                zsys_warning("Buffer underrun (or just starting)!");
+                qs = 0;
+            }
             // fill the buffer to the max
-            buffersize = maxbuffer;
+            buffersize = maxbuffer - qs;
         }
         //zsys_info("bs %i, qs %i, mb %i",buffersize,qs, maxbuffer);
         else if ( qs > maxbuffer )
@@ -69,22 +73,25 @@ ModPlayerActor::queueAudio()
             zsys_warning("Buffer overrun!");
             buffersize = 4;
         }
-        else if ( qs < maxbuffer )
+        else if ( qs <= maxbuffer )
         {
             unsigned int fillsize = maxbuffer - qs;
             if ( buffersize > fillsize )
                 buffersize = fillsize;
         }
-        //zsys_info("fill len %i, qs %i", buffersize, qs );
 #ifdef _MSC_VER
         msample *stream = (msample *)_malloca( buffersize * sizeof(msample) );
         hxcmod_fillbuffer(&modctx, stream, buffersize / 4, &trackbuf_state1);
-        SDL_QueueAudio(audiodev, stream, buffersize);
+        int rc = SDL_QueueAudio(audiodev, stream, buffersize);
+        if (rc < 0 )
+            zsys_error("SDL_QueueAudio failed: %s\n", SDL_GetError());
         _freea(stream);
 #else
         msample stream[buffersize];
         hxcmod_fillbuffer(&modctx, (msample*)stream, buffersize / 4, &trackbuf_state1);
-        SDL_QueueAudio(audiodev, stream, buffersize);
+        int rc = SDL_QueueAudio(audiodev, stream, buffersize);
+        if (rc < 0 )
+            zsys_error("SDL_QueueAudio failed: %s\n", SDL_GetError());
 #endif
         return SDL_GetQueuedAudioSize(audiodev);
     }
