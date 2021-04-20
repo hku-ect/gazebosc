@@ -1,7 +1,7 @@
 # Travis CI script
 
 language:
-- c
+ c
 
 cache:
 - ccache
@@ -9,7 +9,7 @@ cache:
 osx_image: xcode11
 
 dist: 
-- focal
+ focal
 
 env:
   global:
@@ -106,10 +106,10 @@ after_success:
 deploy:
   provider: releases
   api_key:
-    secure: "AxEB/OeZa4c8K6mdUPXL4EDV0zqdIlhuSa6Bnank7qMZ8klYudOUitLC79vV4rYsG0+PX0OjIgSBaTT7euAgLfTKaE/YiTR+HtvZW3fQQEnsVWbobCDkDqGN5a1O5dM31YWFkURjEAFVYpYa6h2CgQtQ4NMtWllOmt3Ddgn7yPomw1dBnkoGWSPpEBw0Cm7k76wI2Mwuqlf6Zjby4W7Jm7Xn+G6WFPfYc>
+    secure: "AxEB/OeZa4c8K6mdUPXL4EDV0zqdIlhuSa6Bnank7qMZ8klYudOUitLC79vV4rYsG0+PX0OjIgSBaTT7euAgLfTKaE/YiTR+HtvZW3fQQEnsVWbobCDkDqGN5a1O5dM31YWFkURjEAFVYpYa6h2CgQtQ4NMtWllOmt3Ddgn7yPomw1dBnkoGWSPpEBw0Cm7k76wI2Mwuqlf6Zjby4W7Jm7Xn+G6WFPfYc"
   file_glob: true
   file: build/bin/*.zip
-  skip_cleanup: true
+  cleanup: true
   overwrite: true
   on:
     tags: true
