@@ -87,7 +87,7 @@ git:
 
 after_success:
     - git fetch --all --tags
-    - cd build/bin
+    - cd $TRAVIS_BUILD_DIR/build/bin
     - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then
         if [ -n "$TRAVIS_TAG" ] || [[ $TRAVIS_BRANCH == "master" ]]; then
           zip -r $( echo $TRAVIS_REPO_SLUG | cut -d"/" -f2)_${TRAVIS_OS_NAME}_$( git describe --tag --always --dirty --abbrev=4).zip *;
