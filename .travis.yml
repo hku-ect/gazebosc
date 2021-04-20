@@ -14,6 +14,7 @@ dist:
 env:
   global:
     - SPHACTOR_SOCKET_LIMIT=20
+    - secure: "jiwQYGY6DkwHRSqCZq2kjtzlE95hP7x4BEqd9a7PayzR8N2dj7PIG8WBA7TfrCxEQISGWtUaaDMlgRufmoSheJOlL0G9dtH3sXDRlLiAUV+qofp2+cbQth6L5NFQ2qwZcBiZvIWWwzSnSsPuNqfGGzcF95cxDMJdLp18PZtrBu5wahsrZVlCdyCSZ8fS6QCnX6SjEkg4zxrTqtipADxpibFoMN29eMS4sfmM5zTopFavYULp3PFhCKYu6/yyhux7LCD5QuvUctg0YKSvDae1z2EzGPqNNuo2bHEMrAabYkPcSE/hSFXJzzjFIvq7J5WpCKwG/ie3g6KWiwHEj5+wP15RQL5ajGvVW6n24qG0KUHhihivBhm7B9RvCyafStLkVsSqmnHHVsLZ2MQjancrcQGdUN4KYHC96Svd5eQJbSNR0KgiRcq8r9qOC34iCDCXTQ23gD11MjYqpjbh4vfeWswAK6C+s8AyIT1yItMPm4Xwd/VSPSt+onax/swYWgFk93NAyXp2CYZtBbLJ3qnxNxJHuzSHclSeaWeg87LYGId9rMVvWvydb/ahdRPoH/ZatVXk8RcD3xhR99abBNYdJ5v8qNXxJz7j640qW8JBiXLx+NqhsR53U7e+7MR4KMBaUvpO/pTT4RYVo9e78Ccsz0X9N7Mvcib4XOcVRlqzkgk="
 
 addons:
   apt:
@@ -23,6 +24,9 @@ addons:
     - libasound2-dev
     - libglew-dev
     - libunwind-dev
+    - sshpass
+  ssh_known_hosts: pong.hku.nl
+
 #  homebrew: &base_deps
 #    packages:
 #    - binutils
@@ -40,6 +44,7 @@ before_install:
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
 
 install:
+  - if [ "$TARGET" == "osx" ]; then brew install https://raw.githubusercontent.com/kadwanev/bigboybrew/master/Library/Formula/sshpass.rb; fi
   - git submodule update --init --recursive
 
   # libzmq
@@ -81,9 +86,32 @@ git:
   depth: 100
 
 after_success:
+    - git fetch --all --tags
+    - cd build/bin
+    - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then
+        if [ -n "$TRAVIS_TAG" ] || [[ $TRAVIS_BRANCH == "master" ]]; then
+          zip -r $( echo $TRAVIS_REPO_SLUG | cut -d"/" -f2)_${TRAVIS_OS_NAME}_$( git describe --tag --always --dirty --abbrev=4).zip *;
+        else
+          zip -r $( echo $TRAVIS_REPO_SLUG | cut -d"/" -f2)_${TRAVIS_OS_NAME}_${TRAVIS_BRANCH}_$( git describe --tag --always --dirty --abbrev=4).zip *;
+        fi
+      fi
+    - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then export SSHPASS=$BBPWD; fi
+    - echo '|1|AurlN3z7WhvxYbuNdsouT5s7FYs=|cjTFODbUXIXKeWihh1BjnfXgARw= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=' >> $HOME/.ssh/known_hosts
+    - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then sshpass -e scp *.zip buildbot@pong.hku.nl:public_html/nightly/; fi
+    
     #- cd build
     # fixes the osx bundle
     #- if [ "$TRAVIS_OS_NAME" == "osx" ] ; then make install ; fi
 
 deploy:
-  # TODO
+  provider: releases
+  api_key:
+    secure: "AxEB/OeZa4c8K6mdUPXL4EDV0zqdIlhuSa6Bnank7qMZ8klYudOUitLC79vV4rYsG0+PX0OjIgSBaTT7euAgLfTKaE/YiTR+HtvZW3fQQEnsVWbobCDkDqGN5a1O5dM31YWFkURjEAFVYpYa6h2CgQtQ4NMtWllOmt3Ddgn7yPomw1dBnkoGWSPpEBw0Cm7k76wI2Mwuqlf6Zjby4W7Jm7Xn+G6WFPfYc>
+  file_glob: true
+  file: build/bin/*.zip
+  skip_cleanup: true
+  overwrite: true
+  on:
+    tags: true
+    repo: hku-ect/gazebosc
+
