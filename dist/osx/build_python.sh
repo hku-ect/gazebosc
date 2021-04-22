@@ -7,7 +7,8 @@ else
     BUILD_DIR=$1
 fi
 
-if [ -e cpython ] then
+if [ -e cpython ]
+then
   git pull
 else
   git clone https://github.com/python/cpython.git --branch=3.8 --depth=1 
