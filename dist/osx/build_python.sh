@@ -7,7 +7,11 @@ else
     BUILD_DIR=$1
 fi
 
-git clone https://github.com/python/cpython.git --branch=3.8 --depth=1
+if [ -e cpython ] then
+  git pull
+else
+  git clone https://github.com/python/cpython.git --branch=3.8 --depth=1 
+fi
 cd cpython
 ./configure --with-openssl=$(brew --prefix openssl) --prefix=$BUILD_DIR --enable-shared
 make -s
