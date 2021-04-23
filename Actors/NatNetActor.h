@@ -20,6 +20,10 @@ struct NatNet {
     // ServerAddress
     std::string host = "";
 
+    std::vector<std::string> ifNames;
+    std::vector<std::string> ifAddresses;
+    std::string activeInterface = "";
+
     // NatNet vars
     static int* NatNetVersion;
     static int* ServerVersion;

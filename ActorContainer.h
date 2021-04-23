@@ -440,8 +440,10 @@ struct ActorContainer {
 
         ImGui::SetNextItemWidth(100);
         if ( ImGui::InputInt( name, &value, step, 100,ImGuiInputTextFlags_EnterReturnsTrue ) ) {
-            if ( min != max ) {
-                if ( value < min ) value = min;
+            if ( zmin ) {
+                if (value < min) value = min;
+            }
+            if ( zmax ) {
                 if ( value > max ) value = max;
             }
 
