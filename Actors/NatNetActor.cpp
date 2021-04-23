@@ -2,7 +2,6 @@
 #include <string>
 #include <algorithm>
 #include <time.h>
-#include <stdlib.h>
 
 //static variable definitions
 int* NatNet::NatNetVersion = new int[4]{0,0,0,0};
