@@ -2,6 +2,7 @@
 #include <string>
 #include <algorithm>
 #include <time.h>
+#include <stdlib.h>
 
 //static variable definitions
 int* NatNet::NatNetVersion = new int[4]{0,0,0,0};
@@ -19,6 +20,14 @@ const char * natnetCapabilities =
                                 "        api_call = \"SET HOST\"\n"
                                 "        api_value = \"s\"\n"           // optional picture format used in zsock_send
                                 "    data\n"
+                                "        name = \"network_interface\"\n"
+                                "        type = \"int\"\n"
+                                "        value = \"0\"\n"
+                                "        min = \"0\"\n"
+                                "        max = \"0\"\n"
+                                "        api_call = \"SET INTERFACE\"\n"
+                                "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+                                "    data\n"
                                 "        name = \"sendTimeout\"\n"
                                 "        type = \"int\"\n"
                                 "        value = \"60\"\n"
@@ -31,8 +40,42 @@ const char * natnetCapabilities =
 
 zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     if ( streq(ev->type, "INIT") ) {
+
+        //TODO: parse network interfaces for selection
+        ziflist_t * ifList = ziflist_new();
+        const char* cur = ziflist_first(ifList);
+
+        int max = -1;
+        while( cur != nullptr ) {
+            max++;
+
+            ifNames.push_back(cur);
+            ifAddresses.push_back(ziflist_address(ifList));
+
+            cur = ziflist_next(ifList);
+        }
+
+        ziflist_destroy(&ifList);
+
+        activeInterface = ifNames[0];
+
+        //build report
+        zosc_t * msg = zosc_create("/network_interfaces", "si", "Network Interfaces", ifNames.size());
+        for( int i = 0; i < ifNames.size(); ++i ) {
+            zosc_append(msg, "ss", (std::to_string(i)).c_str(), (ifNames[i] + " ("+ifAddresses[i]+")").c_str());
+        }
+
+        sphactor_actor_set_custom_report_data( (sphactor_actor_t*)ev->actor, msg );
+
+        zconfig_t * capConfig = zconfig_str_load(natnetCapabilities);
+        zconfig_t *current = zconfig_locate(capConfig, "capabilities");
+        current = zconfig_locate(current, "data");
+        current = zconfig_next(current);
+        current = zconfig_locate(current, "max");
+        zconfig_set_value(current, "%i", max);
+
         //init capabilities
-        sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natnetCapabilities));
+        sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, capConfig);
 
         //receive socket on port DATA_PORT
         //Test multicast group to receive data
@@ -40,7 +83,7 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         //         This might multicast receive on the wrong interface (OS primary)
         //          So if you want to try another one, manually add "ip;" after "udp://"
         //              example: "udp://192.168.10.124;..."
-        std::string url = "udp://" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+        std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
         DataSocket = zsock_new(ZMQ_DGRAM);
         //zsock_connect(DataSocket, "%s", url.c_str());
         zsock_bind(DataSocket, "%s", url.c_str());
@@ -58,10 +101,10 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
         assert(rc == 0);
 
         // Initialize report timestamp
-        zosc_t* msg = zosc_create("/report", "sh",
-            "lastActive", (int64_t)0);
+        //zosc_create("/report", "sh",
+        //    "lastActive", (int64_t)0);
 
-        sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+        //sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
     }
     else if ( streq(ev->type, "DESTROY") ) {
         if ( CommandSocket != NULL ) {
@@ -109,6 +152,31 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                     }
                 }
             }
+            else if ( streq(cmd, "SET INTERFACE") ) {
+                char* ifChar = zmsg_popstr(ev->msg);
+                int ifIndex = std::stoi(ifChar);
+                zstr_free(&ifChar);
+
+                zsys_info("GOT INTERFACE: %i", ifIndex);
+
+                activeInterface = ifNames[ifIndex];
+
+                if ( DataSocket != NULL ) {
+                    sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
+                    zsock_destroy(&DataSocket);
+                    DataSocket = NULL;
+                    dataFD = -1;
+                }
+
+                std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+                DataSocket = zsock_new(ZMQ_DGRAM);
+                //zsock_connect(DataSocket, "%s", url.c_str());
+                zsock_bind(DataSocket, "%s", url.c_str());
+                assert( DataSocket );
+                dataFD = zsock_fd(DataSocket);
+                int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
+                assert(rc == 0);
+            }
 
             zstr_free(&cmd);
         }
@@ -119,14 +187,6 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
     }
     else if ( streq(ev->type, "FDSOCK" ) )
     {
-        //build report
-        zosc_t * msg = zosc_create("/report", "sisisi",
-                                   "Markers", markers.size(),
-                                   "Rigidbodies", rigidbodies.size(),
-                                   "Skeletons", skeletons.size());
-
-        sphactor_actor_set_custom_report_data( (sphactor_actor_t*)ev->actor, msg );
-
         //zsys_info("GOT FDSOCK");
 
         // Get the socket...
