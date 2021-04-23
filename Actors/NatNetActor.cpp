@@ -785,8 +785,8 @@ void NatNet::Unpack( char ** pData ) {
                 //zsys_info("Z Offset : %3.2f\n", zoffset);
 
                 description.offset[0] = xoffset;
-                description.offset[1] = xoffset;
-                description.offset[2] = xoffset;
+                description.offset[1] = yoffset;
+                description.offset[2] = zoffset;
 
                 tmp_rigidbody_descs.push_back(description);
             }
@@ -838,8 +838,8 @@ void NatNet::Unpack( char ** pData ) {
                     //zsys_info("Z Offset : %3.2f\n", zoffset);
 
                     description.joints[i].offset[0] = xoffset;
-                    description.joints[i].offset[0] = yoffset;
-                    description.joints[i].offset[0] = zoffset;
+                    description.joints[i].offset[1] = yoffset;
+                    description.joints[i].offset[2] = zoffset;
                 }
                 tmp_skeleton_descs.push_back(description);
             }

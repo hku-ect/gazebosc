@@ -21,7 +21,7 @@ const char * clientCapabilities =
                                 "        type = \"int\"\n"
                                 "        value = \"6200\"\n"
                                 "        min = \"1\"\n"
-                                "        max = \"10000\"\n"
+                                "        max = \"65534\"\n"
                                 "        api_call = \"SET PORT\"\n"
                                 "        api_value = \"i\"\n"           // optional picture format used in zsock_send
                                 "inputs\n"
