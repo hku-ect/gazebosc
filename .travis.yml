@@ -101,7 +101,7 @@ after_success:
         git clone https://github.com/clarkwang/passh.git;
         cd passh;
         cc -o passh passh.c;
-        ./passh -p env:BBPWD -e scp ../*.zip buildbot@pong.hku.nl:public_html/nightly/; fi
+        ./passh -p env:BBPWD scp ../*.zip buildbot@pong.hku.nl:public_html/nightly/; fi
     
     #- cd build
     # fixes the osx bundle
