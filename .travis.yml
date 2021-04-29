@@ -90,9 +90,9 @@ after_success:
     - cd $TRAVIS_BUILD_DIR/build/bin
     - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then
         if [ -n "$TRAVIS_TAG" ] || [[ $TRAVIS_BRANCH == "master" ]]; then
-          zip -r $( echo $TRAVIS_REPO_SLUG | cut -d"/" -f2)_${TRAVIS_OS_NAME}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*";
+          zip -q -r $( echo $TRAVIS_REPO_SLUG | cut -d"/" -f2)_${TRAVIS_OS_NAME}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*";
         else
-          zip -r $( echo $TRAVIS_REPO_SLUG | cut -d"/" -f2)_${TRAVIS_OS_NAME}_${TRAVIS_BRANCH}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*";
+          zip -q -r $( echo $TRAVIS_REPO_SLUG | cut -d"/" -f2)_${TRAVIS_OS_NAME}_${TRAVIS_BRANCH}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*";
         fi
       fi
     - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then export SSHPASS=$BBPWD; fi
