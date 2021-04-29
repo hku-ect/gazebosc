@@ -6,8 +6,6 @@ language:
 cache:
 - ccache
 
-osx_image: xcode11
-
 dist: 
  focal
 
@@ -27,7 +25,10 @@ addons:
     - sshpass
   ssh_known_hosts: pong.hku.nl
 
-#  homebrew: &base_deps
+#  homebrew:
+#    taps: hudochenkov/sshpass
+#    packages: sshpass
+#    update: true
 #    packages:
 #    - binutils
 #    - valgrind
@@ -36,7 +37,7 @@ matrix:
   include:
   - env: BUILD_TYPE=default
     os: osx
-    addons:
+#    osx_image:
   - env: BUILD_TYPE=default
     os: linux
 
@@ -44,7 +45,6 @@ before_install:
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
 
 install:
-  - if [ "$TRAVIS_OS_NAME" == "osx" -a "$TRAVIS_PULL_REQUEST" == "false" ]; then brew install hudochenkov/sshpass/sshpass; fi
   - git submodule update --init --recursive
 
   # libzmq
@@ -97,7 +97,11 @@ after_success:
       fi
     - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then export SSHPASS=$BBPWD; fi
     - echo '|1|AurlN3z7WhvxYbuNdsouT5s7FYs=|cjTFODbUXIXKeWihh1BjnfXgARw= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=' >> $HOME/.ssh/known_hosts
-    - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then sshpass -e scp *.zip buildbot@pong.hku.nl:public_html/nightly/; fi
+    - if [[ $TRAVIS_PULL_REQUEST == "false" ]]; then 
+        git clone https://github.com/clarkwang/passh.git;
+        cd passh;
+        cc -o passh passh.c;
+        ./passh -p env:BBPWD -e scp ../*.zip buildbot@pong.hku.nl:public_html/nightly/; fi
     
     #- cd build
     # fixes the osx bundle
