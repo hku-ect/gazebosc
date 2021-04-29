@@ -44,7 +44,7 @@ before_install:
 - if [ -n "${MATRIX_EVAL}" ] ; then eval ${MATRIX_EVAL} ; fi
 
 install:
-  - if [ "$TARGET" == "osx" ]; then brew install https://raw.githubusercontent.com/kadwanev/bigboybrew/master/Library/Formula/sshpass.rb; fi
+  - if [ "$TRAVIS_OS_NAME" == "osx" ]; then brew install https://raw.githubusercontent.com/kadwanev/bigboybrew/master/Library/Formula/sshpass.rb; fi
   - git submodule update --init --recursive
 
   # libzmq
