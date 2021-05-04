@@ -176,16 +176,30 @@ target_link_options(gazebosc PUBLIC ${Python3_LINK_OPTIONS})
 target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
-find_library(OPENVR_LIBRARIES
-  NAMES
-    openvr_api
-  PATHS
-    ${CMAKE_SOURCE_DIR}/ext/openvr/lib
-  PATH_SUFFIXES
-    win64
-  NO_DEFAULT_PATH
-  NO_CMAKE_FIND_ROOT_PATH
-)
+if (WIN32)
+    find_library(OPENVR_LIBRARIES
+      NAMES
+        openvr_api
+      PATHS
+        ${CMAKE_SOURCE_DIR}/ext/openvr/lib
+      PATH_SUFFIXES
+        win64
+      NO_DEFAULT_PATH
+      NO_CMAKE_FIND_ROOT_PATH
+    )
+elseif(APPLE)
+    find_library(OPENVR_LIBRARIES
+        NAMES
+            openvr_api
+        PATHS
+            ${CMAKE_SOURCE_DIR}/ext/openvr/bin
+        PATH_SUFFIXES
+            osx32
+        NO_DEFAULT_PATH
+        NO_CMAKE_FIND_ROOT_PATH
+    )
+endif()
+
 message("FOUND OPENVR AT ${OPENVR_LIBRARIES}")
 
 ### PLATFORM SPECIFICS
