@@ -198,6 +198,17 @@ elseif(APPLE)
         NO_DEFAULT_PATH
         NO_CMAKE_FIND_ROOT_PATH
     )
+else()
+    find_library(OPENVR_LIBRARIES
+        NAMES
+            openvr_api
+        PATHS
+            ${CMAKE_SOURCE_DIR}/ext/openvr/lib
+        PATH_SUFFIXES
+            linux64
+        NO_DEFAULT_PATH
+        NO_CMAKE_FIND_ROOT_PATH
+    )
 endif()
 
 message("FOUND OPENVR AT ${OPENVR_LIBRARIES}")
