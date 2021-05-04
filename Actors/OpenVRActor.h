@@ -8,8 +8,8 @@
 
 class OpenVR : public Sphactor {
 private:
-    bool sendTrackers = TRUE;
-    bool sendDevices = TRUE;
+    bool sendTrackers = true;
+    bool sendDevices = true;
 
     vr::IVRSystem* vrSystem;
     DeviceList devices;
