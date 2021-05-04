@@ -1,10 +1,13 @@
 #ifndef GAZEBOSC_NATNET2OSCACTOR_H
 #define GAZEBOSC_NATNET2OSCACTOR_H
 
+#include "libsphactor.hpp"
 #include "NatNetDataTypes.h"
 #include <map>
 
-struct NatNet2OSC {
+class NatNet2OSC : public Sphactor
+{
+public:
     bool sendMarkers = false;
     bool sendRigidbodies = false;
     bool sendSkeletons = false;
@@ -26,7 +29,9 @@ struct NatNet2OSC {
 
     std::vector<RigidBodyHistory> rbHistory;
 
-    zmsg_t *handleMsg( sphactor_event_t *ev );
+    zmsg_t *handleInit( sphactor_event_t *ev );
+    zmsg_t *handleSocket( sphactor_event_t *ev );
+    zmsg_t *handleAPI( sphactor_event_t *ev );
 
     //NatNet parse functions
     void Unpack( char ** pData );
