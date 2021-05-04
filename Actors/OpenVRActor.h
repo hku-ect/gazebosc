@@ -8,8 +8,8 @@
 
 class OpenVR : public Sphactor {
 private:
-    //std::string port = "6200";
-    //zsock_t* dgramr = NULL;
+    bool sendTrackers = TRUE;
+    bool sendDevices = TRUE;
 
     vr::IVRSystem* vrSystem;
     DeviceList devices;
