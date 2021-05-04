@@ -131,7 +131,8 @@ bool TimecodeStringify(unsigned int inTimecode, unsigned int inTimecodeSubframe,
 // a compiler will pad the struct at will to optimize it
 // for the compiled architecture
 // ref: https://forums.naturalpoint.com/viewtopic.php?f=59&t=13272
-#pragma pack(push,1)
+#pragma pack (push)
+#pragma pack (1)
 
 // sender
 typedef struct
@@ -165,4 +166,5 @@ static std::string MULTICAST_ADDRESS = "239.255.42.99";
 static std::string PORT_COMMAND_STR = "1510";
 static std::string PORT_DATA_STR = "1511";
 
+#pragma pack (pop)
 #endif //GAZEBOSC_NATNETDATATYPES_H
