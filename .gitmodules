@@ -16,3 +16,6 @@
 [submodule "ext/StackWalker"]
 	path = ext/StackWalker
 	url = https://github.com/JochenKalmbach/StackWalker.git
+[submodule "ext/openvr"]
+	path = ext/openvr
+	url = https://github.com/ValveSoftware/openvr
