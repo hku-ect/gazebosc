@@ -89,6 +89,7 @@ void RegisterActors() {
 #endif
     //enforcable maximum actor counts
     max_actors_by_type.insert(std::make_pair("NatNet", 1));
+    max_actors_by_type.insert(std::make_pair("OpenVR", 1));
 
     UpdateRegisteredActorsCache();
 }
@@ -305,6 +306,10 @@ int UpdateActors(float deltaTime, bool * showLog)
         for (auto it = actors.begin(); it != actors.end();)
         {
             ActorContainer* actor = *it;
+
+            if ( abs(actor->pos.x > 100000000) || abs(actor->pos.y > 100000000) ) {
+                actor->pos = ImGui::GetMousePos();
+            }
 
             // Start rendering node
             if (ImNodes::Ez::BeginNode(actor, actor->title, &actor->pos, &actor->selected))
