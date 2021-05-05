@@ -120,24 +120,27 @@ zmsg_t *
 ModPlayerActor::getPatternEventMsg()
 {
     tracker_state *state = this->trackbuf_state1.track_state_buf;
-    zosc_t *oscm = zosc_create("/patternevent", "iiiiii",
-                                      state->cur_pattern_pos,
-                                      state->cur_pattern_table_pos,
-                                      state->tracks[0].cur_period,   // note
-                                      state->tracks[0].instrument_number,
-                                      state->tracks[0].cur_effect,
-                                      state->tracks[0].cur_parameffect
+    note *cur_note = modctx.patterndata[state->cur_pattern] + (state->cur_pattern_pos * 4);
+    zosc_t *oscm = zosc_create("/patternevent", "iiiiiii",
+                                      state->cur_pattern_table_pos, // song pos
+                                      state->cur_pattern,           // pattern nr
+                                      state->cur_pattern_pos,       // pattern row
+                                      cur_note->period,   // note
+                                      cur_note->sampperiod,
+                                      cur_note->effect,
+                                      cur_note->sampeffect
                                      );
     assert(oscm);
     //append rest of the tracks
     for (int i=1;i<state->number_of_tracks;i++)
     {
+        cur_note+=i; // increment to next channel
         zosc_append(oscm, "iiii",
-                          state->tracks[i].cur_period,   // note
-                          state->tracks[i].instrument_number,
-                          state->tracks[i].cur_effect,
-                          state->tracks[i].cur_parameffect
-                        );
+                          cur_note->period,
+                          cur_note->sampperiod,
+                          cur_note->effect,
+                          cur_note->sampeffect
+                    );
     }
     zmsg_t *ret = zmsg_new();
     zframe_t *data = zosc_packx(&oscm);
