@@ -5,6 +5,7 @@
 #include "Actors/CountActor.h"
 #include "Actors/NatNetActor.h"
 #include "Actors/NatNet2OSCActor.h"
+#include "Actors/OpenVRActor.h"
 #include "Actors/OSCInputActor.h"
 #include "Actors/PulseActor.h"
 #include "Actors/ModPlayerActor.h"
