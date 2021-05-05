@@ -50,103 +50,100 @@ const char * natNet2OSCCapabilities = "capabilities\n"
                                 "        type = \"OSC\"\n";
 
 zmsg_t *
-NatNet2OSC::handleMsg( sphactor_event_t *ev ) {
-    if ( streq(ev->type, "INIT")) {
-        sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natNet2OSCCapabilities));
-    }
-    else if ( streq( ev->type, "DESTROY")) {
-        //TODO: Figure out why this delete sometimes causes SIGABRT
-        //          "pointer freed was never allocated"
-        //delete this;
-        zmsg_destroy(&ev->msg);
-        return NULL;
-    }
-    else if ( streq(ev->type, "SOCK")) {
-        //zsys_info("SOCK");
+NatNet2OSC::handleInit( sphactor_event_t *ev )
+{
+    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natNet2OSCCapabilities));
+    return NULL;
+}
 
-        //TODO: unpack msg and parse intozStr OSC
-        zframe_t *zframe = zmsg_pop(ev->msg);
-        if (zframe) {
-            byte *data = zframe_data(zframe);
-            Unpack((char **) &data);
-            zframe_destroy(&zframe);
+zmsg_t *
+NatNet2OSC::handleSocket( sphactor_event_t *ev )
+{
+    //zsys_info("SOCK");
 
-            //Send Frame
-            zmsg_t *oscMsg = zmsg_new();
+    //TODO: unpack msg and parse intozStr OSC
+    zframe_t *zframe = zmsg_pop(ev->msg);
+    if (zframe) {
+        byte *data = zframe_data(zframe);
+        Unpack((char **) &data);
+        zframe_destroy(&zframe);
 
-            //markers
-            if ( sendMarkers ) {
-                for (int i = 0; i < markers.size(); i++) {
-                    zosc_t *osc = zosc_create("/marker", "ifff", i, markers[i][0], markers[i][1], markers[i][2]);
-                    zmsg_add(oscMsg, zosc_pack(osc));
-                    //TODO: clean up osc* ?
-                }
+        //Send Frame
+        zmsg_t *oscMsg = zmsg_new();
+
+        //markers
+        if ( sendMarkers ) {
+            for (int i = 0; i < markers.size(); i++) {
+                zosc_t *osc = zosc_create("/marker", "ifff", i, markers[i][0], markers[i][1], markers[i][2]);
+                zmsg_add(oscMsg, zosc_pack(osc));
+                //TODO: clean up osc* ?
             }
-
-            //rigidbodies
-            if ( sendRigidbodies )
-                addRigidbodies(oscMsg);
-
-            //skeletons
-            if ( sendSkeletons )
-                addSkeletons(oscMsg);
-
-            if ( zmsg_content_size(oscMsg) != 0 ){
-                //zsys_info("Sending zmsg of size: %i", zmsg_content_size(oscMsg));
-                zmsg_destroy(&ev->msg);
-                return oscMsg;
-            }
-
-            // Nothing to send, destroy and return NULL
-            zmsg_destroy(&oscMsg);
         }
 
-        zmsg_destroy(&ev->msg);
-        return NULL;
-    }
-    else if ( streq(ev->type, "API")) {
-        //pop msg for command
-        char * cmd = zmsg_popstr(ev->msg);
-        if (cmd) {
-            if ( streq(cmd, "SET MARKERS") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendMarkers = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendMarkers ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET RIGIDBODIES") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendRigidbodies = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendRigidbodies ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET SKELETONS") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendSkeletons = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendSkeletons ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET VELOCITIES") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendVelocities = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendVelocities ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET HIERARCHY") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendHierarchy = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendHierarchy ? "True" : "False");
-            }
-            else if ( streq(cmd, "SET SKELETONDEF") ) {
-                char * value = zmsg_popstr(ev->msg);
-                sendSkeletonDefinitions = streq( value, "True");
-                //zsys_info("Got: %s, set to %s", value, sendSkeletonDefinitions ? "True" : "False");
-            }
+        //rigidbodies
+        if ( sendRigidbodies )
+            addRigidbodies(oscMsg);
 
-            zstr_free(&cmd);
+        //skeletons
+        if ( sendSkeletons )
+            addSkeletons(oscMsg);
+
+        if ( zmsg_content_size(oscMsg) != 0 ){
+            //zsys_info("Sending zmsg of size: %i", zmsg_content_size(oscMsg));
+            zmsg_destroy(&ev->msg);
+            return oscMsg;
         }
 
-        zmsg_destroy(&ev->msg);
-        return NULL;
+        // Nothing to send, destroy and return NULL
+        zmsg_destroy(&oscMsg);
     }
 
-    return ev->msg;
+    zmsg_destroy(&ev->msg);
+    return NULL;
+}
+
+zmsg_t *
+NatNet2OSC::handleAPI( sphactor_event_t *ev )
+{
+    //pop msg for command
+    char * cmd = zmsg_popstr(ev->msg);
+    if (cmd) {
+        if ( streq(cmd, "SET MARKERS") ) {
+            char * value = zmsg_popstr(ev->msg);
+            sendMarkers = streq( value, "True");
+            //zsys_info("Got: %s, set to %s", value, sendMarkers ? "True" : "False");
+        }
+        else if ( streq(cmd, "SET RIGIDBODIES") ) {
+            char * value = zmsg_popstr(ev->msg);
+            sendRigidbodies = streq( value, "True");
+            //zsys_info("Got: %s, set to %s", value, sendRigidbodies ? "True" : "False");
+        }
+        else if ( streq(cmd, "SET SKELETONS") ) {
+            char * value = zmsg_popstr(ev->msg);
+            sendSkeletons = streq( value, "True");
+            //zsys_info("Got: %s, set to %s", value, sendSkeletons ? "True" : "False");
+        }
+        else if ( streq(cmd, "SET VELOCITIES") ) {
+            char * value = zmsg_popstr(ev->msg);
+            sendVelocities = streq( value, "True");
+            //zsys_info("Got: %s, set to %s", value, sendVelocities ? "True" : "False");
+        }
+        else if ( streq(cmd, "SET HIERARCHY") ) {
+            char * value = zmsg_popstr(ev->msg);
+            sendHierarchy = streq( value, "True");
+            //zsys_info("Got: %s, set to %s", value, sendHierarchy ? "True" : "False");
+        }
+        else if ( streq(cmd, "SET SKELETONDEF") ) {
+            char * value = zmsg_popstr(ev->msg);
+            sendSkeletonDefinitions = streq( value, "True");
+            //zsys_info("Got: %s, set to %s", value, sendSkeletonDefinitions ? "True" : "False");
+        }
+
+        zstr_free(&cmd);
+    }
+
+    zmsg_destroy(&ev->msg);
+    return NULL;
 }
 
 void NatNet2OSC::addRigidbodies(zmsg_t *zmsg)

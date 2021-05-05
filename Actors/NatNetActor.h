@@ -1,13 +1,14 @@
 #ifndef NATNETACTOR_H
 #define NATNETACTOR_H
 
-#include "libsphactor.h"
+#include "libsphactor.hpp"
 #include <string>
 #include <vector>
 #include <map>
 #include "NatNetDataTypes.h"
 
-struct NatNet {
+class NatNet : public Sphactor {
+public:
     // DataSocket;
     zsock_t* DataSocket = NULL;
     int dataFD = -1;
@@ -52,7 +53,12 @@ struct NatNet {
     static std::vector<SkeletonDescription> skeleton_descs;
     static std::vector<MarkerSetDescription> markerset_descs;
 
-    zmsg_t * handleMsg( sphactor_event_t *ev );
+    zmsg_t* handleInit(sphactor_event_t *ev);
+    //zmsg_t* handleTimer(sphactor_event_t *ev);
+    zmsg_t* handleAPI(sphactor_event_t *ev);
+    //zmsg_t* handleSocket(sphactor_event_t *ev)
+    zmsg_t* handleCustomSocket(sphactor_event_t *ev);
+    zmsg_t* handleStop(sphactor_event_t *ev);
 
     //NatNet parse functions
     int SendCommand(char* szCOmmand);

@@ -37,253 +37,181 @@ const char * natnetCapabilities =
                                 //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
                                 "        type = \"NatNet\"\n";
 
-zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
-    if ( streq(ev->type, "INIT") ) {
+zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
+{
+    //TODO: parse network interfaces for selection
+    ziflist_t * ifList = ziflist_new();
+    const char* cur = ziflist_first(ifList);
+    while( cur != nullptr ) {
+        ifNames.push_back(cur);
+        ifAddresses.push_back(ziflist_address(ifList));
 
-        //TODO: parse network interfaces for selection
-        ziflist_t * ifList = ziflist_new();
-        const char* cur = ziflist_first(ifList);
-        while( cur != nullptr ) {
-            ifNames.push_back(cur);
-            ifAddresses.push_back(ziflist_address(ifList));
-
-            cur = ziflist_next(ifList);
-        }
-        ziflist_destroy(&ifList);
-
-        zconfig_t * capConfig = zconfig_str_load(natnetCapabilities);
-        zconfig_t *current = zconfig_locate(capConfig, "capabilities");
-        current = zconfig_locate(current, "data");
-        current = zconfig_next(current);
-        current = zconfig_locate(current, "max");
-        zconfig_set_value(current, "%i", (int)(ifNames.size()-1));
-
-        //init capabilities
-        sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, capConfig);
-
-        activeInterface = ifNames[0];
-
-        // Receive socket on port DATA_PORT
-        std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
-        DataSocket = zsock_new(ZMQ_DGRAM);
-        //zsock_connect(DataSocket, "%s", url.c_str());
-        zsock_bind(DataSocket, "%s", url.c_str());
-        assert( DataSocket );
-        dataFD = zsock_fd(DataSocket);
-        int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
-        assert(rc == 0);
-
-        // receive socket on CMD_PORT
-        url = "udp://*:"+ PORT_COMMAND_STR;
-        CommandSocket = zsock_new_dgram(url.c_str());
-        assert( CommandSocket );
-        cmdFD = zsock_fd(CommandSocket);
-        rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
-        assert(rc == 0);
-
-        //build report
-        zosc_t * msg = zosc_create("/report", "si", "Network Interfaces", ifNames.size());
-        for( int i = 0; i < ifNames.size(); ++i ) {
-            zosc_append(msg, "ss", (std::to_string(i)).c_str(), (ifNames[i] + " ("+ifAddresses[i]+")").c_str());
-        }
-
-        // Initialize report timestamp
-        zosc_append(msg, "sh", "lastActive", (int64_t)0);
-
-        sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+        cur = ziflist_next(ifList);
     }
-    else if ( streq(ev->type, "DESTROY") ) {
-        if ( CommandSocket != NULL ) {
-            sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
-            zsock_destroy(&CommandSocket);
-            CommandSocket = NULL;
-            cmdFD = -1;
-        }
-        if ( DataSocket != NULL ) {
-            sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
-            zsock_destroy(&DataSocket);
-            DataSocket = NULL;
-            dataFD = -1;
-        }
+    ziflist_destroy(&ifList);
 
-        //TODO: Figure out why this delete sometimes causes SIGABRT
-        //          "pointer freed was never allocated"
-        //delete this; ?? SIGABRT ??
-        zmsg_destroy(&ev->msg);
-        return NULL;
+    zconfig_t * capConfig = zconfig_str_load(natnetCapabilities);
+    zconfig_t *current = zconfig_locate(capConfig, "capabilities");
+    current = zconfig_locate(current, "data");
+    current = zconfig_next(current);
+    current = zconfig_locate(current, "max");
+    zconfig_set_value(current, "%i", (int)(ifNames.size()-1));
+
+    //init capabilities
+    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, capConfig);
+
+    activeInterface = ifNames[0];
+
+    // Receive socket on port DATA_PORT
+    std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+    DataSocket = zsock_new(ZMQ_DGRAM);
+    //zsock_connect(DataSocket, "%s", url.c_str());
+    zsock_bind(DataSocket, "%s", url.c_str());
+    assert( DataSocket );
+    dataFD = zsock_fd(DataSocket);
+    int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
+    assert(rc == 0);
+
+    // receive socket on CMD_PORT
+    url = "udp://*:"+ PORT_COMMAND_STR;
+    CommandSocket = zsock_new_dgram(url.c_str());
+    assert( CommandSocket );
+    cmdFD = zsock_fd(CommandSocket);
+    rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
+    assert(rc == 0);
+
+    //build report
+    zosc_t * msg = zosc_create("/report", "si", "Network Interfaces", ifNames.size());
+    for( int i = 0; i < ifNames.size(); ++i ) {
+        zosc_append(msg, "ss", (std::to_string(i)).c_str(), (ifNames[i] + " ("+ifAddresses[i]+")").c_str());
     }
-    else if ( streq(ev->type, "API")) {
-        //pop msg for command
-        char * cmd = zmsg_popstr(ev->msg);
-        if (cmd) {
-            if ( streq(cmd, "SET HOST") ) {
-                char *host_addr = zmsg_popstr(ev->msg);
-                host = host_addr;
-                zsys_info("SET HOST: %s", host_addr);
-                zstr_free(&host_addr);
 
-                // Say hello to our new host
-                // send initial ping command
-                sPacket PacketOut;
-                PacketOut.iMessage = NAT_PING;
-                PacketOut.nDataBytes = 0;
-                int nTries = 3;
-                while (nTries--) {
-                    //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-                    std::string url = host + ":" + PORT_COMMAND_STR;
-                    zstr_sendm(CommandSocket, url.c_str());
-                    int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
-                    if (rc != 0) {
-                        zsys_info("Sent ping to %s", url.c_str());
-                    }
+    // Initialize report timestamp
+    zosc_append(msg, "sh", "lastActive", (int64_t)0);
+
+    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+
+    return NULL;
+}
+
+zmsg_t * NatNet::handleStop( sphactor_event_t * ev )
+{
+    if ( CommandSocket != NULL ) {
+        sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
+        zsock_destroy(&CommandSocket);
+        CommandSocket = NULL;
+        cmdFD = -1;
+    }
+    if ( DataSocket != NULL ) {
+        sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
+        zsock_destroy(&DataSocket);
+        DataSocket = NULL;
+        dataFD = -1;
+    }
+
+    return NULL;
+}
+
+zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
+{
+    //pop msg for command
+    char * cmd = zmsg_popstr(ev->msg);
+    if (cmd) {
+        if ( streq(cmd, "SET HOST") ) {
+            char *host_addr = zmsg_popstr(ev->msg);
+            host = host_addr;
+            zsys_info("SET HOST: %s", host_addr);
+            zstr_free(&host_addr);
+
+            // Say hello to our new host
+            // send initial ping command
+            sPacket PacketOut;
+            PacketOut.iMessage = NAT_PING;
+            PacketOut.nDataBytes = 0;
+            int nTries = 3;
+            while (nTries--) {
+                //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
+                std::string url = host + ":" + PORT_COMMAND_STR;
+                zstr_sendm(CommandSocket, url.c_str());
+                int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
+                if (rc != 0) {
+                    zsys_info("Sent ping to %s", url.c_str());
                 }
             }
-            else if ( streq(cmd, "SET INTERFACE") ) {
-                char* ifChar = zmsg_popstr(ev->msg);
-                int ifIndex = std::stoi(ifChar);
-                zstr_free(&ifChar);
+        }
+        else if ( streq(cmd, "SET INTERFACE") ) {
+            char* ifChar = zmsg_popstr(ev->msg);
+            int ifIndex = std::stoi(ifChar);
+            zstr_free(&ifChar);
 
-                // zsys_info("SET INTERFACE: %i", ifIndex);
+            // zsys_info("SET INTERFACE: %i", ifIndex);
 
-                activeInterface = ifNames[ifIndex];
+            activeInterface = ifNames[ifIndex];
 
-                if ( DataSocket != NULL ) {
-                    sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
-                    zsock_destroy(&DataSocket);
-                    DataSocket = NULL;
-                    dataFD = -1;
-                }
-
-                std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
-                DataSocket = zsock_new(ZMQ_DGRAM);
-                //zsock_connect(DataSocket, "%s", url.c_str());
-                zsock_bind(DataSocket, "%s", url.c_str());
-                assert( DataSocket );
-                dataFD = zsock_fd(DataSocket);
-                int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
-                assert(rc == 0);
+            if ( DataSocket != NULL ) {
+                sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
+                zsock_destroy(&DataSocket);
+                DataSocket = NULL;
+                dataFD = -1;
             }
 
-            zstr_free(&cmd);
+            std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+            DataSocket = zsock_new(ZMQ_DGRAM);
+            //zsock_connect(DataSocket, "%s", url.c_str());
+            zsock_bind(DataSocket, "%s", url.c_str());
+            assert( DataSocket );
+            dataFD = zsock_fd(DataSocket);
+            int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
+            assert(rc == 0);
         }
 
-        zmsg_destroy(&ev->msg);
-
-        return NULL;
+        zstr_free(&cmd);
     }
-    else if ( streq(ev->type, "FDSOCK" ) )
+
+    return NULL;
+}
+
+zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
+{
+    //zsys_info("GOT FDSOCK");
+
+    // Get the socket...
+    assert(ev->msg);
+    zframe_t *frame = zmsg_pop(ev->msg);
+    if (zframe_size(frame) == sizeof( void *) )
     {
-        //zsys_info("GOT FDSOCK");
-
-        // Get the socket...
-        assert(ev->msg);
-        zframe_t *frame = zmsg_pop(ev->msg);
-        if (zframe_size(frame) == sizeof( void *) )
+        void *p = *(void **)zframe_data(frame);
+        zsock_t* sock = (zsock_t*) zsock_resolve( p );
+        if ( sock )
         {
-            void *p = *(void **)zframe_data(frame);
-            zsock_t* sock = (zsock_t*) zsock_resolve( p );
-            if ( sock )
-            {
-                SOCKET sockFD = zsock_fd(sock);
+            SOCKET sockFD = zsock_fd(sock);
 
-                if ( sockFD == cmdFD ) {
-                    // zsys_info("CMD SOCKET");
-                    // Parse command
-                    int addr_len;
-                    int nDataBytesReceived;
-                    char str[256];
-                    sPacket PacketIn;
-                    addr_len = sizeof(struct sockaddr);
+            if ( sockFD == cmdFD ) {
+                // zsys_info("CMD SOCKET");
+                // Parse command
+                int addr_len;
+                int nDataBytesReceived;
+                char str[256];
+                sPacket PacketIn;
+                addr_len = sizeof(struct sockaddr);
 
-                    //int rc = zmq_recv(CommandSocket, (char *) &PacketIn, sizeof(sPacket), 0);
-                    zmsg_t* zmsg = zmsg_recv(CommandSocket);
-                    if ( zmsg ) {
-                        // pop the source address off
-                        char* zStr = zmsg_popstr(zmsg);
-                        if ( zStr ) {
-                            //zsys_info("zStr: %s", zStr );
-                            zstr_free(&zStr);
-                        }
-
-                        zframe_t *zframe = zmsg_pop(zmsg);
-                        if ( zframe ) {
-                            sPacket *packet = (sPacket*) zframe_data(zframe);
-                            if ( packet->iMessage == 7 ) {
-                                // zsys_info("Got frame of data");
-                                size_t len = zframe_size(zframe);
-                                Unpack((char **) &packet);
-
-                                //zsys_info("rigidbodies after handled frame: %i, %i", rigidbodies.size(), rigidbody_descs.size());
-
-                                // if there is a difference do natnet.questDescription(); to get up to date rigidbody descriptions and thus names
-                                if (rigidbody_descs.size() != rigidbodies.size())
-                                {
-                                    if (sentRequest <= 0) {
-                                        sendRequestDescription();
-                                        sentRequest = 60; //1 second
-                                    }
-                                    rigidbodiesReady = false;
-                                }
-
-                                //get & check skeletons size
-                                if (skeleton_descs.size() != skeletons.size())
-                                {
-                                    if (sentRequest <= 0) {
-                                        sendRequestDescription();
-                                        sentRequest = 60; //1 second
-                                    }
-                                    skeletonsReady = false;
-                                }
-
-                                if (sentRequest > 0) sentRequest--;
-
-                                // re-append the zframe that was popped
-                                // only send if definitions are updated
-                                if ( skeletonsReady && rigidbodiesReady ) {
-                                    // set timestamp of last sent packet in report
-                                    zosc_t* msg = zosc_create("/report", "sh",
-                                        "lastActive", (int64_t)clock());
-
-                                    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
-
-                                    zmsg_addmem(zmsg, (byte*)packet, len);
-                                    zframe_destroy(&zframe);
-                                    return zmsg;
-                                }
-                            }
-                            else {
-                                HandleCommand(packet);
-                            }
-                            zframe_destroy(&zframe);
-                        }
-                        zmsg_destroy(&zmsg);
+                //int rc = zmq_recv(CommandSocket, (char *) &PacketIn, sizeof(sPacket), 0);
+                zmsg_t* zmsg = zmsg_recv(CommandSocket);
+                if ( zmsg ) {
+                    // pop the source address off
+                    char* zStr = zmsg_popstr(zmsg);
+                    if ( zStr ) {
+                        //zsys_info("zStr: %s", zStr );
+                        zstr_free(&zStr);
                     }
-                }
-                else if ( sockFD == dataFD ) {
-                    //zsys_info("DATA SOCKET");
-                    zmsg_destroy(&ev->msg);
 
-                    //TODO: Send data packet to connected natnet2osc clients
-                    //          this will allow for multiple filters
-                    //Parse packet
-                    zmsg_t* zmsg = zmsg_recv(DataSocket);
-
-                    // We're still unpacking the data here because it might contain definitions we need to store
-                    // TODO: Find a way to optimize getting definitions
-                    if ( zmsg ) {
-                        // pop the source address off
-                        char* zStr = zmsg_popstr(zmsg);
-                        if ( zStr ) {
-                            //zsys_info("zStr: %s", zStr );
-                            zstr_free(&zStr);
-                        }
-
-                        // parse the remaining bytes as mocap data message
-                        zframe_t *zframe = zmsg_pop(zmsg);
-                        if (zframe) {
-                            byte *data = zframe_data(zframe);
+                    zframe_t *zframe = zmsg_pop(zmsg);
+                    if ( zframe ) {
+                        sPacket *packet = (sPacket*) zframe_data(zframe);
+                        if ( packet->iMessage == 7 ) {
+                            // zsys_info("Got frame of data");
                             size_t len = zframe_size(zframe);
-                            Unpack((char **) &data);
+                            Unpack((char **) &packet);
 
                             //zsys_info("rigidbodies after handled frame: %i, %i", rigidbodies.size(), rigidbody_descs.size());
 
@@ -312,35 +240,102 @@ zmsg_t * NatNet::handleMsg( sphactor_event_t * ev ) {
                             // re-append the zframe that was popped
                             // only send if definitions are updated
                             if ( skeletonsReady && rigidbodiesReady ) {
-                                // set timestamp of last received packet in report
+                                // set timestamp of last sent packet in report
                                 zosc_t* msg = zosc_create("/report", "sh",
                                     "lastActive", (int64_t)clock());
 
                                 sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
 
-                                zmsg_addmem(zmsg, data, len);
+                                zmsg_addmem(zmsg, (byte*)packet, len);
+                                zframe_destroy(&zframe);
                                 return zmsg;
                             }
                         }
-                        // nothing valid or not sent on, so clean up
-                        zmsg_destroy(&zmsg);
-                        return NULL;
+                        else {
+                            HandleCommand(packet);
+                        }
+                        zframe_destroy(&zframe);
                     }
-
-                    return NULL;
+                    zmsg_destroy(&zmsg);
                 }
             }
+            else if ( sockFD == dataFD ) {
+                //zsys_info("DATA SOCKET");
+                zmsg_destroy(&ev->msg);
+
+                //TODO: Send data packet to connected natnet2osc clients
+                //          this will allow for multiple filters
+                //Parse packet
+                zmsg_t* zmsg = zmsg_recv(DataSocket);
+
+                // We're still unpacking the data here because it might contain definitions we need to store
+                // TODO: Find a way to optimize getting definitions
+                if ( zmsg ) {
+                    // pop the source address off
+                    char* zStr = zmsg_popstr(zmsg);
+                    if ( zStr ) {
+                        //zsys_info("zStr: %s", zStr );
+                        zstr_free(&zStr);
+                    }
+
+                    // parse the remaining bytes as mocap data message
+                    zframe_t *zframe = zmsg_pop(zmsg);
+                    if (zframe) {
+                        byte *data = zframe_data(zframe);
+                        size_t len = zframe_size(zframe);
+                        Unpack((char **) &data);
+
+                        //zsys_info("rigidbodies after handled frame: %i, %i", rigidbodies.size(), rigidbody_descs.size());
+
+                        // if there is a difference do natnet.questDescription(); to get up to date rigidbody descriptions and thus names
+                        if (rigidbody_descs.size() != rigidbodies.size())
+                        {
+                            if (sentRequest <= 0) {
+                                sendRequestDescription();
+                                sentRequest = 60; //1 second
+                            }
+                            rigidbodiesReady = false;
+                        }
+
+                        //get & check skeletons size
+                        if (skeleton_descs.size() != skeletons.size())
+                        {
+                            if (sentRequest <= 0) {
+                                sendRequestDescription();
+                                sentRequest = 60; //1 second
+                            }
+                            skeletonsReady = false;
+                        }
+
+                        if (sentRequest > 0) sentRequest--;
+
+                        // re-append the zframe that was popped
+                        // only send if definitions are updated
+                        if ( skeletonsReady && rigidbodiesReady ) {
+                            // set timestamp of last received packet in report
+                            zosc_t* msg = zosc_create("/report", "sh",
+                                "lastActive", (int64_t)clock());
+
+                            sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+
+                            zmsg_addmem(zmsg, data, len);
+                            return zmsg;
+                        }
+                    }
+                    // nothing valid or not sent on, so clean up
+                    zmsg_destroy(&zmsg);
+                    return NULL;
+                }
+
+                return NULL;
+            }
         }
-        else
-            zsys_error("args is not a zsock instance");
-
-        zmsg_destroy(&ev->msg);
-        zframe_destroy(&frame);
-
-        return NULL;
     }
+    else
+        zsys_error("args is not a zsock instance");
 
-    zmsg_destroy(&ev->msg);
+    zframe_destroy(&frame);
+
     return NULL;
 }
 
