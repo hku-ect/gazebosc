@@ -18,6 +18,24 @@ const char * modplayercapabilities =
         "    data\n"
         "        name = \"playback\"\n"
         "        type = \"mediacontrol\"\n"
+        "    data\n"
+        "        name = \"start position\"\n"
+        "        type = \"int\"\n"
+        "        value = \"0\"\n"
+        "        min = \"0\"\n"
+        "        max = \"127\"\n"
+        "        step = \"1\"\n"
+        "        api_call = \"SET START\"\n"
+        "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"end position\"\n"
+        "        type = \"int\"\n"
+        "        value = \"127\"\n"
+        "        min = \"0\"\n"
+        "        max = \"127\"\n"
+        "        step = \"1\"\n"
+        "        api_call = \"SET END\"\n"
+        "        api_value = \"i\"\n"           // optional picture format used in zsock_send
         "outputs\n"
         "    output\n"
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -136,6 +154,7 @@ ModPlayerActor::handleInit( sphactor_event_t *event )
     sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/144)*31);
     // init hxcmod player
     hxcmod_init(&this->modctx);
+    memset(this->orig_patterntable, 0, 128);
 
     if ( event->msg ) zmsg_destroy(&event->msg);
     return nullptr;
@@ -155,6 +174,7 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
                 hxcmod_unload( &this->modctx );
                 // free modfile
                 free( this->modfile );
+                memset(this->orig_patterntable, 0, 128);
             }
 
             FILE *f;
@@ -173,6 +193,7 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
 
             if ( this->modctx.mod_loaded == 1 )
             {
+                memcpy(orig_patterntable, modctx.song.patterntable, 128); // backup the patterntable
                 zosc_t *msg = zosc_create("/loaded", "sssisisi",
                                           "title", this->modctx.song.title,
                                           "length", int(this->modctx.song.length),
@@ -223,6 +244,49 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
     else if ( streq(cmd, "BACK") )
     {
         this->modctx.tablepos = 0;
+        this->modctx.patternpos = 0;
+        if (audiodev != -1)
+            SDL_ClearQueuedAudio(audiodev);
+    }
+    else if ( streq(cmd, "SET START") )
+    {
+        zframe_t *f = zmsg_pop(event->msg);
+        assert(f);
+        char *astart = (char *)zframe_data(f);
+        start_pos = atoi(astart);
+        assert(start_pos < 129);
+        if (modctx.mod_loaded)
+        {
+            memset(modctx.song.patterntable, 0, 128);
+            memcpy(modctx.song.patterntable, orig_patterntable+start_pos,end_pos-start_pos+1);
+            this->modctx.tablepos = 0;
+            this->modctx.song.length = end_pos - start_pos + 1;
+        }
+        zframe_destroy(&f);
+    }
+    else if ( streq(cmd, "SET END") )
+    {
+        zframe_t *f = zmsg_pop(event->msg);
+        assert(f);
+        char *aend = (char *)zframe_data(f);
+        end_pos = atoi(aend);
+        assert(end_pos < 129);
+        if ( end_pos < start_pos)
+        {
+            zsys_error("End position %i is before start position %i", end_pos, start_pos);
+        }
+        else
+        {
+            if (modctx.mod_loaded )
+            {
+                memset(modctx.song.patterntable, 0, 128);
+                memcpy(modctx.song.patterntable, orig_patterntable+start_pos,end_pos-start_pos+1);
+                this->modctx.tablepos = 0;
+                this->modctx.patternpos = 0;
+                this->modctx.song.length = end_pos - start_pos + 1;
+            }
+        }
+        zframe_destroy(&f);
     }
 
     if ( cmd )
@@ -244,7 +308,7 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
                                   "length", int(this->modctx.song.length),
                                   "speed", int(this->modctx.song.speed),
                                   "bpm", int(this->modctx.bpm),
-                                  "position", this->modctx.tablepos,
+                                  "position", this->modctx.tablepos + start_pos,
                                   "pattern", this->modctx.song.patterntable[this->modctx.tablepos] );
         sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
         // determine next timeout based on speed and bpm of the song! 2500ms/bpm*speed
