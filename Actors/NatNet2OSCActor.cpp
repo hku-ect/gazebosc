@@ -53,7 +53,9 @@ zmsg_t *
 NatNet2OSC::handleInit( sphactor_event_t *ev )
 {
     sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natNet2OSCCapabilities));
+    return NULL;
 }
+
 zmsg_t *
 NatNet2OSC::handleSocket( sphactor_event_t *ev )
 {
