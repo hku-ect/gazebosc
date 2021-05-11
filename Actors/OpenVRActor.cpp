@@ -1,3 +1,4 @@
+#ifdef HAVE_OPENVR
 #include "OpenVRActor.h"
 #include <time.h>
 
@@ -142,3 +143,5 @@ zmsg_t * OpenVR::handleCustomSocket( sphactor_event_t *ev )
 {
     return nullptr;
 }
+
+#endif // HAVE_OPENVR

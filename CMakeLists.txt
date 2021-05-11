@@ -44,6 +44,7 @@ endif()
 ### SET OPTIONS
 option (WITH_UNWIND "Enable libunwind support" ON)
 option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" OFF)
+option (WITH_OPENVR "Enable OpenVR support" ON)
 ### END SET OPTIONS
 
 ### EXTERNAL LIBS
@@ -91,6 +92,29 @@ if (Unwind_FOUND)
     set (HAVE_UNWIND_H 1)
 endif (Unwind_FOUND)
 
+if (WITH_OPENVR)
+    if (WIN32)
+       set(WINDOWS_PATH_SUFFIXES win${PLATFORM} Win${PLATFORM} x${PLATFORM})
+    endif(WIN32)
+    ## OpenVR API path
+    find_library(OPENVR_LIBRARIES
+      NAMES
+        openvr_api
+      PATHS
+        ${CMAKE_SOURCE_DIR}/ext/openvr/bin
+        ${CMAKE_SOURCE_DIR}/ext/openvr/lib
+      PATH_SUFFIXES
+        osx32
+        linux64
+        ${WINDOWS_PATH_SUFFIXES}
+      NO_DEFAULT_PATH
+      NO_CMAKE_FIND_ROOT_PATH
+    )
+    set(OPENVR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/headers)
+    add_definitions(-DHAVE_OPENVR)
+    message("Found OpenVR at ${OPENVR_LIBRARIES}")
+endif(WITH_OPENVR)
+
 # include Dear ImGui
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip")
@@ -134,6 +158,7 @@ list(APPEND GZB_SOURCES
 list(APPEND GZB_INCLUDEDIRS
     ${CMAKE_CURRENT_BINARY_DIR}
     ${Unwind_INCLUDE_DIRS}
+    ${OPENVR_INCLUDE_DIR}
     ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
@@ -175,43 +200,6 @@ endif (Unwind_FOUND)
 target_link_options(gazebosc PUBLIC ${Python3_LINK_OPTIONS})
 target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
-
-if (WIN32)
-    find_library(OPENVR_LIBRARIES
-      NAMES
-        openvr_api
-      PATHS
-        ${CMAKE_SOURCE_DIR}/ext/openvr/lib
-      PATH_SUFFIXES
-        win64
-      NO_DEFAULT_PATH
-      NO_CMAKE_FIND_ROOT_PATH
-    )
-elseif(APPLE)
-    find_library(OPENVR_LIBRARIES
-        NAMES
-            openvr_api
-        PATHS
-            ${CMAKE_SOURCE_DIR}/ext/openvr/bin
-        PATH_SUFFIXES
-            osx32
-        NO_DEFAULT_PATH
-        NO_CMAKE_FIND_ROOT_PATH
-    )
-else()
-    find_library(OPENVR_LIBRARIES
-        NAMES
-            openvr_api
-        PATHS
-            ${CMAKE_SOURCE_DIR}/ext/openvr/lib
-        PATH_SUFFIXES
-            linux64
-        NO_DEFAULT_PATH
-        NO_CMAKE_FIND_ROOT_PATH
-    )
-endif()
-
-message("FOUND OPENVR AT ${OPENVR_LIBRARIES}")
 
 ### PLATFORM SPECIFICS
 if (APPLE)
