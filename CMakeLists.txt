@@ -15,6 +15,15 @@
 cmake_minimum_required(VERSION 3.13)
 project(gazebosc)
 
+if(NOT ARCH)
+  if(CMAKE_SIZEOF_VOID_P MATCHES 8)
+    set(ARCH 64)
+  else()
+    set(ARCH 32)
+  endif()
+endif()
+message(STATUS "Compilation set for ${ARCH}bits architectures.")
+
 set(CMAKE_CXX_STANDARD 14)
 set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -94,7 +103,7 @@ endif (Unwind_FOUND)
 
 if (WITH_OPENVR)
     if (WIN32)
-       set(WINDOWS_PATH_SUFFIXES win${PLATFORM} Win${PLATFORM} x${PLATFORM})
+       set(WINDOWS_PATH_SUFFIXES win${ARCH} Win${ARCH} x${ARCH})
     endif(WIN32)
     ## OpenVR API path
     find_library(OPENVR_LIBRARIES
