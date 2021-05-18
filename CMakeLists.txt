@@ -319,11 +319,13 @@ if(APPLE)
 else()
     install(TARGETS gazebosc DESTINATION bin)
     if (WIN32)
-        add_custom_command(TARGET gazebosc POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-                "${PROJECT_SOURCE_DIR}/ext/openvr/bin/win64/openvr_api.dll"
-                $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-        message("COPY OPENVER")
+        if (WITH_OPENVR)
+            add_custom_command(TARGET gazebosc POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy
+                    "${PROJECT_SOURCE_DIR}/ext/openvr/bin/win64/openvr_api.dll"
+                    $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+            message("COPY OPENVER")
+        endif()
     endif()
     add_custom_command(
         TARGET gazebosc POST_BUILD
