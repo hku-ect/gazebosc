@@ -449,13 +449,8 @@ char* NatNet2OSC::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigid
         RB.position = pp;
         RB.rotation = q;
 
-        //TODO: Matrix, only used for scale previously
-        //pp = transform.preMult(pp);
-        //
-        //ofMatrix4x4 mat;
-        //mat.setTranslation(pp);
-        //mat.setRotate(q * rot);
-        //RB.matrix = mat;
+        //TODO: These associated markers are no longer part of the 3.1 SDK example
+       //          -> Check if we can/need to remove this...
 
         // associated marker positions
         int nRigidMarkers = 0;
@@ -493,6 +488,8 @@ char* NatNet2OSC::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigid
         }
 
         if (markerData) free(markerData);
+
+        // TODO: 3.1 SDK Contains everything after this again
 
         if (major >= 2)
         {
@@ -626,6 +623,21 @@ void NatNet2OSC::Unpack( char ** pData ) {
                     bool bOccluded = params & 0x01;     // marker was not visible (occluded) in this frame
                     bool bPCSolved = params & 0x02;     // position provided by point cloud solve
                     bool bModelSolved = params & 0x04;  // position provided by model solve
+                    // 3.0 additions
+                    if ((major >= 3) || (major == 0))
+                    {
+                        bool bHasModel = (params & 0x08) != 0;     // marker has an associated asset in the data stream
+                        bool bUnlabeled = (params & 0x10) != 0;    // marker is 'unlabeled', but has a point cloud ID
+                        bool bActiveMarker = (params & 0x20) != 0; // marker is an actively labeled LED marker
+                    }
+                }
+
+                // NatNet version 3.0 and later
+                float residual = 0.0f;
+                if ((major >= 3) || (major == 0))
+                {
+                    // Marker residual
+                    memcpy(&residual, ptr, 4); ptr += 4;
                 }
 
                 //zsys_info("ID  : %d\n", ID);
@@ -668,10 +680,42 @@ void NatNet2OSC::Unpack( char ** pData ) {
             }
         }
 
-        // latency
-        float latency = 0.0f; memcpy(&latency, ptr, 4);	ptr += 4;
-        //zsys_info("latency : %3.3f\n", latency);
-        this->latency = latency;
+        // TODO: Device data (NatNet version 3.0 and later)
+        if (((major == 2) && (minor >= 11)) || (major > 2))
+        {
+            int nDevices;
+            memcpy(&nDevices, ptr, 4); ptr += 4;
+            for (int iDevice = 0; iDevice < nDevices; iDevice++)
+            {
+                // ID
+                int ID = 0; memcpy(&ID, ptr, 4); ptr += 4;
+                printf("Device : %d\n", ID);
+
+                // Channel Count
+                int nChannels = 0; memcpy(&nChannels, ptr, 4); ptr += 4;
+
+                // Channel Data
+                for (int i = 0; i < nChannels; i++)
+                {
+                    printf(" Channel %d : ", i);
+                    int nFrames = 0; memcpy(&nFrames, ptr, 4); ptr += 4;
+                    for (int j = 0; j < nFrames; j++)
+                    {
+                        float val = 0.0f;  memcpy(&val, ptr, 4); ptr += 4;
+                        printf("%3.2f   ", val);
+                    }
+                    printf("\n");
+                }
+            }
+        }
+
+        // latency, removed in 3.0
+        if (major < 3)
+        {
+            float latency = 0.0f; memcpy(&latency, ptr, 4);	ptr += 4;
+            //zsys_info("latency : %3.3f\n", latency);
+            this->latency = latency;
+        }
 
         // timecode
         unsigned int timecode = 0; 	memcpy(&timecode, ptr, 4);	ptr += 4;
@@ -691,6 +735,22 @@ void NatNet2OSC::Unpack( char ** pData ) {
             float fTemp = 0.0f;
             memcpy(&fTemp, ptr, 4); ptr += 4;
             timestamp = (double)fTemp;
+        }
+
+        // high res timestamps (version 3.0 and later)
+        if ((major >= 3) || (major == 0))
+        {
+            uint64_t cameraMidExposureTimestamp = 0;
+            memcpy(&cameraMidExposureTimestamp, ptr, 8); ptr += 8;
+            printf("Mid-exposure timestamp : %" PRIu64"\n", cameraMidExposureTimestamp);
+
+            uint64_t cameraDataReceivedTimestamp = 0;
+            memcpy(&cameraDataReceivedTimestamp, ptr, 8); ptr += 8;
+            printf("Camera data received timestamp : %" PRIu64"\n", cameraDataReceivedTimestamp);
+
+            uint64_t transmitTimestamp = 0;
+            memcpy(&transmitTimestamp, ptr, 8); ptr += 8;
+            printf("Transmit timestamp : %" PRIu64"\n", transmitTimestamp);
         }
 
         // frame params
@@ -828,6 +888,41 @@ void NatNet2OSC::Unpack( char ** pData ) {
                 //description.offset[0] = xoffset;
                 //description.offset[1] = xoffset;
                 //description.offset[2] = xoffset;
+
+                // TODO: Per-marker data (NatNet 3.0 and later)
+                if (major >= 3)
+                {
+                    int nMarkers = 0; memcpy(&nMarkers, ptr, 4); ptr += 4;
+
+                    // Marker positions
+                    nBytes = nMarkers * 3 * sizeof(float);
+                    float* markerPositions = (float*)malloc(nBytes);
+                    memcpy(markerPositions, ptr, nBytes);
+                    ptr += nBytes;
+
+                    // Marker required active labels
+                    nBytes = nMarkers * sizeof(int);
+                    int* markerRequiredLabels = (int*)malloc(nBytes);
+                    memcpy(markerRequiredLabels, ptr, nBytes);
+                    ptr += nBytes;
+
+                    for (int markerIdx = 0; markerIdx < nMarkers; ++markerIdx)
+                    {
+                        float* markerPosition = markerPositions + markerIdx * 3;
+                        const int markerRequiredLabel = markerRequiredLabels[markerIdx];
+
+                        printf("\tMarker #%d:\n", markerIdx);
+                        printf("\t\tPosition: %.2f, %.2f, %.2f\n", markerPosition[0], markerPosition[1], markerPosition[2]);
+
+                        if (markerRequiredLabel != 0)
+                        {
+                            printf("\t\tRequired active label: %d\n", markerRequiredLabel);
+                        }
+                    }
+
+                    free(markerPositions);
+                    free(markerRequiredLabels);
+                }
 
                 //tmp_rigidbody_descs.push_back(description);
             }
