@@ -19,7 +19,7 @@ const char * modplayercapabilities =
         "        name = \"playback\"\n"
         "        type = \"mediacontrol\"\n"
         "    data\n"
-        "        name = \"start position\"\n"
+        "        name = \"start_position\"\n"
         "        type = \"int\"\n"
         "        value = \"0\"\n"
         "        min = \"0\"\n"
@@ -28,7 +28,7 @@ const char * modplayercapabilities =
         "        api_call = \"SET START\"\n"
         "        api_value = \"i\"\n"           // optional picture format used in zsock_send
         "    data\n"
-        "        name = \"end position\"\n"
+        "        name = \"end_position\"\n"
         "        type = \"int\"\n"
         "        value = \"127\"\n"
         "        min = \"0\"\n"

@@ -563,11 +563,14 @@ struct ActorContainer {
                     zconfig_t *name = zconfig_locate(data,"name");
                     zconfig_t *value = zconfig_locate(data,"value");
 
-                    char *nameStr = zconfig_value(name);
-                    char *valueStr = zconfig_value(value);
+                    if (value) // only store if there's a value
+                    {
+                        char *nameStr = zconfig_value(name);
+                        char *valueStr = zconfig_value(value);
 
-                    zconfig_t *stored = zconfig_new(nameStr, section);
-                    zconfig_set_value(stored, "%s", valueStr);
+                        zconfig_t *stored = zconfig_new(nameStr, section);
+                        zconfig_set_value(stored, "%s", valueStr);
+                    }
 
                     data = zconfig_next(data);
                 }
@@ -588,10 +591,13 @@ struct ActorContainer {
                     zconfig_t *data = zconfig_locate(root, "data");
                     while ( data && it != args->end() ) {
                         zconfig_t *value = zconfig_locate(data,"value");
-                        char* valueStr = *it;
-                        zconfig_set_value(value, "%s", valueStr);
+                        if (value)
+                        {
+                            char* valueStr = *it;
+                            zconfig_set_value(value, "%s", valueStr);
 
-                        HandleAPICalls(data);
+                            HandleAPICalls(data);
+                        }
                         data = zconfig_next(data);
                         it++;
                     }
