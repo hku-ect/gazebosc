@@ -194,6 +194,8 @@ void print_backtrace(int sig)
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD dwMode = 0;
     GetConsoleMode(hOut, &dwMode);
+    // Clear the quick edit bit in the mode flags (this will hang the UI)
+    dwMode &= ~ENABLE_QUICK_EDIT_MODE;
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     SetConsoleMode(hOut, dwMode);
     //SetConsoleOutputCP(437);
