@@ -36,6 +36,15 @@ const char * modplayercapabilities =
         "        step = \"1\"\n"
         "        api_call = \"SET END\"\n"
         "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"row_delay\"\n"
+        "        type = \"int\"\n"
+        "        value = \"0\"\n"
+        "        min = \"0\"\n"
+        "        max = \"63\"\n"
+        "        step = \"1\"\n"
+        "        api_call = \"SET ROWDELAY\"\n"
+        "        api_value = \"i\"\n"           // optional picture format used in zsock_send
         "outputs\n"
         "    output\n"
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -117,12 +126,15 @@ ModPlayerActor::queueAudio()
 }
 
 const char *HEXCHAR = "0123456789ABCDEF";
+#define MOD(a,b) ((((a)%(b))+(b))%(b))
 
 zmsg_t *
 ModPlayerActor::getPatternEventMsg()
 {
     tracker_state *state = this->trackbuf_state1.track_state_buf;
-    note *cur_note = modctx.patterndata[state->cur_pattern] + (state->cur_pattern_pos * 4);
+    // handle row delay
+    int prevpos = MOD(state->cur_pattern_pos - rowdelay, 64);
+    note *cur_note = modctx.patterndata[state->cur_pattern] + (prevpos * 4);
 
     // acquire values, see http://www.aes.id.au/modformat.html for details
     muint sample = (cur_note->sampperiod & 0xF0) | (cur_note->sampeffect >> 4);
@@ -311,6 +323,15 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
                 this->modctx.song.length = end_pos - start_pos + 1;
             }
         }
+        zframe_destroy(&f);
+    }
+    else if ( streq(cmd, "SET ROWDELAY") )
+    {
+        zframe_t *f = zmsg_pop(event->msg);
+        assert(f);
+        char *rowd = (char *)zframe_data(f);
+        this->rowdelay = atoi(rowd);
+        assert(rowdelay < 64);
         zframe_destroy(&f);
     }
 

@@ -36,6 +36,7 @@ struct ModPlayerActor : Sphactor
     muchar orig_patterntable[128];
     int start_pos;
     int end_pos;
+    int rowdelay;
     unsigned char * modfile;
     tracker_buffer_state trackbuf_state1;
     SDL_AudioDeviceID audiodev = -1;
