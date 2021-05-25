@@ -116,30 +116,52 @@ ModPlayerActor::queueAudio()
     return -1;
 }
 
+const char *HEXCHAR = "0123456789ABCDEF";
+
 zmsg_t *
 ModPlayerActor::getPatternEventMsg()
 {
     tracker_state *state = this->trackbuf_state1.track_state_buf;
     note *cur_note = modctx.patterndata[state->cur_pattern] + (state->cur_pattern_pos * 4);
-    zosc_t *oscm = zosc_create("/patternevent", "iiiiiii",
+
+    // acquire values, see http://www.aes.id.au/modformat.html for details
+    muint sample = (cur_note->sampperiod & 0xF0) | (cur_note->sampeffect >> 4);
+    muint period = ((cur_note->sampperiod & 0xF) << 8) | cur_note->period;
+    muint effect = ((cur_note->sampeffect & 0xF) << 8) | cur_note->effect;
+    muchar effect_op = cur_note->sampeffect & 0xF;
+    muchar effect_param = cur_note->effect;
+    char effect_param_hex[3];
+    sprintf(effect_param_hex, "%02X", effect_param);
+    //muchar effect_param_l = effect_param & 0x0F;
+    //muchar effect_param_h = effect_param >> 4;
+
+    zosc_t *oscm = zosc_create("/patternevent", "iiiiics",
                                       state->cur_pattern_table_pos, // song pos
                                       state->cur_pattern,           // pattern nr
                                       state->cur_pattern_pos,       // pattern row
-                                      cur_note->period,   // note
-                                      cur_note->sampperiod,
-                                      cur_note->effect,
-                                      cur_note->sampeffect
+                                      period,   // note
+                                      sample,
+                                      HEXCHAR[effect_op],
+                                      effect_param_hex
                                      );
     assert(oscm);
     //append rest of the tracks
     for (int i=1;i<state->number_of_tracks;i++)
     {
-        cur_note+=i; // increment to next channel
-        zosc_append(oscm, "iiii",
-                          cur_note->period,
-                          cur_note->sampperiod,
-                          cur_note->effect,
-                          cur_note->sampeffect
+        cur_note+=1; // increment to next channel
+        // acquire our values
+        sample = (cur_note->sampperiod & 0xF0) | (cur_note->sampeffect >> 4);
+        period = ((cur_note->sampperiod & 0xF) << 8) | cur_note->period;
+        effect = ((cur_note->sampeffect & 0xF) << 8) | cur_note->effect;
+        effect_op = cur_note->sampeffect & 0xF;
+        effect_param = cur_note->effect;
+        sprintf(effect_param_hex, "%02X", effect_param);
+
+        zosc_append(oscm, "iics",
+                        period,   // note
+                        sample,
+                        HEXCHAR[effect_op],
+                        effect_param_hex
                     );
     }
     zmsg_t *ret = zmsg_new();
