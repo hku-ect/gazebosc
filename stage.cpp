@@ -309,7 +309,7 @@ int UpdateActors(float deltaTime, bool * showLog)
         {
             ActorContainer* actor = *it;
 
-            if ( abs(actor->pos.x > 100000000) || abs(actor->pos.y > 100000000) ) {
+            if ( abs(actor->pos.x) > 100000000 || abs(actor->pos.y) > 100000000 ) {
                 actor->pos = ImGui::GetMousePos();
             }
 

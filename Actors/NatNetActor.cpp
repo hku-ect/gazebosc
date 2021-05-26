@@ -112,6 +112,19 @@ zmsg_t * NatNet::handleStop( sphactor_event_t * ev )
     return NULL;
 }
 
+zmsg_t * NatNet::handleTimer( sphactor_event_t * ev )
+{
+    zmsg_destroy(&ev->msg);
+
+    if ( lastData != nullptr ) {
+        zmsg_t * returnMsg = lastData;
+        lastData = nullptr;
+        return returnMsg;
+    }
+
+    return nullptr;
+}
+
 zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
 {
     //pop msg for command
@@ -246,9 +259,14 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
 
                                 sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
 
-                                zmsg_addmem(zmsg, (byte*)packet, len);
+                                if ( lastData != nullptr ) {
+                                    zmsg_destroy(&lastData);
+                                }
+                                lastData = zmsg_new();
+                                zmsg_addmem(lastData, (byte*)packet, len);
+
                                 zframe_destroy(&zframe);
-                                return zmsg;
+                                return nullptr;
                             }
                         }
                         else {
@@ -318,8 +336,14 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
 
                             sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
 
-                            zmsg_addmem(zmsg, data, len);
-                            return zmsg;
+                            if ( lastData != nullptr ) {
+                                zmsg_destroy(&lastData);
+                            }
+                            lastData = zmsg_new();
+                            zmsg_addmem(lastData, data, len);
+
+                            zframe_destroy(&zframe);
+                            return nullptr;
                         }
                     }
                     // nothing valid or not sent on, so clean up

@@ -17,6 +17,8 @@ public:
     zsock_t* CommandSocket = NULL;
     int cmdFD = -1;
 
+    zmsg_t * lastData = nullptr;
+
     // Actor Settings
     // ServerAddress
     std::string host = "";
@@ -54,7 +56,7 @@ public:
     static std::vector<MarkerSetDescription> markerset_descs;
 
     zmsg_t* handleInit(sphactor_event_t *ev);
-    //zmsg_t* handleTimer(sphactor_event_t *ev);
+    zmsg_t* handleTimer(sphactor_event_t *ev);
     zmsg_t* handleAPI(sphactor_event_t *ev);
     //zmsg_t* handleSocket(sphactor_event_t *ev)
     zmsg_t* handleCustomSocket(sphactor_event_t *ev);
