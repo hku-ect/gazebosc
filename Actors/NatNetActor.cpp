@@ -690,7 +690,7 @@ void NatNet::Unpack( char ** pData ) {
             {
                 // ID
                 int ID = 0; memcpy(&ID, ptr, 4); ptr += 4;
-                printf("Device : %d\n", ID);
+                //printf("Device : %d\n", ID);
 
                 // Channel Count
                 int nChannels = 0; memcpy(&nChannels, ptr, 4); ptr += 4;
@@ -698,14 +698,14 @@ void NatNet::Unpack( char ** pData ) {
                 // Channel Data
                 for (int i = 0; i < nChannels; i++)
                 {
-                    printf(" Channel %d : ", i);
+                    //printf(" Channel %d : ", i);
                     int nFrames = 0; memcpy(&nFrames, ptr, 4); ptr += 4;
                     for (int j = 0; j < nFrames; j++)
                     {
                         float val = 0.0f;  memcpy(&val, ptr, 4); ptr += 4;
-                        printf("%3.2f   ", val);
+                        //printf("%3.2f   ", val);
                     }
-                    printf("\n");
+                    //printf("\n");
                 }
             }
         }
@@ -743,15 +743,15 @@ void NatNet::Unpack( char ** pData ) {
         {
             uint64_t cameraMidExposureTimestamp = 0;
             memcpy(&cameraMidExposureTimestamp, ptr, 8); ptr += 8;
-            printf("Mid-exposure timestamp : %" PRIu64"\n", cameraMidExposureTimestamp);
+            //printf("Mid-exposure timestamp : %" PRIu64"\n", cameraMidExposureTimestamp);
 
             uint64_t cameraDataReceivedTimestamp = 0;
             memcpy(&cameraDataReceivedTimestamp, ptr, 8); ptr += 8;
-            printf("Camera data received timestamp : %" PRIu64"\n", cameraDataReceivedTimestamp);
+            //printf("Camera data received timestamp : %" PRIu64"\n", cameraDataReceivedTimestamp);
 
             uint64_t transmitTimestamp = 0;
             memcpy(&transmitTimestamp, ptr, 8); ptr += 8;
-            printf("Transmit timestamp : %" PRIu64"\n", transmitTimestamp);
+            //printf("Transmit timestamp : %" PRIu64"\n", transmitTimestamp);
         }
 
         // frame params
@@ -911,12 +911,12 @@ void NatNet::Unpack( char ** pData ) {
                         float* markerPosition = markerPositions + markerIdx * 3;
                         const int markerRequiredLabel = markerRequiredLabels[markerIdx];
 
-                        printf("\tMarker #%d:\n", markerIdx);
-                        printf("\t\tPosition: %.2f, %.2f, %.2f\n", markerPosition[0], markerPosition[1], markerPosition[2]);
+                        //printf("\tMarker #%d:\n", markerIdx);
+                        //printf("\t\tPosition: %.2f, %.2f, %.2f\n", markerPosition[0], markerPosition[1], markerPosition[2]);
 
                         if (markerRequiredLabel != 0)
                         {
-                            printf("\t\tRequired active label: %d\n", markerRequiredLabel);
+                            //printf("\t\tRequired active label: %d\n", markerRequiredLabel);
                         }
                     }
 
