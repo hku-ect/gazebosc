@@ -194,10 +194,9 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
     if (zframe_size(frame) == sizeof( void *) )
     {
         void *p = *(void **)zframe_data(frame);
-        zsock_t* sock = (zsock_t*) zsock_resolve( p );
-        if ( sock )
+        if ( zsock_is( p ) )
         {
-            SOCKET sockFD = zsock_fd(sock);
+            SOCKET sockFD = zsock_fd((zsock_t*)p);
 
             if ( sockFD == cmdFD ) {
                 // zsys_info("CMD SOCKET");
@@ -356,7 +355,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
         }
     }
     else
-        zsys_error("args is not a zsock instance");
+        zsys_error("received pointer is not a zsock instance (%s:%d)", __FILE__, __LINE__);
 
     zframe_destroy(&frame);
 

@@ -69,23 +69,25 @@ zmsg_t * OSCInput::handleAPI( sphactor_event_t *ev )
 
 zmsg_t * OSCInput::handleCustomSocket( sphactor_event_t *ev )
 {
-    char* source = zmsg_popstr(ev->msg);
-    zstr_free(&source);
+    assert(ev->msg);
+    zmsg_t *retmsg = NULL;
+    zframe_t *frame = zmsg_pop(ev->msg);
+    if (zframe_size(frame) == sizeof( void *) )
+    {
+        void *p = *(void **)zframe_data(frame);
+        if ( zsock_is( p ) && p == this->dgramr )
+        {
+            // get our message
+            retmsg = zmsg_recv(this->dgramr);
+            // first message is the source address, pop it
+            char *senderaddr = zmsg_popstr(retmsg);
+            zstr_free(&senderaddr);
+            // set timestamp of last received packet in report
+            zosc_t* msg = zosc_create("/report", "sh",
+                "lastActive", (int64_t)clock());
 
-    zframe_t * oscFrame = zmsg_pop(ev->msg);
-    assert(oscFrame);
-
-    //repackage and return as new message
-    zmsg_t* oscMsg = zmsg_new();
-    zmsg_add(oscMsg, oscFrame);
-
-    zmsg_destroy(&ev->msg);
-
-    // set timestamp of last received packet in report
-    zosc_t* msg = zosc_create("/report", "sh",
-        "lastActive", (int64_t)clock());
-
-    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
-
-    return oscMsg;
+            sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+        }
+    }
+    return retmsg;
 }
