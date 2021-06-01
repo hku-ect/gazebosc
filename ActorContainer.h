@@ -597,9 +597,9 @@ struct ActorContainer {
                             zconfig_set_value(value, "%s", valueStr);
 
                             HandleAPICalls(data);
+                            it++;
                         }
                         data = zconfig_next(data);
-                        it++;
                     }
                 }
             }
