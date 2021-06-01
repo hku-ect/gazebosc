@@ -292,7 +292,11 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
         char *astart = (char *)zframe_data(f);
         start_pos = atoi(astart);
         assert(start_pos < 129);
-        if (modctx.mod_loaded)
+        if (start_pos <= end_pos )
+        {
+            zsys_error("End position %i is before start position %i", end_pos, start_pos);
+        }
+        else if (modctx.mod_loaded )
         {
             memset(modctx.song.patterntable, 0, 128);
             memcpy(modctx.song.patterntable, orig_patterntable+start_pos,end_pos-start_pos+1);
