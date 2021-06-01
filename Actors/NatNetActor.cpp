@@ -355,7 +355,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
         }
     }
     else
-        zsys_error("args is not a zsock instance");
+        zsys_error("received pointer is not a zsock instance (%s:%d)", __FILE__, __LINE__);
 
     zframe_destroy(&frame);
 
