@@ -106,9 +106,13 @@ int python_init()
         if (s) *s = 0;
         swprintf(pypath, PATH_MAX, L"%ls\\python", path);
 #else   // linux, we could check for __UTYPE_LINUX
-        size_t pathsize;
+        size_t pathsize = PATH_MAX;
         char path[PATH_MAX];
         long result = readlink("/proc/self/exe", path, pathsize);
+        if (result == -1)
+        {
+            fprintf(stderr, "Error occurred calling readlink: %s\n", strerror(errno));
+        }
         assert(result > -1);
         if (result > 0)
         {
