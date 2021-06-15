@@ -1,4 +1,4 @@
-#include "ModPlayerActor.h"
+﻿#include "ModPlayerActor.h"
 static SDL_AudioSpec fmt;
 
 // callback audio
@@ -182,6 +182,7 @@ ModPlayerActor::getPatternEventMsg()
     zmsg_t *ret = zmsg_new();
     zframe_t *data = zosc_packx(&oscm);
     zmsg_append(ret, &data);
+    prev_row = state->cur_pattern_pos;
     return ret;
 }
 
