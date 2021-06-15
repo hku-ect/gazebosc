@@ -363,6 +363,7 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
         sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
         // determine next timeout based on speed and bpm of the song! 2500ms/bpm*speed
         sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
+        // we save messages in a circular buffer to provide row delaying
         delayed_msgs[delayed_msgs_idx] = getPatternEventMsg();
         int sendidx = MOD(delayed_msgs_idx - rowdelay, rowdelay+1);
         zmsg_t *ret = delayed_msgs[sendidx];
