@@ -1,4 +1,4 @@
-#include "ModPlayerActor.h"
+﻿#include "ModPlayerActor.h"
 static SDL_AudioSpec fmt;
 
 // callback audio
@@ -132,9 +132,12 @@ zmsg_t *
 ModPlayerActor::getPatternEventMsg()
 {
     tracker_state *state = this->trackbuf_state1.track_state_buf;
-    // handle row delay
-    int prevpos = MOD(state->cur_pattern_pos - rowdelay, 64);
-    note *cur_note = modctx.patterndata[state->cur_pattern] + (prevpos * 4);
+    if (state->cur_pattern_pos == prev_row )
+        return NULL;
+
+    if (state->cur_pattern_pos - prev_row > 1 ) zsys_warning("OMG we're skipping rows %i to %i", prev_row, state->cur_pattern_pos);
+
+    note *cur_note = modctx.patterndata[state->cur_pattern] + (state->cur_pattern_pos * 4);
 
     // acquire values, see http://www.aes.id.au/modformat.html for details
     muint sample = (cur_note->sampperiod & 0xF0) | (cur_note->sampeffect >> 4);
@@ -179,6 +182,7 @@ ModPlayerActor::getPatternEventMsg()
     zmsg_t *ret = zmsg_new();
     zframe_t *data = zosc_packx(&oscm);
     zmsg_append(ret, &data);
+    prev_row = state->cur_pattern_pos;
     return ret;
 }
 
@@ -224,7 +228,7 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
             fseek(f,0,SEEK_SET);
             this->modfile = (unsigned char *)malloc(filesize);
             fread(this->modfile,filesize,1,f);
-            hxcmod_setcfg(&this->modctx, SAMPLERATE, 0, 0);
+            hxcmod_setcfg(&this->modctx, SAMPLERATE, 1, 1);
             hxcmod_load(&this->modctx,(void*)this->modfile,filesize);
             fclose(f);
 
@@ -360,7 +364,13 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
         sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
         // determine next timeout based on speed and bpm of the song! 2500ms/bpm*speed
         sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
-        return getPatternEventMsg();
+        // we save messages in a circular buffer to provide row delaying
+        delayed_msgs[delayed_msgs_idx] = getPatternEventMsg();
+        int sendidx = MOD(delayed_msgs_idx - rowdelay, rowdelay+1);
+        zmsg_t *ret = delayed_msgs[sendidx];
+        delayed_msgs[sendidx] = NULL;
+        delayed_msgs_idx = sendidx;
+        return ret;
     }
     if ( event->msg ) zmsg_destroy(&event->msg);
     return nullptr;

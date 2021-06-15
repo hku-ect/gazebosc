@@ -37,6 +37,9 @@ struct ModPlayerActor : Sphactor
     int start_pos;
     int end_pos;
     int rowdelay;
+    int prev_row = 0;
+    zmsg_t *delayed_msgs[64] = { NULL };
+    int delayed_msgs_idx = 0;
     unsigned char * modfile;
     tracker_buffer_state trackbuf_state1;
     SDL_AudioDeviceID audiodev = -1;
