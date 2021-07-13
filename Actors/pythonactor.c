@@ -51,6 +51,8 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
     assert( PyList_Check(pData) );
     PyObject *stringbytes = PyUnicode_AsASCIIString(pAddress);
     zosc_t *ret = zosc_new( PyBytes_AsString( stringbytes) );
+    Py_DECREF(stringbytes);
+
     // iterate
     for ( Py_ssize_t i=0;i<PyList_Size(pData);++i )
     {
@@ -62,6 +64,11 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             long v = PyLong_AsLong(item);
             zosc_append(ret, "h", v);
         }
+        else if (PyFloat_Check(item))
+        {
+            double v = PyFloat_AsDouble(item);
+            zosc_append(ret, "d", v);
+        }
         else if (PyUnicode_Check(item))
         {
             PyObject* ascii = PyUnicode_AsASCIIString(item);
@@ -70,9 +77,34 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             zosc_append(ret, "s", s);
             Py_DECREF(ascii);
         }
-        else
-            zsys_warning("unsupported python type");
+        else if (PyBytes_Check(item))
+        {
+            Py_ssize_t bytesize = PyBytes_Size(item);
+            if ( bytesize == 4 ) // 32bit int
+            {
+                char * buffer = PyBytes_AsString(item);
+                uint32_t* vp = (uint32_t *)(buffer);
+                zosc_append(ret, "i", *vp);
+            }
+        }
+        else {
+            // not a supported native python type try ctypes
+            PyTypeObject* type = Py_TYPE(item);
+            const char * typename = _PyType_Name(type);
+            if (streq(typename, "c_int"))
+            {
+                zsys_warning("Unsupported ctypes.c_int until we find a way to access the value :S");
+            }
+            else
+                zsys_warning("unsupported python type");
+
+            Py_DECREF(type);
+        }
+
     }
+
+    Py_DECREF(pAddress);
+    Py_DECREF(pData);
     return ret;
 }
 
