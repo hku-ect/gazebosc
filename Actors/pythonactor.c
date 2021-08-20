@@ -245,6 +245,12 @@ pythonactor_destroy(pythonactor_t **self_p)
         pythonactor_t *self = *self_p;
         if (self->main_filename )
             zstr_free(&self->main_filename);
+        // free the pyinstance
+        PyGILState_STATE gstate;
+        gstate = PyGILState_Ensure();
+        Py_XDECREF(self->pyinstance);
+        PyGILState_Release(gstate);
+
         //  Free object itself
         free (self);
         *self_p = NULL;
@@ -311,6 +317,7 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
                 if ( PyErr_Occurred() )
                     PyErr_Print();
                 zsys_error("error importing %s", filename);
+                Py_DECREF(pName);
                 PyGILState_Release(gstate);
                 zstr_free(&pyname);
                 zstr_free(&filebasename);
@@ -324,6 +331,8 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
                 if (PyErr_Occurred())
                     PyErr_Print();
                 zsys_error("pClass is NULL");
+                Py_DECREF(pModule);
+                Py_DECREF(pName);
                 PyGILState_Release(gstate);
                 zstr_free(&pyname);
                 zstr_free(&filebasename);
@@ -337,6 +346,9 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
                 if (PyErr_Occurred())
                     PyErr_Print();
                 zsys_error("pClassInstance is NULL");
+                Py_DECREF(pClass);
+                Py_DECREF(pModule);
+                Py_DECREF(pName);
                 PyGILState_Release(gstate);
                 zstr_free(&pyname);
                 zstr_free(&filebasename);
@@ -347,6 +359,9 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
             //  thus we need to release the GIL
             // Release the GIL again as we are ready with Python
             zsys_info("Successfully loaded %s", filename);
+            Py_DECREF(pClass);
+            Py_DECREF(pModule);
+            Py_DECREF(pName);
             PyGILState_Release(gstate);
             zstr_free(&pyname);
             zstr_free(&filebasename);
@@ -507,6 +522,7 @@ pythonactor_stop(pythonactor_t *self, sphactor_event_t *ev)
             zsys_error("pythonactor: error calling handleStop method");
         }
         Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
+        PyGILState_Release(gstate);
     }
     return NULL;
 }
