@@ -58,8 +58,16 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
     {
         PyObject *item = PyList_GetItem(pData, i);
         assert(item);
-        // determine type
-        if ( PyLong_Check(item) )
+        // determine type, first check if boolean otherwise it will be an int
+        if (PyBool_Check(item))
+        {
+            long b = PyLong_AsLong(item);
+            if (b)
+                zosc_append(ret, "T");
+            else
+                zosc_append(ret, "F");
+        }
+        else if ( PyLong_Check(item) )
         {
             long v = PyLong_AsLong(item);
             zosc_append(ret, "h", v);
@@ -77,7 +85,7 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             zosc_append(ret, "s", s);
             Py_DECREF(ascii);
         }
-        else if (PyBytes_Check(item))
+        else if (PyBytes_Check(item)) // this can be used to force 32bit int, ie: struct.pack("I", 32)
         {
             Py_ssize_t bytesize = PyBytes_Size(item);
             if ( bytesize == 4 ) // 32bit int
@@ -86,6 +94,8 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
                 uint32_t* vp = (uint32_t *)(buffer);
                 zosc_append(ret, "i", *vp);
             }
+            else
+                zsys_warning("I don't know what to do with these bytes, please help: https://github.com/hku-ect/gazebosc");
         }
         else {
             // not a supported native python type try ctypes

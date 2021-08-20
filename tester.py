@@ -13,7 +13,7 @@ class tester(object):
         #msg.add_arg("hello from python")
         #osc = msg.build()
         # does not work: return ("/testpython", [0,2,3,4.14,"blaa", ctypes.c_int32(32)]) #osc.dgram
-        return ("/testpython", [0,2,3,4.14,"blaa", struct.pack("I", 32)]) #osc.dgram
+        return ("/testpython", [0,2,3,4.14, False, "blaa", struct.pack("I", 32)]) #osc.dgram
 
     def handleStop(self, *args):
         print("Stopping actor")
