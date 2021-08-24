@@ -26,7 +26,6 @@ PyZmsg_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self = (PyZmsgObject *) type->tp_alloc(type, 0);
     if (self != NULL) {
         self->msg = zmsg_new();
-        zsys_info("init zmsg");
         if (self->msg == NULL) {
             Py_DECREF(self);
             return NULL;
@@ -69,11 +68,15 @@ static PyObject *
 PyZmsg_popstr(PyZmsgObject *self, PyObject *Py_UNUSED(ignored) )
 {
     char* msg = zmsg_popstr(self->msg);
-    // todo: do we need to cleanup?
-    if ( msg ) return PyUnicode_FromString(msg);
+    if ( msg ) {
+        PyObject *ret = PyUnicode_FromString(msg);
+        zstr_free(&msg);
+        return ret;
+    }
     //PyErr_SetString(PyExc_TypeError,
     //                        "No more strings in zmsg");
 
+    zstr_free(&msg);
     Py_INCREF(Py_None);
     return Py_None;
 }

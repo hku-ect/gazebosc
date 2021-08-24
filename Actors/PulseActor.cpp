@@ -43,6 +43,7 @@ zmsg_t * Pulse::handleTimer( sphactor_event_t *ev ) {
     // clean up
     zframe_destroy(&frame);
     zmsg_destroy(&ev->msg);
+    zosc_destroy(&osc);
 
     // publish new msg
     return msg;
