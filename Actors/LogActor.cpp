@@ -25,7 +25,7 @@ zmsg_t * LogActor( sphactor_event_t *ev, void* args ) {
                 msgBuffer = zframe_data(frame);
                 size_t len = zframe_size(frame);
 
-                const char* msg;
+                char* msg;
                 zosc_t * oscMsg = zosc_frommem( (char*)msgBuffer, len);
                 if ( oscMsg ) {
                     const char* address = zosc_address(oscMsg);
@@ -84,8 +84,9 @@ zmsg_t * LogActor( sphactor_event_t *ev, void* args ) {
                 }
 
                 zosc_retr( oscMsg, "s", &msg );
-
                 zsys_info("%s: %s", msgBuffer, msg);
+                zstr_free(&msg);
+                //zosc_destroy(&oscMsg); // TODO: leaks we need to fix zosc_frommem
             }
         } while (frame != NULL );
 
