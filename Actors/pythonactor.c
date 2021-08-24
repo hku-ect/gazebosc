@@ -248,7 +248,8 @@ pythonactor_destroy(pythonactor_t **self_p)
         // free the pyinstance
         PyGILState_STATE gstate;
         gstate = PyGILState_Ensure();
-        Py_XDECREF(self->pyinstance);
+        Py_CLEAR(self->pyinstance);
+        Py_CLEAR(self->pymodule);
         PyGILState_Release(gstate);
 
         //  Free object itself
@@ -283,21 +284,43 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
         // dispose the event msg we don't use it further
         zmsg_destroy(&ev->msg);
 
-        if ( strlen(filename) )
+        // check the filename
+        if ( strlen(filename) < 1)
         {
-            if(self->main_filename)
-                zstr_free(&self->main_filename);
-            self->main_filename = filename;
+            zsys_error("Empty filename received", filename);
+            zstr_free(&filename);
+            zstr_free(&cmd);
+            return NULL;
+        }
+        char *filebasename = s_basename(filename);
+        char *pyname = s_remove_ext(filebasename);
 
-            char *filebasename = s_basename(filename);
-            char *pyname = s_remove_ext(filebasename);
-
-            //  Acquire the GIL
-            PyGILState_STATE gstate;
-            gstate = PyGILState_Ensure();
-
+        // Load or reload the module
+        // first check if we need to reload
+        //  Acquire the GIL
+        PyGILState_STATE gstate;
+        gstate = PyGILState_Ensure();
+        if (self->pymodule && self->main_filename && streq(filename, self->main_filename) )
+        {
+            PyObject *pyreloaded = PyImport_ReloadModule(self->pymodule);
+            if (pyreloaded == NULL)
+            {
+                if ( PyErr_Occurred() )
+                    PyErr_Print();
+                zsys_error("Error reloading module %s", filename);
+                PyGILState_Release(gstate);
+                zstr_free(&pyname);
+                zstr_free(&filebasename);
+                zstr_free(&cmd);
+                return NULL;
+            }
+            Py_CLEAR(self->pymodule);
+            self->pymodule = pyreloaded;
+        }
+        else // load python file (module) normally
+        {
             //  import our python file
-            PyObject *pClass, *pModule, *pName;
+            PyObject *pName;
             pName = PyUnicode_DecodeFSDefault( pyname );
             if ( pName == NULL )
             {
@@ -307,12 +330,14 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
                 PyGILState_Release(gstate);
                 zstr_free(&pyname);
                 zstr_free(&filebasename);
+                zstr_free(&cmd);
                 return NULL;
             }
 
             //  we loaded the file now import it
-            pModule = PyImport_Import( pName );
-            if ( pModule == NULL )
+            Py_CLEAR(self->pymodule);
+            self->pymodule = PyImport_Import( pName );
+            if ( self->pymodule == NULL )
             {
                 if ( PyErr_Occurred() )
                     PyErr_Print();
@@ -321,56 +346,72 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
                 PyGILState_Release(gstate);
                 zstr_free(&pyname);
                 zstr_free(&filebasename);
+                zstr_free(&cmd);
                 return NULL;
             }
-
-            //  get the class with the same name as the filename
-            pClass = PyObject_GetAttrString(pModule, pyname );
-            if (pClass == NULL )
-            {
-                if (PyErr_Occurred())
-                    PyErr_Print();
-                zsys_error("pClass is NULL");
-                Py_DECREF(pModule);
-                Py_DECREF(pName);
-                PyGILState_Release(gstate);
-                zstr_free(&pyname);
-                zstr_free(&filebasename);
-                return NULL;
-            }
-
-            // create an instance of the class
-            self->pyinstance = PyObject_CallObject((PyObject *) pClass, NULL);
-            if (self->pyinstance == NULL )
-            {
-                if (PyErr_Occurred())
-                    PyErr_Print();
-                zsys_error("pClassInstance is NULL");
-                Py_DECREF(pClass);
-                Py_DECREF(pModule);
-                Py_DECREF(pName);
-                PyGILState_Release(gstate);
-                zstr_free(&pyname);
-                zstr_free(&filebasename);
-                return NULL;
-            }
-
-            //  this is our last Python API call before threads jump in,
-            //  thus we need to release the GIL
-            // Release the GIL again as we are ready with Python
-            zsys_info("Successfully loaded %s", filename);
-            Py_DECREF(pClass);
-            Py_DECREF(pModule);
             Py_DECREF(pName);
+            // to be sure we have the updated code we also reload the module (workaround for loading updated file in new actor)
+            PyObject *pyreloaded = PyImport_ReloadModule(self->pymodule);
+            if (pyreloaded == NULL)
+            {
+                if ( PyErr_Occurred() )
+                    PyErr_Print();
+                zsys_error("Error reloading module on fresh load %s", filename);
+                PyGILState_Release(gstate);
+                zstr_free(&pyname);
+                zstr_free(&filebasename);
+                zstr_free(&cmd);
+                return NULL;
+            }
+            Py_CLEAR(self->pymodule);
+            self->pymodule = pyreloaded;
+        }
+        // load the class
+        //  get the class with the same name as the filename
+        PyObject *pClass = PyObject_GetAttrString(self->pymodule, pyname );
+        if (pClass == NULL )
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            zsys_error("pClass is NULL");
+            Py_CLEAR(self->pymodule);
             PyGILState_Release(gstate);
             zstr_free(&pyname);
             zstr_free(&filebasename);
+            zstr_free(&cmd);
             return NULL;
         }
-        zstr_free(&filename);
+
+        // instanciate the class and optionally destroy the old instance
+        // create an instance of the class
+        Py_CLEAR(self->pyinstance);
+        self->pyinstance = PyObject_CallObject((PyObject *) pClass, NULL);
+        if (self->pyinstance == NULL )
+        {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            zsys_error("pClass instance is NULL");
+            Py_DECREF(pClass);
+            Py_DECREF(self->pymodule);
+            self->pymodule = NULL;
+            PyGILState_Release(gstate);
+            zstr_free(&pyname);
+            zstr_free(&filebasename);
+            zstr_free(&cmd);
+            return NULL;
+        }
+        zsys_info("Successfully loaded %s", filename);
+        Py_DECREF(pClass);
+        PyGILState_Release(gstate);
+        zstr_free(&pyname);
+        zstr_free(&filebasename);
+        self->main_filename = filename;
+        zstr_free(&cmd);
+        return NULL;
     }
 
     if ( ev->msg ) zmsg_destroy(&ev->msg);
+    zstr_free(&cmd);
     return NULL;
 }
 
@@ -399,11 +440,10 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
     // call member 'handleMsg' with event arguments
     PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "Osss", evmsg, ev->type, ev->name, ev->uuid);
     Py_XINCREF(pReturn);  // increase refcount to prevent destroy
-    if (!pReturn)
+    if (pReturn == NULL)
     {
         PyErr_Print();
-        Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
-        zsys_error("pythonactor: error calling handleMsg");
+        zsys_error("pythonactor: error calling handleSocket");
     }
     else if (pReturn != Py_None)
     {
@@ -430,7 +470,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
             {
                 zsys_warning("PyBytes has zero size");
             }
-            Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
+            Py_DECREF(pReturn);  // decrease refcount to trigger destroy
             // Release the GIL again as we are ready with Python
             PyGILState_Release(gstate);
             // already destroyed: zmsg_destroy(&ev->msg);
@@ -464,7 +504,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
                     zmsg_append(ret, &data);
                 }
             }
-            Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
+            Py_DECREF(pReturn);  // decrease refcount to trigger destroy
             // Release the GIL again as we are ready with Python
             PyGILState_Release(gstate);
             // already destroyed: zmsg_destroy(&ev->msg);
@@ -485,15 +525,15 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
                 //  the python object. However how do we then prevent destruction
                 //  by the garbage controller. For now just duplicate.
                 zmsg_t *ret = zmsg_dup( c->msg );
-                Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
+                Py_DECREF(pReturn);  // decrease refcount to trigger destroy
                 // Release the GIL again as we are ready with Python
                 PyGILState_Release(gstate);
                 zmsg_destroy(&ev->msg);
                 return ret;
             }
         }
-        Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
     }
+    Py_DECREF(pReturn);  // decrease refcount to trigger destroy
     // Release the GIL again as we are ready with Python
     PyGILState_Release(gstate); // TODO: didn't we already do this?
 
