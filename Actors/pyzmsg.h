@@ -26,7 +26,6 @@ PyZmsg_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self = (PyZmsgObject *) type->tp_alloc(type, 0);
     if (self != NULL) {
         self->msg = zmsg_new();
-        zsys_info("init zmsg");
         if (self->msg == NULL) {
             Py_DECREF(self);
             return NULL;
