@@ -73,16 +73,18 @@ void UpdateRegisteredActorsCache() {
 }
 
 void RegisterActors() {
+    // register stock actors
+    sphactor_register( "Log", &sph_stock_log_actor, NULL, NULL );
+    sphactor_register( "Count", &sph_stock_count_actor, NULL, NULL );
+    sphactor_register( "Pulse", &sph_stock_pulse_actor, NULL, NULL );
+
     sphactor_register<Client>( "OSC Output" );
-    sphactor_register<Count>( "Count" );
-    sphactor_register( "Log", &LogActor, NULL, NULL );
     sphactor_register<NatNet>( "NatNet" );
     sphactor_register<NatNet2OSC>( "NatNet2OSC" );
 #ifdef HAVE_OPENVR
     sphactor_register<OpenVR>("OpenVR");
 #endif
     sphactor_register<OSCInput>( "OSC Input" );
-    sphactor_register<Pulse>( "Pulse" );
     sphactor_register<ModPlayerActor>( "ModPlayer" );
 #ifdef PYTHON3_FOUND
     int rc = python_init();
