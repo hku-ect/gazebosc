@@ -995,7 +995,7 @@ void NatNet::SetReport(const sphactor_actor_t* actor)
         zosc_append(msg, "ss", (std::to_string(i)).c_str(), (ifNames[i] + " ("+ifAddresses[i]+")").c_str());
     }
     // Initialize report timestamp
-    zosc_append(msg, "sh", "lastActive", (int64_t)0);
+    zosc_append(msg, "sh", "lastActive", (int64_t)clock());
 
     sphactor_actor_set_custom_report_data((sphactor_actor_t *)actor, msg);
 }
