@@ -224,7 +224,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                             //zsys_info("rigidbodies after handled frame: %i, %i", rigidbodies.size(), rigidbody_descs.size());
 
                             // if there is a difference do natnet.questDescription(); to get up to date rigidbody descriptions and thus names
-                            if (rigidbody_descs.size() != rigidbodies.size())
+                            if (rigidbody_descs.size() != rigidbodies.size() || !rigidbodiesReady)
                             {
                                 if (sentRequest <= 0) {
                                     sendRequestDescription();
@@ -234,7 +234,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                             }
 
                             //get & check skeletons size
-                            if (skeleton_descs.size() != skeletons.size())
+                            if (rigidbody_descs.size() != rigidbodies.size() || !rigidbodiesReady)
                             {
                                 if (sentRequest <= 0) {
                                     sendRequestDescription();
