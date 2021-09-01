@@ -82,15 +82,7 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     assert(rc == 0);
 
     //build report
-    zosc_t * msg = zosc_create("/report", "si", "Network Interfaces", ifNames.size());
-    for( int i = 0; i < ifNames.size(); ++i ) {
-        zosc_append(msg, "ss", (std::to_string(i)).c_str(), (ifNames[i] + " ("+ifAddresses[i]+")").c_str());
-    }
-
-    // Initialize report timestamp
-    zosc_append(msg, "sh", "lastActive", (int64_t)0);
-
-    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+    SetReport(ev->actor);
 
     return NULL;
 }
@@ -248,11 +240,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                             // re-append the zframe that was popped
                             // only send if definitions are updated
                             if ( skeletonsReady && rigidbodiesReady ) {
-                                // set timestamp of last sent packet in report
-                                zosc_t* msg = zosc_create("/report", "sh",
-                                    "lastActive", (int64_t)clock());
-
-                                sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+                                SetReport(ev->actor);
 
                                 if ( lastData != nullptr ) {
                                     zmsg_destroy(&lastData);
@@ -325,11 +313,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                         // re-append the zframe that was popped
                         // only send if definitions are updated
                         if ( skeletonsReady && rigidbodiesReady ) {
-                            // set timestamp of last received packet in report
-                            zosc_t* msg = zosc_create("/report", "sh",
-                                "lastActive", (int64_t)clock());
-
-                            sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+                            SetReport(ev->actor);
 
                             if ( lastData != nullptr ) {
                                 zmsg_destroy(&lastData);
@@ -1001,4 +985,17 @@ void NatNet::HandleCommand( sPacket *PacketIn ) {
             zsys_info("[Client] Received message: %s\n", PacketIn->Data.szData);
             break;
     }
+}
+
+void NatNet::SetReport(const sphactor_actor_t* actor)
+{
+    //build report
+    zosc_t * msg = zosc_create("/report", "si", "Network Interfaces", ifNames.size());
+    for( int i = 0; i < ifNames.size(); ++i ) {
+        zosc_append(msg, "ss", (std::to_string(i)).c_str(), (ifNames[i] + " ("+ifAddresses[i]+")").c_str());
+    }
+    // Initialize report timestamp
+    zosc_append(msg, "sh", "lastActive", (int64_t)0);
+
+    sphactor_actor_set_custom_report_data((sphactor_actor_t *)actor, msg);
 }

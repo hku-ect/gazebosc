@@ -69,6 +69,8 @@ public:
     char* unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers);
     void sendRequestDescription();
 
+    void SetReport(const sphactor_actor_t* actor);
+
     //TODO: necessary?
     bool IPAddress_StringToAddr(char *szNameOrAddress, struct in_addr *Address);
     int GetLocalIPAddresses(unsigned long Addresses[], int nMax);
