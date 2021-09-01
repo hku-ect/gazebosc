@@ -11,11 +11,9 @@ class NatNet : public Sphactor {
 public:
     // DataSocket;
     zsock_t* DataSocket = NULL;
-    int dataFD = -1;
 
     // CommandSocket;
     zsock_t* CommandSocket = NULL;
-    int cmdFD = -1;
 
     zmsg_t * lastData = nullptr;
 
@@ -70,6 +68,8 @@ public:
     char* unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies);
     char* unpackMarkerSet(char* ptr, std::vector<Marker>& ref_markers);
     void sendRequestDescription();
+
+    void SetReport(const sphactor_actor_t* actor);
 
     //TODO: necessary?
     bool IPAddress_StringToAddr(char *szNameOrAddress, struct in_addr *Address);

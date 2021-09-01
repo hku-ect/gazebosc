@@ -39,7 +39,7 @@ const char * natnetCapabilities =
 
 zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
 {
-    //TODO: parse network interfaces for selection
+    // generate a list of availbale interfaces
     ziflist_t * ifList = ziflist_new();
     const char* cur = ziflist_first(ifList);
     while( cur != nullptr ) {
@@ -50,6 +50,7 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     }
     ziflist_destroy(&ifList);
 
+    // load capabilities and set maximum index number to amount of available interfaces
     zconfig_t * capConfig = zconfig_str_load(natnetCapabilities);
     zconfig_t *current = zconfig_locate(capConfig, "capabilities");
     current = zconfig_locate(current, "data");
@@ -57,39 +58,31 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     current = zconfig_locate(current, "max");
     zconfig_set_value(current, "%i", (int)(ifNames.size()-1));
 
-    //init capabilities
+    // init capabilities
     sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, capConfig);
 
+    // initially we use the first interface
     activeInterface = ifNames[0];
 
-    // Receive socket on port DATA_PORT
+    // Setup the receive socket on port DATA_PORT
     std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
     DataSocket = zsock_new(ZMQ_DGRAM);
-    //zsock_connect(DataSocket, "%s", url.c_str());
-    zsock_bind(DataSocket, "%s", url.c_str());
     assert( DataSocket );
-    dataFD = zsock_fd(DataSocket);
-    int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
+    //zsock_connect(DataSocket, "%s", url.c_str());
+    int rc = zsock_bind(DataSocket, "%s", url.c_str());
+    assert( rc != -1 );
+    rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
     assert(rc == 0);
 
     // receive socket on CMD_PORT
     url = "udp://*:"+ PORT_COMMAND_STR;
     CommandSocket = zsock_new_dgram(url.c_str());
     assert( CommandSocket );
-    cmdFD = zsock_fd(CommandSocket);
     rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
     assert(rc == 0);
 
     //build report
-    zosc_t * msg = zosc_create("/report", "si", "Network Interfaces", ifNames.size());
-    for( int i = 0; i < ifNames.size(); ++i ) {
-        zosc_append(msg, "ss", (std::to_string(i)).c_str(), (ifNames[i] + " ("+ifAddresses[i]+")").c_str());
-    }
-
-    // Initialize report timestamp
-    zosc_append(msg, "sh", "lastActive", (int64_t)0);
-
-    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+    SetReport(ev->actor);
 
     return NULL;
 }
@@ -100,13 +93,11 @@ zmsg_t * NatNet::handleStop( sphactor_event_t * ev )
         sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
         zsock_destroy(&CommandSocket);
         CommandSocket = NULL;
-        cmdFD = -1;
     }
     if ( DataSocket != NULL ) {
         sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
         zsock_destroy(&DataSocket);
         DataSocket = NULL;
-        dataFD = -1;
     }
 
     return NULL;
@@ -164,8 +155,6 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             if ( DataSocket != NULL ) {
                 sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
                 zsock_destroy(&DataSocket);
-                DataSocket = NULL;
-                dataFD = -1;
             }
 
             std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
@@ -173,7 +162,6 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             //zsock_connect(DataSocket, "%s", url.c_str());
             zsock_bind(DataSocket, "%s", url.c_str());
             assert( DataSocket );
-            dataFD = zsock_fd(DataSocket);
             int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
             assert(rc == 0);
         }
@@ -196,9 +184,9 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
         void *p = *(void **)zframe_data(frame);
         if ( zsock_is( p ) )
         {
-            SOCKET sockFD = zsock_fd((zsock_t*)p);
+            zsock_t* which = (zsock_t*)p;
 
-            if ( sockFD == cmdFD ) {
+            if ( which == CommandSocket ) {
                 // zsys_info("CMD SOCKET");
                 // Parse command
                 int addr_len;
@@ -228,7 +216,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                             //zsys_info("rigidbodies after handled frame: %i, %i", rigidbodies.size(), rigidbody_descs.size());
 
                             // if there is a difference do natnet.questDescription(); to get up to date rigidbody descriptions and thus names
-                            if (rigidbody_descs.size() != rigidbodies.size())
+                            if (rigidbody_descs.size() != rigidbodies.size() || !rigidbodiesReady)
                             {
                                 if (sentRequest <= 0) {
                                     sendRequestDescription();
@@ -238,7 +226,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                             }
 
                             //get & check skeletons size
-                            if (skeleton_descs.size() != skeletons.size())
+                            if (rigidbody_descs.size() != rigidbodies.size() || !rigidbodiesReady)
                             {
                                 if (sentRequest <= 0) {
                                     sendRequestDescription();
@@ -252,11 +240,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                             // re-append the zframe that was popped
                             // only send if definitions are updated
                             if ( skeletonsReady && rigidbodiesReady ) {
-                                // set timestamp of last sent packet in report
-                                zosc_t* msg = zosc_create("/report", "sh",
-                                    "lastActive", (int64_t)clock());
-
-                                sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+                                SetReport(ev->actor);
 
                                 if ( lastData != nullptr ) {
                                     zmsg_destroy(&lastData);
@@ -276,7 +260,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                     zmsg_destroy(&zmsg);
                 }
             }
-            else if ( sockFD == dataFD ) {
+            else if ( which == DataSocket ) {
                 //zsys_info("DATA SOCKET");
                 zmsg_destroy(&ev->msg);
 
@@ -329,11 +313,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                         // re-append the zframe that was popped
                         // only send if definitions are updated
                         if ( skeletonsReady && rigidbodiesReady ) {
-                            // set timestamp of last received packet in report
-                            zosc_t* msg = zosc_create("/report", "sh",
-                                "lastActive", (int64_t)clock());
-
-                            sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+                            SetReport(ev->actor);
 
                             if ( lastData != nullptr ) {
                                 zmsg_destroy(&lastData);
@@ -1005,4 +985,17 @@ void NatNet::HandleCommand( sPacket *PacketIn ) {
             zsys_info("[Client] Received message: %s\n", PacketIn->Data.szData);
             break;
     }
+}
+
+void NatNet::SetReport(const sphactor_actor_t* actor)
+{
+    //build report
+    zosc_t * msg = zosc_create("/report", "si", "Network Interfaces", ifNames.size());
+    for( int i = 0; i < ifNames.size(); ++i ) {
+        zosc_append(msg, "ss", (std::to_string(i)).c_str(), (ifNames[i] + " ("+ifAddresses[i]+")").c_str());
+    }
+    // Initialize report timestamp
+    zosc_append(msg, "sh", "lastActive", (int64_t)clock());
+
+    sphactor_actor_set_custom_report_data((sphactor_actor_t *)actor, msg);
 }
