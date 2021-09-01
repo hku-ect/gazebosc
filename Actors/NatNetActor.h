@@ -11,11 +11,9 @@ class NatNet : public Sphactor {
 public:
     // DataSocket;
     zsock_t* DataSocket = NULL;
-    int dataFD = -1;
 
     // CommandSocket;
     zsock_t* CommandSocket = NULL;
-    int cmdFD = -1;
 
     zmsg_t * lastData = nullptr;
 
