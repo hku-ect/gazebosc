@@ -51,6 +51,8 @@ ImVector<char*> actor_types;
 std::vector<ActorContainer*> actors;
 std::map<std::string, int> max_actors_by_type;
 
+sph_stage_t *stage = NULL;
+
 // File browser instance
 imgui_addons::ImGuiFileBrowser file_dialog;
 std::string editingFile = "";
@@ -105,6 +107,9 @@ ActorContainer * CreateFromType( const char* typeStr, const char* uuidStr ) {
 
     sphactor_t *actor = sphactor_new_by_type(typeStr, uuidStr, uuid);
     sphactor_ask_set_actor_type(actor, typeStr);
+    if ( stage == nullptr )
+        stage = sph_stage_new("New Stage");
+    sph_stage_add_actor(stage, actor);
     return new ActorContainer(actor);
 }
 
@@ -307,6 +312,7 @@ int UpdateActors(float deltaTime, bool * showLog)
 
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
         ImNodes::BeginCanvas(&canvas);
+
         for (auto it = actors.begin(); it != actors.end();)
         {
             ActorContainer* actor = *it;
@@ -437,170 +443,89 @@ int UpdateActors(float deltaTime, bool * showLog)
 bool Save( const char* configFile ) {
     if ( actors.size() == 0 ) return false;
 
-    zconfig_t* config = sphactor_zconfig_new("root");
-    for (auto it = actors.begin(); it != actors.end(); it++)
-    {
-        ActorContainer* actor = *it;
-        zconfig_t* actorSection = sphactor_zconfig_append(actor->actor, config);
-
-        // Add custom actor data to section
-        actor->SerializeActorData(actorSection);
-
-        zconfig_t* connections = zconfig_locate(config, "connections");
-        if ( connections == nullptr ) {
-            connections = zconfig_new("connections", config);
-        }
-
-        for (const Connection& connection : actor->connections)
-        {
-            //only store connections once
-            if ( actor != connection.output_node ) continue;
-
-            zconfig_t* item = zconfig_new( "con", connections );
-
-            ActorContainer *out = (ActorContainer*)connection.output_node;
-            ActorContainer *in = (ActorContainer*)connection.input_node;
-
-            zconfig_set_value(item,"%s,%s,%s", sphactor_ask_endpoint(out->actor), sphactor_ask_endpoint(in->actor), connection.output_slot );
-        }
-    }
-    zconfig_save(config, configFile);
-
-    return true;
+    int rc = sph_stage_save_as( stage, configFile);
+    return rc == 0;
 }
 
 bool Load( const char* configFile ) {
-    zconfig_t* root = zconfig_load(configFile);
 
-    if ( root == nullptr ) return false;
-
-    zconfig_t* configActors = zconfig_locate(root, "actors");
 
     // Clear current stage
-    //TODO: Maybe ask if people want to save first?
     Clear();
+    if (stage == NULL )
+        stage = sph_stage_new("Untitled");
+    //TODO: Maybe ask if people want to save first?
 
-    // Get and loop all actors
-    zconfig_t* actor = zconfig_locate(configActors, "actor");
-    while( actor != nullptr )
+    int rc = sph_stage_load(stage, configFile);
+
+    // Create a container for every actor
+    const zhash_t *stage_actors = sph_stage_actors(stage);
+    sphactor_t *actor = (sphactor_t *)zhash_first( (zhash_t *)stage_actors ); //zconfig_locate(configActors, "actor");
+    while( actor != NULL )
     {
-        zconfig_t* uuid = zconfig_locate(actor, "uuid");
-        zconfig_t* type = zconfig_locate(actor, "type");
-        zconfig_t* endpoint = zconfig_locate(actor, "endpoint");
+        const char *uuidStr = zuuid_str(sphactor_ask_uuid(actor));
+        const char *typeStr = sphactor_ask_actor_type(actor);
+        const char *endpointStr = sphactor_ask_endpoint(actor);
 
-        char *uuidStr = zconfig_value(uuid);
-        char *typeStr = zconfig_value(type);
-        char *endpointStr = zconfig_value(endpoint);
-
-        // We're assuming the endpoint is the last thing added by the sphactor actor
-        //  from there we ready until we receive null and send that to the high-level actor
-        ImVector<char*> *args = new ImVector<char*>();
-        zconfig_t *arg = zconfig_next(endpoint);
-        while ( arg != nullptr ) {
-            args->push_back(zconfig_value(arg));
-            arg = zconfig_next(arg);
-        }
-
-        ActorContainer *gActor = CreateFromType(typeStr, uuidStr);
-        gActor->CreateActor();
-
-        auto it = args->begin();
-        gActor->DeserializeActorData(args, it);
+        ActorContainer *gActor = new ActorContainer( actor ); //CreateFromType(typeStr, uuidStr);
 
         actors.push_back(gActor);
-
-        actor = zconfig_next(actor);
-
-        free(uuidStr);
-        free(typeStr);
-        free(endpointStr);
-
-        args->clear();
-        delete args;
+        actor = (sphactor_t *)zhash_next((zhash_t *)stage_actors);
     }
-
-    // Get and loop all connections
-    zconfig_t* connections = zconfig_locate(root, "connections");
-    zconfig_t* con = zconfig_locate( connections, "con");
-    while( con != nullptr ) {
-        char* conVal = zconfig_value(con);
-
-        // Parse comma separated connection string to get the two endpoints
-        int i;
-        for( i = 0; conVal[i] != '\0'; ++i ) {
-            if ( conVal[i] == ',' ) break;
-        }
-
-        char* output = new char[i+1];
-        char* input = new char[strlen(conVal)-i];
-        char* type = new char[64];
-
-        char * pch;
-        pch = strtok (conVal,",");
-        sprintf(output, "%s", pch);
-        pch = strtok (NULL, ",");
-        sprintf(input, "%s", pch);
-        pch = strtok(NULL, ",");
-        sprintf(type, "%s", pch);
-
-        // Loop actors and find output actor
-        for (auto it = actors.begin(); it != actors.end();)
+    // loop actor containers to handle all connections
+    auto it = actors.begin();//(sphactor_t *)zhash_first( (zhash_t *)stage_actors ); //zconfig_locate(configActors, "actor");
+    while( it != actors.end() )
+    {
+        ActorContainer *gActor = *it;
+        // get actor's connections
+        zlist_t *conn = sphactor_connections( gActor->actor );
+        for ( char *connection = (char *)zlist_first(conn); connection != nullptr; connection = (char *)zlist_next(conn))
         {
-            ActorContainer* actor = *it;
-
-            // We're the output side, so we recreate the connection
-            if (streq(sphactor_ask_endpoint(actor->actor), output)) {
-                Connection connection;
-                ActorContainer* inputActor = Find(input);
-                assert(inputActor);
-
-                connection.output_node = actor;
-                connection.input_node = inputActor;
-                connection.input_slot = type;
-                connection.output_slot = type;
-
-                actor->connections.push_back(connection);
-                inputActor->connections.push_back(connection);
-
-                sphactor_ask_connect( inputActor->actor, sphactor_ask_endpoint(actor->actor) );
-                break;
+            // find connect actor container
+            ActorContainer *peer_actor_container = Find(connection);
+            if (peer_actor_container != nullptr)
+            {
+                Connection new_connection;
+                new_connection.input_node = gActor;
+                new_connection.input_slot = "OSC";
+                new_connection.output_node = peer_actor_container;
+                new_connection.output_slot = "OSC";
+                ((ActorContainer*) new_connection.input_node)->connections.push_back(new_connection);
+                ((ActorContainer*) new_connection.output_node)->connections.push_back(new_connection);
             }
 
-            it++;
         }
-
-        con = zconfig_next(con);
-        delete[] output;
-        delete[] input;
+        ++it;
     }
 
-    free(root);
-
-    return true;
+    return rc != -1;
 }
 
 void Clear() {
+
     //delete all connections
     for (auto it = actors.begin(); it != actors.end();)
     {
-        ActorContainer* actor = *it;
+        ActorContainer* gActor = *it;
 
-        for (auto& connection : actor->connections)
+        for (auto& connection : gActor->connections)
         {
             //delete them once
-            if (connection.output_node == actor) {
+            if (connection.output_node == gActor) {
                 ((ActorContainer*) connection.input_node)->DeleteConnection(connection);
             }
         }
-        actor->connections.clear();
+        gActor->connections.clear();
         it++;
     }
+
+    if ( stage ) sph_stage_clear( stage );
 
     //delete all actors
     for (auto it = actors.begin(); it != actors.end();)
     {
         ActorContainer* actor = *it;
-        actor->DestroyActor();
+        // sphactor is already destroyed by stage
         delete actor;
         it = actors.erase(it);
     }
