@@ -386,7 +386,7 @@ int UpdateActors(float deltaTime, bool * showLog)
                 }
                 // Delete all our connections separately
                 actor->connections.clear();
-                actor->DestroyActor();
+                sph_stage_remove_actor(stage, zuuid_str(sphactor_ask_uuid(actor->actor)));
 
                 delete actor;
                 it = actors.erase(it);
