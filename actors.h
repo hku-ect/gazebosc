@@ -7,6 +7,7 @@
 #include "Actors/OpenVRActor.h"
 #include "Actors/OSCInputActor.h"
 #include "Actors/ModPlayerActor.h"
+#include "Actors/ProcessActor.h"
 #ifdef PYTHON3_FOUND
 #include "Actors/pythonactor.h"
 #endif
