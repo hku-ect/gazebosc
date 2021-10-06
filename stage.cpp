@@ -88,6 +88,7 @@ void RegisterActors() {
 #endif
     sphactor_register<OSCInput>( "OSC Input" );
     sphactor_register<ModPlayerActor>( "ModPlayer" );
+    sphactor_register<ProcessActor>( "Process" );
 #ifdef PYTHON3_FOUND
     int rc = python_init();
     assert( rc == 0);
