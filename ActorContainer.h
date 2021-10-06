@@ -73,9 +73,49 @@ struct ActorContainer {
         this->actor = actor;
         this->title = sphactor_ask_actor_type(actor);
         this->capabilities = zconfig_dup(sphactor_ask_capability(actor));
+        this->pos.x = sphactor_position_x(actor);
+        this->pos.y = sphactor_position_y(actor);
 
-        ParseConnections();
-        InitializeCapabilities();
+        // retrieve in-/output sockets
+        zconfig_t *insocket = zconfig_locate( this->capabilities, "inputs/input");
+        if ( insocket !=  nullptr )
+        {
+            zconfig_t *type = zconfig_locate(insocket, "type");
+            assert(type);
+
+            char* typeStr = zconfig_value(type);
+            if ( streq(typeStr, "OSC")) {
+                input_slots.push_back({ "OSC", ActorSlotOSC });
+            }
+            else if ( streq(typeStr, "NatNet")) {
+                input_slots.push_back({ "NatNet", ActorSlotNatNet });
+            }
+            else {
+                zsys_error("Unsupported input type: %s", typeStr);
+            }
+        }
+
+        zconfig_t *outsocket = zconfig_locate( this->capabilities, "outputs/output");
+
+        if ( outsocket !=  nullptr )
+        {
+            zconfig_t *type = zconfig_locate(outsocket, "type");
+            assert(type);
+
+            char* typeStr = zconfig_value(type);
+            if ( streq(typeStr, "OSC")) {
+                output_slots.push_back({ "OSC", ActorSlotOSC });
+            }
+            else if ( streq(typeStr, "NatNet")) {
+                output_slots.push_back({ "NatNet", ActorSlotNatNet });
+            }
+            else {
+                zsys_error("Unsupported output type: %s", typeStr);
+            }
+        }
+
+        //ParseConnections();
+        InitializeCapabilities(); //already done by sph_stage?
     }
 
     ~ActorContainer() {
@@ -85,11 +125,25 @@ struct ActorContainer {
     void ParseConnections() {
         if ( this->capabilities == NULL ) return;
 
-        zconfig_t *inputs = zconfig_locate(this->capabilities, "inputs");
-        zconfig_t *outputs = zconfig_locate(this->capabilities, "outputs");
+        // get actor's connections
+        zlist_t *conn = sphactor_connections( this->actor );
+        for ( char *connection = (char *)zlist_first(conn); connection != nullptr; connection = (char *)zlist_next(conn))
+        {
+            Connection new_connection;
+            new_connection.input_node = this;
+            new_connection.output_node = FindActorContainerByEndpoint(connection);
+            assert(new_connection.input_node);
+            assert(new_connection.output_node);
+            ((ActorContainer*) new_connection.input_node)->connections.push_back(new_connection);
+            ((ActorContainer*) new_connection.output_node)->connections.push_back(new_connection);
 
-        Parse(inputs, "input", &input_slots);
-        Parse(outputs, "output", &output_slots);
+        }
+    }
+
+    ActorContainer *
+    FindActorContainerByEndpoint(const char *endpoint)
+    {
+        return NULL;
     }
 
     void InitializeCapabilities() {
@@ -163,28 +217,6 @@ struct ActorContainer {
             zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), *value);
     }
 
-    void Parse(zconfig_t * config, const char* node, std::vector<ImNodes::Ez::SlotInfo> *list ) {
-        if ( config == NULL ) return;
-
-        zconfig_t *localNode = zconfig_locate( config, node);
-        while ( localNode != NULL ) {
-            zconfig_t *type = zconfig_locate(localNode, "type");
-            assert(type);
-
-            char* typeStr = zconfig_value(type);
-            if ( streq(typeStr, "OSC")) {
-                list->push_back({ "OSC", ActorSlotOSC });
-            }
-            else if ( streq(typeStr, "NatNet")) {
-                list->push_back({ "NatNet", ActorSlotNatNet });
-            }
-            else {
-                zsys_error("Unsupported %s: %s", node, typeStr);
-            }
-
-            localNode = zconfig_next(localNode);
-        }
-    }
 
     void Render(float deltaTime) {
         //loop through each data element in capabilities
@@ -531,7 +563,8 @@ struct ActorContainer {
     }
 
     void DestroyActor() {
-        sphactor_destroy(&actor);
+        if ( actor )
+            sphactor_destroy(&actor);
     }
 
     void DeleteConnection(const Connection& connection)
