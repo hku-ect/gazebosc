@@ -115,7 +115,7 @@ struct ActorContainer {
         }
 
         //ParseConnections();
-        InitializeCapabilities(); //already done by sph_stage?
+        //InitializeCapabilities(); //already done by sph_stage?
     }
 
     ~ActorContainer() {

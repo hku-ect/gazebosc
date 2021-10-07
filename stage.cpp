@@ -64,7 +64,8 @@ void Clear();
 ActorContainer* Find( const char* endpoint );
 
 void UpdateRegisteredActorsCache() {
-    zlist_t* list = sphactor_get_registered();
+    zhash_t *hash = sphactor_get_registered();
+    zlist_t *list = zhash_keys(hash);
     actor_types.clear();
 
     char* item = (char*)zlist_first(list);
