@@ -21,6 +21,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: add Debian Packages
+      uses: myci-actions/add-deb-repo@10
+      with:
+        repo-name: obs
+        repo: deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-stable/xUbuntu_20.04/ ./
+        keys-asc: https://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-stable/xUbuntu_20.04/Release.key
+        install: libzmq5 libzmq3-dev
+
     - name: Submodule Checkout
       run: git submodule update --init --recursive
 
