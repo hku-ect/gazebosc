@@ -25,8 +25,8 @@ jobs:
       uses: myci-actions/add-deb-repo@10
       with:
         repo-name: obs
-        repo: deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-stable/xUbuntu_20.04/ ./
-        keys-asc: https://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-stable/xUbuntu_20.04/Release.key
+        repo: deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_20.04/ ./
+        keys-asc: https://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_20.04/Release.key
         install: libzmq5 libzmq3-dev libglx-dev mesa-common-dev libasound2-dev libglew-dev libunwind-dev
 
     - name: Submodule Checkout
