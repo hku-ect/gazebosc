@@ -298,10 +298,17 @@ int RenderMenuBar( bool * showLog ) {
     return 0;
 }
 
-inline ImU32 LerpImU32( ImU32 c1, ImU32 c2, int index, int total, float offset )
+inline ImU32 LerpImU32( ImU32 c1, ImU32 c2, int index, int total, float offset, bool doubleSided )
 {
     float t = (float)index / total;
     t = glm::max(glm::min(t + offset, 1.0f), 0.0f);
+
+    if ( doubleSided && t < .5f ) {
+        ImU32 col;
+        col = c1;
+        c1 = c2;
+        c2 = col;
+    }
 
     unsigned char   a1 = (c1 >> 24) & 0xff;
     unsigned char   a2 = (c2 >> 24) & 0xff;
@@ -395,8 +402,8 @@ int UpdateActors(float deltaTime, bool * showLog)
                     {
                         // Animate the bezier vertex colors for recently active connections
                         int64_t diff = zclock_mono() - ((ActorContainer*) connection.output_node)->lastActive;
-                        if ( diff < 1000 ) {
-                            float offset = ( diff - 500 ) * .002f;
+                        if ( diff < 500 ) {
+                            float offset = ( diff % 500 - 250 ) * .004f;
                             int newId = draw_list->_VtxCurrentIdx;
                             int totalCount = (newId - oldId);
 
@@ -409,7 +416,7 @@ int UpdateActors(float deltaTime, bool * showLog)
                                     // TODO: Determine what colors we want to render...
                                     ImU32 col = LerpImU32(ImColor(0, 255, 0),
                                                           canvas.colors[ImNodes::ColConnection], index,
-                                                          totalCount / 2, offset);
+                                                          totalCount / 2, offset, false);
 
                                     p->col = col;
                                     (p + 1)->col = col;
