@@ -10,6 +10,8 @@ private:
     zsock_t* dgramr = NULL;
 
 public:
+    static const char *capabilities;
+
     OSCInput() : Sphactor() {
 
     }

@@ -1,6 +1,6 @@
 #include "ProcessActor.h"
 
-const char * processactorcapabilities =
+const char *ProcessActor::capabilities =
         "capabilities\n"
         "    data\n"
         "        name = \"cmd\"\n"
@@ -58,7 +58,6 @@ s_string_split(char *stringtosplit, const char delim)
 
 zmsg_t * ProcessActor::handleInit(sphactor_event_t *ev)
 {
-    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(processactorcapabilities));
     s_init_zproc(&this->proc);
     zproc_set_verbose(this->proc, true);
 

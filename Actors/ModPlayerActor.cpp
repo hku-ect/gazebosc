@@ -7,7 +7,7 @@ static void mixaudio(void *userdata, Uint8 *stream, int len)
     static_cast<ModPlayerActor *>(userdata)->mixAudio(stream, len);
 }
 
-const char * modplayercapabilities =
+const char * ModPlayerActor::capabilities =
         "capabilities\n"
         "    data\n"
         "        name = \"modfile\"\n"
@@ -191,7 +191,6 @@ zmsg_t *
 ModPlayerActor::handleInit( sphactor_event_t *event )
 {
     //init capabilities
-    sphactor_actor_set_capability((sphactor_actor_t*)event->actor, zconfig_str_load(modplayercapabilities));
     sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/144)*31);
     // init hxcmod player
     hxcmod_init(&this->modctx);

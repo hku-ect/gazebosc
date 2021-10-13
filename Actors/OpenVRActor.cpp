@@ -2,7 +2,7 @@
 #include "OpenVRActor.h"
 #include <time.h>
 
-const char * openVRCapabilities =
+const char *OpenVR::capabilities =
         "capabilities\n"
         "    data\n"
         "        name = \"timeout\"\n"
@@ -45,7 +45,6 @@ zmsg_t * OpenVR::handleInit( sphactor_event_t *ev )
 
     sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
 
-    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(openVRCapabilities));
     return Sphactor::handleInit(ev);
 }
 

@@ -13,6 +13,8 @@ extern "C" {
 
 struct ModPlayerActor : Sphactor
 {
+    static const char *capabilities;
+
     ModPlayerActor() {}
 
     zmsg_t *
