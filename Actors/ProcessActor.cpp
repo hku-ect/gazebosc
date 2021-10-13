@@ -84,6 +84,7 @@ zmsg_t * ProcessActor::handleAPI(sphactor_event_t *ev)
 {
     char *cmd = zmsg_popstr(ev->msg);
     assert(cmd);
+    zmsg_t *retmsg = NULL;
     if ( streq(cmd, "SET PROCESS") )
     {
         char *arg = zmsg_popstr(ev->msg);
@@ -94,34 +95,40 @@ zmsg_t * ProcessActor::handleAPI(sphactor_event_t *ev)
             sphactor_actor_poller_remove( (sphactor_actor_t *)ev->actor, zproc_stdout(this->proc) );
             s_init_zproc(&this->proc);
             zlist_t *arglist = s_string_split(arg, ' ');
-            // get additional args NOT USED we get a single string with the full command
-            /*arg = zmsg_popstr(ev->msg);
-            while (arg)
-            {
-                zlist_append(arglist, (void *)arg);
-                arg = zmsg_popstr(ev->msg);
-            }*/
             zproc_set_args( this->proc, &arglist);
+            arglist = zproc_args(this->proc); // we need it for reports but set_args destroyed it :S
+
             int rc = zproc_run(this->proc);
             if (rc != 0)
             {
                 //TODO: set error state
                 zsys_error("Failed to run command %s", (char *)zlist_first(zproc_args(this->proc)));
+                zosc_t *oscm = zosc_create("/failed", "ss", (char *)zlist_first(arglist), "cannot run!");
+                sphactor_actor_set_custom_report_data((sphactor_actor_t *)ev->actor, oscm);
             }
             else
             {
                 // poll on the stdout socket
                 if ( zproc_running )
+                {
                     sphactor_actor_poller_add((sphactor_actor_t *)ev->actor, zproc_stdout(this->proc));
+                    zosc_t *oscm = zosc_create("/running", "ss", (char *)zlist_first(arglist), "running");
+                    sphactor_actor_set_custom_report_data((sphactor_actor_t *)ev->actor, oscm);
+                }
                 else
+                {
                     zsys_info("the process has already finished");
+                    int retcode = zproc_returncode(this->proc);
+                    zosc_t *oscm = zosc_create("/finished", "si", (char *)zlist_first(arglist), retcode);
+                    sphactor_actor_set_custom_report_data((sphactor_actor_t *)ev->actor, oscm);
+                }
             }
+            zlist_destroy(&arglist);
         }
-        else
-            zstr_free(&arg);
+        zstr_free(&arg);
     }
     zstr_free(&cmd);
-    if ( ev->msg ) zmsg_destroy(&ev->msg); return nullptr;
+    if ( ev->msg ) zmsg_destroy(&ev->msg); return retmsg;
 }
 
 zmsg_t * ProcessActor::handleCustomSocket(sphactor_event_t *ev)
@@ -149,6 +156,7 @@ zmsg_t * ProcessActor::handleCustomSocket(sphactor_event_t *ev)
                 if (strlen(s))
                     zosc_append(retosc, "s", s);
                     //zsys_info("stdout: %s", s);
+                zstr_free(&s);
             }
             if ( strlen(zosc_address(retosc)) )
             {

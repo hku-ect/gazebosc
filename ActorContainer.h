@@ -80,43 +80,50 @@ struct ActorContainer {
         this->pos.y = sphactor_position_y(actor);
 
         // retrieve in-/output sockets
-        zconfig_t *insocket = zconfig_locate( this->capabilities, "inputs/input");
-        if ( insocket !=  nullptr )
+        if (this->capabilities)
         {
-            zconfig_t *type = zconfig_locate(insocket, "type");
-            assert(type);
+            zconfig_t *insocket = zconfig_locate( this->capabilities, "inputs/input");
+            if ( insocket !=  nullptr )
+            {
+                zconfig_t *type = zconfig_locate(insocket, "type");
+                assert(type);
 
-            char* typeStr = zconfig_value(type);
-            if ( streq(typeStr, "OSC")) {
-                input_slots.push_back({ "OSC", ActorSlotOSC });
+                char* typeStr = zconfig_value(type);
+                if ( streq(typeStr, "OSC")) {
+                    input_slots.push_back({ "OSC", ActorSlotOSC });
+                }
+                else if ( streq(typeStr, "NatNet")) {
+                    input_slots.push_back({ "NatNet", ActorSlotNatNet });
+                }
+                else {
+                    zsys_error("Unsupported input type: %s", typeStr);
+                }
             }
-            else if ( streq(typeStr, "NatNet")) {
-                input_slots.push_back({ "NatNet", ActorSlotNatNet });
-            }
-            else {
-                zsys_error("Unsupported input type: %s", typeStr);
+
+            zconfig_t *outsocket = zconfig_locate( this->capabilities, "outputs/output");
+
+            if ( outsocket !=  nullptr )
+            {
+                zconfig_t *type = zconfig_locate(outsocket, "type");
+                assert(type);
+
+                char* typeStr = zconfig_value(type);
+                if ( streq(typeStr, "OSC")) {
+                    output_slots.push_back({ "OSC", ActorSlotOSC });
+                }
+                else if ( streq(typeStr, "NatNet")) {
+                    output_slots.push_back({ "NatNet", ActorSlotNatNet });
+                }
+                else {
+                    zsys_error("Unsupported output type: %s", typeStr);
+                }
             }
         }
-
-        zconfig_t *outsocket = zconfig_locate( this->capabilities, "outputs/output");
-
-        if ( outsocket !=  nullptr )
+        else
         {
-            zconfig_t *type = zconfig_locate(outsocket, "type");
-            assert(type);
-
-            char* typeStr = zconfig_value(type);
-            if ( streq(typeStr, "OSC")) {
-                output_slots.push_back({ "OSC", ActorSlotOSC });
-            }
-            else if ( streq(typeStr, "NatNet")) {
-                output_slots.push_back({ "NatNet", ActorSlotNatNet });
-            }
-            else {
-                zsys_error("Unsupported output type: %s", typeStr);
-            }
+            input_slots.push_back({ "OSC", ActorSlotOSC });
+            output_slots.push_back({ "OSC", ActorSlotOSC });
         }
-
         //ParseConnections();
         //InitializeCapabilities(); //already done by sph_stage?
     }
