@@ -298,6 +298,33 @@ int RenderMenuBar( bool * showLog ) {
     return 0;
 }
 
+inline ImU32 LerpImU32( ImU32 c1, ImU32 c2, int index, int total, float offset, bool doubleSided )
+{
+    float t = (float)index / total;
+    t = glm::max(glm::min(t + offset, 1.0f), 0.0f);
+
+    if ( doubleSided && t < .5f ) {
+        ImU32 col;
+        col = c1;
+        c1 = c2;
+        c2 = col;
+    }
+
+    unsigned char   a1 = (c1 >> 24) & 0xff;
+    unsigned char   a2 = (c2 >> 24) & 0xff;
+    unsigned char   r1 = (c1 >> 16) & 0xff;
+    unsigned char   r2 = (c2 >> 16) & 0xff;
+    unsigned char   g1 = (c1 >> 8) & 0xff;
+    unsigned char   g2 = (c2 >> 8) & 0xff;
+    unsigned char   b1 = c1 & 0xff;
+    unsigned char   b2 = c2 & 0xff;
+
+    return  (int) ((a2 - a1) * t + a1) << 24 |
+            (int) ((r2 - r1) * t + r1) << 16 |
+            (int) ((g2 - g1) * t + g1) << 8 |
+            (int) ((b2 - b1) * t + b1);
+}
+
 int UpdateActors(float deltaTime, bool * showLog)
 {
     int rc = 0;
@@ -357,6 +384,9 @@ int UpdateActors(float deltaTime, bool * showLog)
                     if (connection.output_node != actor)
                         continue;
 
+                    ImDrawList * draw_list = ImGui::GetWindowDrawList();
+                    int oldId = draw_list->_VtxCurrentIdx;
+
                     if (!ImNodes::Connection(connection.input_node, connection.input_slot, connection.output_node,
                         connection.output_slot))
                     {
@@ -367,6 +397,35 @@ int UpdateActors(float deltaTime, bool * showLog)
                         // Remove deleted connections
                         ((ActorContainer*) connection.input_node)->DeleteConnection(connection);
                         ((ActorContainer*) connection.output_node)->DeleteConnection(connection);
+                    }
+                    else
+                    {
+                        // Animate the bezier vertex colors for recently active connections
+                        int64_t diff = zclock_mono() - ((ActorContainer*) connection.output_node)->lastActive;
+                        if ( diff < 500 ) {
+                            float offset = ( diff % 500 - 250 ) * .004f;
+                            int newId = draw_list->_VtxCurrentIdx;
+                            int totalCount = (newId - oldId);
+
+                            // We're assuming it's always a 2-vertex-per-point setup (thick/textured)
+                            if (totalCount % 2 == 0) {
+                                int left = totalCount;
+                                ImDrawVert *p = draw_list->_VtxWritePtr - totalCount;
+                                while (left > 0) {
+                                    int index = (totalCount - left) * .5f;
+                                    // TODO: Determine what colors we want to render...
+                                    ImU32 col = LerpImU32(ImColor(0, 255, 0),
+                                                          canvas.colors[ImNodes::ColConnection], index,
+                                                          totalCount / 2, offset, false);
+
+                                    p->col = col;
+                                    (p + 1)->col = col;
+
+                                    left -= 2;
+                                    p += 2;
+                                }
+                            }
+                        }
                     }
                 }
             }

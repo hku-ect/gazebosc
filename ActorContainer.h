@@ -66,6 +66,9 @@ struct ActorContainer {
     /// A list of output slots current actor has.
     std::vector<ImNodes::Ez::SlotInfo> output_slots{};
 
+    /// Last received "lastActive" clock value
+    int64_t lastActive = 0;
+
     sphactor_t *actor;
     zconfig_t *capabilities;
 
@@ -263,6 +266,8 @@ struct ActorContainer {
         const int VALUE_WIDTH = 50;
 
         sphactor_report_t * report = sphactor_report(actor);
+        lastActive = sphactor_report_send_time(report);
+
         assert(report);
         zosc_t * customData = sphactor_report_custom(report);
         if ( customData ) {
@@ -317,12 +322,11 @@ struct ActorContainer {
 
                             if (streq(nameStr, "lastActive")) {
                                 // render something to indicate the actor is currently active
-                                clock_t now = clock();
-                                clock_t got = (clock_t)value;
-                                clock_t diff = now - got;
+                                lastActive = (int64_t)value;
+                                int64_t diff = zclock_mono() - lastActive;
                                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
                                 ImNodes::CanvasState* canvas = ImNodes::GetCurrentCanvas();
-                                if (now - got < CLOCKS_PER_SEC * .1) {
+                                if (diff < 100) {
                                     draw_list->AddCircleFilled(canvas->offset + pos * canvas->zoom + ImVec2(5,5) * canvas->zoom, 5 * canvas->zoom , ImColor(0, 255, 0), 4);
                                 }
                                 else {
