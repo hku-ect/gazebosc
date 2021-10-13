@@ -19,3 +19,6 @@
 [submodule "ext/openvr"]
 	path = ext/openvr
 	url = https://github.com/ValveSoftware/openvr
+[submodule "ext/rtmidi"]
+	path = ext/rtmidi
+	url = https://github.com/thestk/rtmidi
