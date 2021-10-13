@@ -75,7 +75,7 @@ struct ActorContainer {
     ActorContainer(sphactor_t *actor) {
         this->actor = actor;
         this->title = sphactor_ask_actor_type(actor);
-        this->capabilities = zconfig_dup(sphactor_ask_capability(actor));
+        this->capabilities = zconfig_dup(sphactor_capability(actor));
         this->pos.x = sphactor_position_x(actor);
         this->pos.y = sphactor_position_y(actor);
 
@@ -162,6 +162,20 @@ struct ActorContainer {
         }
     }
 
+    char *itoa(int i)
+    {
+        char *str = (char *)malloc(10);
+        sprintf(str, "%d", i);
+        return str;
+    }
+
+    char *ftoa(float f)
+    {
+        char *str = (char *)malloc(30);
+        sprintf(str, "%f", f);
+        return str;
+    }
+
     void HandleAPICalls(zconfig_t * data) {
         zconfig_t *zapic = zconfig_locate(data, "api_call");
         if ( zapic ) {
@@ -177,30 +191,34 @@ struct ActorContainer {
                         char *buf = new char[4];
                         const char *zvalueStr = zconfig_value(zvalue);
                         strcpy(buf, zvalueStr);
-                        SendAPI<char *>(zapic, zapiv, zvalue, &buf);
+                        sphactor_ask_api(this->actor, zconfig_value(zapic), zapivStr, zvalueStr);
+                        //SendAPI<char *>(zapic, zapiv, zvalue, &buf);
                         zstr_free(&buf);
                     } break;
                     case 'i': {
                         int ival;
                         ReadInt(&ival, zvalue);
-                        SendAPI<int>(zapic, zapiv, zvalue, &ival);
+                        sphactor_ask_api(this->actor, zconfig_value(zapic), zapivStr, itoa(ival));
                     } break;
                     case 'f': {
                         float fval;
                         ReadFloat(&fval, zvalue);
-                        SendAPI<float>(zapic, zapiv, zvalue, &fval);
+                        //SendAPI<float>(zapic, zapiv, zvalue, &fval);
+                        sphactor_ask_api(this->actor, zconfig_value(zapic), zapivStr, ftoa(fval));
                     } break;
                     case 's': {
                         const char *zvalueStr = zconfig_value(zvalue);
-                        SendAPI<char *>(zapic, zapiv, zvalue, const_cast<char **>(&zvalueStr));
+                        //SendAPI<char *>(zapic, zapiv, zvalue, const_cast<char **>(&zvalueStr));
+                        sphactor_ask_api(this->actor, zconfig_value(zapic), zapivStr, zvalueStr);
                     } break;
                 }
             }
             else {
-                //assume int
-                int ival;
-                ReadInt(&ival, zvalue);
-                zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), ival);
+                //assume string
+                //int ival;
+                //ReadInt(&ival, zvalue);
+                //zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), ival);
+                sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapic), zconfig_value(zvalue));
             }
         }
     }
@@ -214,9 +232,11 @@ struct ActorContainer {
             std::string pic = "s";
             pic += zconfig_value(zapiv);
             //zsys_info("Sending: %s", pic.c_str());
+            //sphactor_ask_api( this->actor, pic.c_str(), zconfig_value(zapic), *value);
             zsock_send( sphactor_socket(this->actor), pic.c_str(), zconfig_value(zapic), *value);
         }
         else
+            //sphactor_ask_api( this->actor, "ss", zconfig_value(zapic), *value);
             zsock_send( sphactor_socket(this->actor), "si", zconfig_value(zapic), *value);
     }
 
@@ -383,6 +403,7 @@ struct ActorContainer {
     void RenderMediacontrol(const char* name, zconfig_t *data)
     {
         if ( ImGui::Button(ICON_FA_BACKWARD) )
+            //sphactor_ask_api(this->actor, "BACK", "", NULL);
             zstr_send(sphactor_socket(this->actor), "BACK");
         ImGui::SameLine();
         if ( ImGui::Button(ICON_FA_PLAY) )
@@ -414,7 +435,8 @@ struct ActorContainer {
         ImGui::SetNextItemWidth(180);
         if ( ImGui::InputTextWithHint("", name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
             zconfig_set_value(zvalue, "%s", buf);
-            SendAPI<char*>(zapic, zapiv, zvalue, &(p));
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
+            //SendAPI<char*>(zapic, zapiv, zvalue, &(p));
         }
         ImGui::SameLine();
         if ( ImGui::Button( ICON_FA_FOLDER_OPEN ) )
@@ -430,7 +452,8 @@ struct ActorContainer {
         {
             zconfig_set_value(zvalue, "%s", actor_file_dialog.selected_path.c_str() );
             strcpy(buf, actor_file_dialog.selected_path.c_str());
-            SendAPI<char*>(zapic, zapiv, zvalue, &(p) );
+            //SendAPI<char*>(zapic, zapiv, zvalue, &(p) );
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
         }
     }
 
@@ -451,7 +474,8 @@ struct ActorContainer {
             char *buf = new char[6];
             const char *zvalueStr = zconfig_value(zvalue);
             strcpy(buf, zvalueStr);
-            SendAPI<char *>(zapic, zapiv, zvalue, &buf);
+            //SendAPI<char *>(zapic, zapiv, zvalue, &buf);
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf );
             zstr_free(&buf);
         }
     }
@@ -484,7 +508,8 @@ struct ActorContainer {
             }
 
             zconfig_set_value(zvalue, "%i", value);
-            SendAPI<int>(zapic, zapiv, zvalue, &value);
+            //SendAPI<int>(zapic, zapiv, zvalue, &value);
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), itoa(value) );
         }
     }
 
@@ -510,13 +535,15 @@ struct ActorContainer {
         if ( min != max ) {
             if ( ImGui::SliderFloat( name, &value, min, max) ) {
                 zconfig_set_value(zvalue, "%f", value);
-                SendAPI<float>(zapic, zapiv, zvalue, &value);
+                //SendAPI<float>(zapic, zapiv, zvalue, &value);
+                sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), ftoa(value) );
             }
         }
         else {
             if ( ImGui::InputFloat( name, &value, min, max) ) {
                 zconfig_set_value(zvalue, "%f", value);
-                SendAPI<float>(zapic, zapiv, zvalue, &value);
+                //SendAPI<float>(zapic, zapiv, zvalue, &value);
+                sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), ftoa(value) );
             }
         }
     }
@@ -541,7 +568,8 @@ struct ActorContainer {
         ImGui::SetNextItemWidth(200);
         if ( ImGui::InputText(name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
             zconfig_set_value(zvalue, "%s", buf);
-            SendAPI<char*>(zapic, zapiv, zvalue, &(p));
+            //SendAPI<char*>(zapic, zapiv, zvalue, &(p));
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf );
         }
     }
 
