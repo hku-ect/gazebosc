@@ -77,23 +77,20 @@ void UpdateRegisteredActorsCache() {
 
 void RegisterActors() {
     // register stock actors
-    sphactor_register( "Log", &sph_stock_log_actor, NULL, NULL );
-    sphactor_register( "Count", &sph_stock_count_actor, NULL, NULL );
-    sphactor_register( "Pulse", &sph_stock_pulse_actor, NULL, NULL );
+    sph_stock_register_all();
 
-    sphactor_register<Client>( "OSC Output" );
-    sphactor_register<NatNet>( "NatNet" );
-    sphactor_register<NatNet2OSC>( "NatNet2OSC" );
+    sphactor_register<Client>( "OSC Output", Client::capabilities);
+    sphactor_register<NatNet>( "NatNet", NatNet::capabilities );
+    sphactor_register<NatNet2OSC>( "NatNet2OSC", NatNet2OSC::capabilities );
 #ifdef HAVE_OPENVR
-    sphactor_register<OpenVR>("OpenVR");
+    sphactor_register<OpenVR>("OpenVR", OpenVR::capabilities);
 #endif
-    sphactor_register<OSCInput>( "OSC Input" );
-    sphactor_register<ModPlayerActor>( "ModPlayer" );
-    sphactor_register<ProcessActor>( "Process" );
+    sphactor_register<OSCInput>( "OSC Input", OSCInput::capabilities );
+    sphactor_register<ModPlayerActor>( "ModPlayer", ModPlayerActor::capabilities );
+    sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
 #ifdef PYTHON3_FOUND
     int rc = python_init();
     assert( rc == 0);
-    sphactor_register("Python", pythonactor_handler, pythonactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
 #endif
     //enforcable maximum actor counts
     max_actors_by_type.insert(std::make_pair("NatNet", 1));
@@ -503,6 +500,15 @@ int UpdateActors(float deltaTime, bool * showLog)
 
 bool Save( const char* configFile ) {
     if ( actors.size() == 0 ) return false;
+
+    // sync positions
+    auto it = actors.begin();
+    while( it != actors.end() )
+    {
+        ActorContainer *gActor = *it;
+        sphactor_set_position(gActor->actor, gActor->pos.x, gActor->pos.y);
+        ++it;
+    }
 
     int rc = sph_stage_save_as( stage, configFile);
     return rc == 0;

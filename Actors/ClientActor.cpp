@@ -2,8 +2,8 @@
 #include <string>
 #include <time.h>
 
-const char * clientCapabilities =
-                                "capabilities\n"
+const char *
+Client::capabilities =          "capabilities\n"
                                 "    data\n"
                                 "        name = \"name\"\n"
                                 "        type = \"string\"\n"
@@ -35,8 +35,6 @@ zmsg_t* Client::handleInit( sphactor_event_t * ev ) {
 
     sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
 
-    //init capabilities
-    sphactor_actor_set_capability((sphactor_actor_t *) ev->actor, zconfig_str_load(clientCapabilities));
     this->dgrams = zsock_new_dgram("udp://*:*");
     return Sphactor::handleInit(ev);
 }

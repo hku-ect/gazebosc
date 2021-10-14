@@ -7,6 +7,23 @@
 #include <windows.h>
 #endif
 
+static const char *pythonactorcapabilities =
+        "capabilities\n"
+        "    data\n"
+        "        name = \"pyfile\"\n"
+        "        type = \"filename\"\n"
+        "        value = \"\"\n"
+        "        api_call = \"SET FILE\"\n"
+        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "inputs\n"
+        "    input\n"
+        "        type = \"OSC\"\n"
+        "outputs\n"
+        "    output\n"
+        //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
+        "        type = \"OSC\"\n";
+
+
 // https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
 static char *
 s_remove_ext(const char* myStr) {
@@ -198,24 +215,9 @@ int python_init()
         PyErr_Print();
     }
 
+    sphactor_register("Python", &pythonactor_handler, zconfig_str_load(pythonactorcapabilities), &pythonactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
     return rc;
 }
-
-const char * pythonactorcapabilities =
-        "capabilities\n"
-        "    data\n"
-        "        name = \"pyfile\"\n"
-        "        type = \"filename\"\n"
-        "        value = \"\"\n"
-        "        api_call = \"SET FILE\"\n"
-        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
-        "inputs\n"
-        "    input\n"
-        "        type = \"OSC\"\n"
-        "outputs\n"
-        "    output\n"
-        //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
-        "        type = \"OSC\"\n";
 
 // this is needed because we have to conform to returning a void * thus we need to wrap
 // the pythonactor_new method, unless some know a better method?
@@ -261,8 +263,6 @@ pythonactor_destroy(pythonactor_t **self_p)
 zmsg_t *
 pythonactor_init(pythonactor_t *self, sphactor_event_t *ev)
 {
-    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(pythonactorcapabilities));
-
     // if file loaded execute init!
     if ( ev->msg ) zmsg_destroy(&ev->msg);
     return NULL;

@@ -15,6 +15,8 @@ private:
     DeviceList devices;
 
 public:
+    static const char *capabilities;
+
     OpenVR() : Sphactor() {
 
     }

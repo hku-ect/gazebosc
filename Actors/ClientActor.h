@@ -6,6 +6,7 @@
 
 class Client : public Sphactor {
 public:
+    static const char *capabilities;
     zsock_t* dgrams = NULL;
 
     std::string name = "";

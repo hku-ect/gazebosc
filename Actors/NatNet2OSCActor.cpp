@@ -5,7 +5,7 @@
 #include <algorithm>
 
 //TODO: Add filter options
-const char * natNet2OSCCapabilities = "capabilities\n"
+const char * NatNet2OSC::capabilities = "capabilities\n"
                                 "    data\n"
                                 "        name = \"markers\"\n"
                                 "        type = \"bool\"\n"
@@ -52,7 +52,6 @@ const char * natNet2OSCCapabilities = "capabilities\n"
 zmsg_t *
 NatNet2OSC::handleInit( sphactor_event_t *ev )
 {
-    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(natNet2OSCCapabilities));
     return NULL;
 }
 

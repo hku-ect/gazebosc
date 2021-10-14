@@ -13,6 +13,8 @@ extern "C" {
 
 struct ModPlayerActor : Sphactor
 {
+    static const char *capabilities;
+
     ModPlayerActor() {}
 
     zmsg_t *
@@ -34,8 +36,8 @@ struct ModPlayerActor : Sphactor
     uint32_t *buffer_dat;
     modcontext modctx;
     muchar orig_patterntable[128];
-    int start_pos;
-    int end_pos;
+    int start_pos = 0;
+    int end_pos = INT_MAX;
     int rowdelay;
     int prev_row = 0;
     zmsg_t *delayed_msgs[64] = { NULL };

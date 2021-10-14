@@ -9,6 +9,8 @@
 
 class NatNet : public Sphactor {
 public:
+    static const char *capabilities;
+
     // DataSocket;
     zsock_t* DataSocket = NULL;
 

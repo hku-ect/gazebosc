@@ -6,6 +6,8 @@
 class ProcessActor : public Sphactor
 {
 public:
+    static const char *capabilities;
+
     ProcessActor() {}
     ~ProcessActor() {}
 

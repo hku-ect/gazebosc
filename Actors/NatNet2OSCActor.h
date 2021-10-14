@@ -8,6 +8,8 @@
 class NatNet2OSC : public Sphactor
 {
 public:
+    static const char *capabilities;
+
     bool sendMarkers = false;
     bool sendRigidbodies = false;
     bool sendSkeletons = false;

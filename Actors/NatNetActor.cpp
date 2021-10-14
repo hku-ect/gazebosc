@@ -10,7 +10,7 @@ std::vector<RigidBodyDescription> NatNet::rigidbody_descs;
 std::vector<SkeletonDescription> NatNet::skeleton_descs;
 std::vector<MarkerSetDescription> NatNet::markerset_descs;
 
-const char * natnetCapabilities =
+const char * NatNet::capabilities =
                                 "capabilities\n"
                                 "    data\n"
                                 "        name = \"motive_ip\"\n"
@@ -49,17 +49,6 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
         cur = ziflist_next(ifList);
     }
     ziflist_destroy(&ifList);
-
-    // load capabilities and set maximum index number to amount of available interfaces
-    zconfig_t * capConfig = zconfig_str_load(natnetCapabilities);
-    zconfig_t *current = zconfig_locate(capConfig, "capabilities");
-    current = zconfig_locate(current, "data");
-    current = zconfig_next(current);
-    current = zconfig_locate(current, "max");
-    zconfig_set_value(current, "%i", (int)(ifNames.size()-1));
-
-    // init capabilities
-    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, capConfig);
 
     // initially we use the first interface
     activeInterface = ifNames[0];

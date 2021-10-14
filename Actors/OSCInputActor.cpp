@@ -1,7 +1,7 @@
 #include "OSCInputActor.h"
 #include <time.h>
 
-const char * oscInputCapabilities =
+const char * OSCInput::capabilities =
         "capabilities\n"
         "    data\n"
         "        name = \"port\"\n"
@@ -23,7 +23,6 @@ zmsg_t * OSCInput::handleInit( sphactor_event_t *ev )
 
     sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
 
-    sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(oscInputCapabilities));
     return Sphactor::handleInit(ev);
 }
 
