@@ -75,15 +75,14 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}} -VV
 
-    - name: Zip Artefacts
-      run:
-        zip -q -r $( echo $GITHUB_REPOSITORY | cut -d"/" -f2)_${RUNNER_OS}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*";
-
     - name: Upload file via SSH
       if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
       env:
         BBPWD: ${{ secrets.BBPWD }}
       run: |
+        git fetch --all --tags
+        cd ${{github.workspace}}/build/bin
+        zip -q -r $( echo $GITHUB_REPOSITORY | cut -d"/" -f2)_${RUNNER_OS}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*";
         echo '|1|AurlN3z7WhvxYbuNdsouT5s7FYs=|cjTFODbUXIXKeWihh1BjnfXgARw= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=' >> $HOME/.ssh/known_hosts
         git clone https://github.com/clarkwang/passh.git
         cd passh
