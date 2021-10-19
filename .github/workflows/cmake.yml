@@ -76,14 +76,14 @@ jobs:
       run: ctest -C ${{env.BUILD_TYPE}} -VV
 
     - name: Upload file via SSH
-        uses: nicklasfrahm/scp-action@main
-        with:
-          direction: upload
-          host: ${{ secrets.SSH_TARGET_HOST }}
-          fingerprint: ${{ secrets.SSH_TARGET_FINGERPRINT }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: |
-            path/to/source/a.txt
-            path/to/source/b.txt
-          target: path/to/target
+      uses: nicklasfrahm/scp-action@main
+      with:
+        direction: upload
+        host: ${{ secrets.SSH_TARGET_HOST }}
+        fingerprint: ${{ secrets.SSH_TARGET_FINGERPRINT }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: |
+          path/to/source/a.txt
+          path/to/source/b.txt
+        target: path/to/target
