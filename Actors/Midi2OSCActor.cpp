@@ -9,7 +9,7 @@ const char * midi2OSCCapabilities =
         "    data\n"
         "        name = \"deviceIndex\"\n"
         "        type = \"string\"\n"
-        "        value = \"6200\"\n"
+        "        value = \"0\"\n"
         "        min = \"0\"\n"
         "        max = \"10\"\n"
         "        api_call = \"SET DEVICEINDEX\"\n"
@@ -43,6 +43,8 @@ zmsg_t * Midi2OSC::handleInit( sphactor_event_t *ev )
         zsys_info("Input port %i: %s", i+1, portName.c_str());
     }
 
+    //TODO: Get devices, store in list, alter max-capability for deviceIndex
+
     sphactor_actor_set_capability((sphactor_actor_t*)ev->actor, zconfig_str_load(midi2OSCCapabilities));
     return Sphactor::handleInit(ev);
 }
@@ -55,6 +57,7 @@ zmsg_t * Midi2OSC::handleAPI( sphactor_event_t *ev )
 {
     char * cmd = zmsg_popstr(ev->msg);
     if (cmd) {
+        //TODO: Handle deviceIndex capability change and "listen" to that device (remove poller, add poller)
         /*
         if ( streq(cmd, "SET PORT") ) {
 
@@ -75,6 +78,7 @@ zmsg_t * Midi2OSC::handleCustomSocket( sphactor_event_t *ev )
     zframe_t *frame = zmsg_pop(ev->msg);
     if (zframe_size(frame) == sizeof( void *) )
     {
+        // TODO: Handle incoming midi, convert to OSC & return
         void *p = *(void **)zframe_data(frame);
         /*
         if ( zsock_is( p ) && p == this->dgramr )

@@ -82,6 +82,7 @@ void RegisterActors() {
     sphactor_register<Client>( "OSC Output", Client::capabilities);
     sphactor_register<NatNet>( "NatNet", NatNet::capabilities );
     sphactor_register<NatNet2OSC>( "NatNet2OSC", NatNet2OSC::capabilities );
+    sphactor_register<Midi2OSC>( "Midi2OSC", Midi2OSC::capabilities );
 #ifdef HAVE_OPENVR
     sphactor_register<OpenVR>("OpenVR", OpenVR::capabilities);
 #endif
