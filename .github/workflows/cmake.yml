@@ -16,12 +16,19 @@ jobs:
     # well on Windows or Mac.  You can convert this to a matrix build if you need
     # cross-platform coverage.
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: macos-latest
 
     steps:
     - uses: actions/checkout@v2
 
     - name: add Debian Packages
+      if: matrix.os == 'ubuntu-latest'
       uses: myci-actions/add-deb-repo@10
       with:
         repo-name: obs
@@ -29,13 +36,34 @@ jobs:
         keys-asc: https://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_20.04/Release.key
         install: libzmq5 libzmq3-dev libglx-dev mesa-common-dev libasound2-dev libglew-dev libunwind-dev
 
+    - name: Add brew packages
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: brew install automake autoconf cmake
+
+    - name: libZMQ Dep
+      if: matrix.os == 'macos-latest'
+      run: |
+        git clone https://github.com/zeromq/libzmq.git
+        cd libzmq
+        ./autogen.sh
+        ./configure
+        make
+        sudo make install
+
+    - name: Python dep
+      if: matrix.os == 'macos-latest'
+      run: |
+        ./dist/osx/build_python.sh ${{github.workspace}}/build/python
+        export CMAKE_OPTIONS="-DPython3_ROOT_DIR=${{github.workspace}}/build/python -DWITH_EMBED_PYTHON=ON"
+
     - name: Submodule Checkout
       run: git submodule update --init --recursive
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} $CMAKE_OPTIONS
 
     - name: Build
       # Build your program with the given configuration
@@ -47,3 +75,16 @@ jobs:
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest -C ${{env.BUILD_TYPE}} -VV
 
+    - name: Upload file via SSH
+      if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+      env:
+        BBPWD: ${{ secrets.BBPWD }}
+      run: |
+        git fetch --all --tags
+        cd ${{github.workspace}}/build/bin
+        zip -q -r $( echo $GITHUB_REPOSITORY | cut -d"/" -f2)_${RUNNER_OS}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*";
+        echo '|1|AurlN3z7WhvxYbuNdsouT5s7FYs=|cjTFODbUXIXKeWihh1BjnfXgARw= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=' >> $HOME/.ssh/known_hosts
+        git clone https://github.com/clarkwang/passh.git
+        cd passh
+        cc -o passh passh.c
+        ./passh -p env:BBPWD scp ../gazebosc*.zip buildbot@pong.hku.nl:public_html/gazebosc/
