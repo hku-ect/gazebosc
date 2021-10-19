@@ -164,7 +164,6 @@ list(APPEND GZB_SOURCES
     ImNodes.cpp
     ImNodesEz.cpp
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
-    ext/rtmidi/RtMidi.cpp
     stage.cpp
 )
 
@@ -223,6 +222,7 @@ if (APPLE)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
+        rtmidi
         ${OPENVR_LIBRARIES}
         ${Python3_LIBRARIES}
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
@@ -268,6 +268,7 @@ elseif (WIN32)
         SDL2-static
         czmq-static
         sphactor-static
+        rtmidi
         ${OPENVR_LIBRARIES}
         ${libzmq_LIBRARIES}
         ${Python3_LIBRARIES}
@@ -276,6 +277,7 @@ else()
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
+        rtmidi
         ${OPENVR_LIBRARIES}
         ${Python3_LIBRARIES}
         -lasound -ldl -lGL -lGLEW)

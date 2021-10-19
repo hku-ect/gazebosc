@@ -11,6 +11,7 @@
 class Midi2OSC : public Sphactor {
 private:
     RtMidiIn  *midiin = 0;
+    int activePort = 0;
 
 public:
     Midi2OSC() : Sphactor() {

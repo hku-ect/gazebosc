@@ -14,6 +14,14 @@ const char * midi2OSCCapabilities =
         "        max = \"10\"\n"
         "        api_call = \"SET DEVICEINDEX\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"activePort\"\n"
+        "        type = \"string\"\n"
+        "        value = \"0\"\n"
+        "        min = \"0\"\n"
+        "        max = \"10\"\n"
+        "        api_call = \"SET PORT\"\n"
+        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
         "outputs\n"
         "    output\n"
         "        type = \"OSC\"\n";
@@ -58,11 +66,22 @@ zmsg_t * Midi2OSC::handleAPI( sphactor_event_t *ev )
     char * cmd = zmsg_popstr(ev->msg);
     if (cmd) {
         //TODO: Handle deviceIndex capability change and "listen" to that device (remove poller, add poller)
-        /*
+
         if ( streq(cmd, "SET PORT") ) {
+            zsys_info("SET PORT");
+            int newPort = 0;
+            if ( activePort != newPort ) {
+                if ( midiin->isPortOpen()) {
+                    midiin->closePort();
+                }
+
+                activePort = newPort;
+
+                midiin->openPort(activePort);
+            }
 
         }
-        */
+
 
         zstr_free(&cmd);
     }
