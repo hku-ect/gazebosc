@@ -2,6 +2,7 @@
 #define ACTORS_H
 
 #include "Actors/ClientActor.h"
+#include "Actors/Midi2OSCActor.h"
 #include "Actors/NatNetActor.h"
 #include "Actors/NatNet2OSCActor.h"
 #include "Actors/OpenVRActor.h"
