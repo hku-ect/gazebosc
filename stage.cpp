@@ -63,10 +63,6 @@ bool Load( const char* configFile );
 void Clear();
 ActorContainer* Find( const char* endpoint );
 
-// ImGui Demo window for dev purposes
-bool showDemo = false;
-void ImGui::ShowDemoWindow(bool* p_open);
-
 // TODO: move this to something includable
 static char*
 s_basename(char const* path)
@@ -396,9 +392,6 @@ int RenderMenuBar( bool * showLog ) {
         if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Console") ) {
             *showLog = !(*showLog);
         }
-        if (ImGui::MenuItem(ICON_FA_EDIT " Toggle Demo")) {
-            showDemo = !(showDemo);
-        }
         ImGui::EndMenu();
     }
 
@@ -663,7 +656,6 @@ int UpdateActors(float deltaTime, bool * showLog)
     }
     ImGui::End();
 
-    if (showDemo) ImGui::ShowDemoWindow(&showDemo);
     if (txteditor_open) ShowTextEditor();
 
     return rc;
