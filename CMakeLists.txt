@@ -215,7 +215,8 @@ target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
 ### PLATFORM SPECIFICS
 if (MSVC)
-    
+    string(REGEX REPLACE "/" "\\\\" VS_DEBUGGER_BACKSLASH "${CMAKE_BINARY_DIR}/bin/Debug/")
+    set_property(TARGET gazebosc PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${VS_DEBUGGER_BACKSLASH}")
 endif()
 
 if (APPLE)
