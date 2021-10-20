@@ -63,6 +63,10 @@ bool Load( const char* configFile );
 void Clear();
 ActorContainer* Find( const char* endpoint );
 
+// ImGui Demo window for dev purposes
+bool showDemo = false;
+void ImGui::ShowDemoWindow(bool* p_open);
+
 void UpdateRegisteredActorsCache() {
     zhash_t *hash = sphactor_get_registered();
     zlist_t *list = zhash_keys(hash);
@@ -230,6 +234,9 @@ int RenderMenuBar( bool * showLog ) {
     if ( ImGui::BeginMenu("Tools") ) {
         if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Console") ) {
             *showLog = !(*showLog);
+        }
+        if (ImGui::MenuItem(ICON_FA_EDIT " Toggle Demo")) {
+            showDemo = !(showDemo);
         }
         ImGui::EndMenu();
     }
@@ -494,6 +501,8 @@ int UpdateActors(float deltaTime, bool * showLog)
         ImNodes::EndCanvas();
     }
     ImGui::End();
+
+    if (showDemo) ImGui::ShowDemoWindow(&showDemo);
 
     return rc;
 }
