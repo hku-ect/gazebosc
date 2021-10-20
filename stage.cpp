@@ -63,6 +63,28 @@ bool Load( const char* configFile );
 void Clear();
 ActorContainer* Find( const char* endpoint );
 
+// TODO: move this to something includable
+static char*
+s_basename(char const* path)
+{
+    const char* s = strrchr(path, '/');
+    if (!s)
+        return strdup(path);
+    else
+        return strdup(s + 1);
+}
+
+// Ability to load multiple text files
+struct textfile {
+    zfile_t* file;
+    char* basename;
+    bool open;
+};
+std::vector<textfile> open_text_files;
+bool txteditor_open = false;
+textfile* current_editor = nullptr;
+textfile* hardswap_editor = nullptr;
+
 void UpdateRegisteredActorsCache() {
     zhash_t *hash = sphactor_get_registered();
     zlist_t *list = zhash_keys(hash);
@@ -189,6 +211,145 @@ void ShowLogWindow(ImGuiTextBuffer& buffer) {
     ImGui::End();
 
     ImGui::PopID();
+}
+
+void OpenTextEditor(zfile_t* txtfile)
+{
+    assert(txtfile);
+    textfile * found = nullptr;
+    for (auto it = open_text_files.begin(); it != open_text_files.end(); ++it)
+    {
+        if (streq(zfile_filename(it->file, NULL), zfile_filename(txtfile, nullptr)))
+        {
+            found = &(*it);
+            break; // file already exists in the editor
+        }
+    }
+    if (found == nullptr)
+    {
+        zsys_info("NOT FOUND... loading & creating text instance");
+        // we own the pointer now!
+        int rc = zfile_input(txtfile);
+        assert(rc == 0);
+        zchunk_t* data = zfile_read(txtfile, zfile_cursize(txtfile), 0);
+        //TextEditor* editor = new TextEditor();
+        //auto lang = TextEditor::LanguageDefinition::CPlusPlus();
+        //editor->SetLanguageDefinition(lang);
+        //editor->SetText((char*)zchunk_data(data));
+        char* basename = s_basename(zfile_filename(txtfile, nullptr));
+
+        open_text_files.push_back({ txtfile, basename, true });
+    }
+    else {
+        zsys_info("FOUND OPEN TEXT FILE!... maybe activate the correct tab?");
+        hardswap_editor = found;
+    }
+    txteditor_open = true;
+}
+
+void ShowTextEditor()
+{
+    static char text[1024 * 16] = "Load a file to start editing...";
+
+    if (ImGui::Begin("Texteditor", &txteditor_open, ImGuiWindowFlags_MenuBar)) {
+
+        ImGui::BeginMenuBar();
+
+        if (ImGui::BeginMenu("File")) {
+            
+            bool file_selected = false;
+
+            if (ImGui::Button(ICON_FA_FOLDER_OPEN " Load"))
+                file_selected = true;
+
+            if (file_selected)
+                ImGui::OpenPopup("Actor Open File");
+
+            if (actor_file_dialog.showFileDialog("Actor Open File",
+                imgui_addons::ImGuiFileBrowser::DialogMode::OPEN,
+                ImVec2(700, 310),
+                "*.*")) // TODO: perhaps add type hint for extensions?
+            {
+                zfile_t* f = zfile_new(nullptr, actor_file_dialog.selected_path.c_str());
+                if (actor_file_dialog.selected_path.length() > 0 && f)
+                {
+                    OpenTextEditor(f);
+                }
+                else
+                    zsys_error("no valid file to load: %s", actor_file_dialog.selected_path.c_str());
+            }
+            if (ImGui::MenuItem(ICON_FA_SAVE " Save")) {
+                if (current_editor != nullptr) {
+                    int rc = zfile_output(current_editor->file);
+                    if (rc == 0) {
+                        zchunk_t* data = zchunk_frommem(text, strlen(text), nullptr, nullptr);
+                        int rc = zfile_write(current_editor->file, data, 0);
+                        if (rc != 0) {
+                            zsys_info("ERROR WRITING TO FILE: %i", rc);
+                        }
+                    }
+                }
+            }
+            // TODO: support save as?
+            //if (ImGui::MenuItem(ICON_FA_SAVE " Save As")) {
+            //
+            //}
+            ImGui::Separator();
+            if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE " Exit")) {
+                //TODO: support checking if changes were made
+                txteditor_open = false;
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+
+        ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_AutoSelectNewTabs;
+        if (ImGui::BeginTabBar("TextEditorTabBar", tab_bar_flags))
+        {
+            for (auto it = open_text_files.begin(); it != open_text_files.end(); ++it)
+            {
+                ImGuiTabItemFlags flags = ImGuiTabItemFlags_None;
+                if (hardswap_editor && &(*it) == hardswap_editor) {
+                    flags |= ImGuiTabItemFlags_SetSelected;
+                    hardswap_editor = nullptr;
+                }
+
+                if (&it->open && ImGui::BeginTabItem(it->basename, &it->open, flags))
+                {
+                    if (current_editor != &(*it))
+                    {
+                        current_editor = &(*it); // set current textfile from active tab
+                        //TODO: refresh buffer
+                        memset(text, 0, sizeof(text));
+                        zchunk_t* fileChunk = zfile_read(it->file, zfile_cursize(it->file), 0);
+                        memcpy(text, zchunk_data(fileChunk), zchunk_size(fileChunk));
+                        zchunk_destroy(&fileChunk);
+                    }
+
+                    ImGui::InputTextMultiline("##source", text, IM_ARRAYSIZE(text), ImVec2(-FLT_MIN, ImGui::GetCurrentWindow()->Size.y - 80), ImGuiInputTextFlags_AllowTabInput);
+                    ImGui::EndTabItem();
+                }
+                else if (!it->open)
+                {
+                    // file is closed by gui do we need to save it?
+                    // this doesn't work, mTextChanged is set to false when rendered
+                    /*if ( it->editor->IsTextChanged() )
+                    {
+                        zsys_debug("need to save file %s", it->basename );
+                    }*/
+                    zsys_debug("remove file %s", it->basename);
+                    open_text_files.erase(it);
+                    current_editor = nullptr;
+                    break;
+                }
+            }
+
+            ImGui::EndTabBar();
+        }
+    }
+    ImGui::End();
 }
 
 int RenderMenuBar( bool * showLog ) {
@@ -495,6 +656,8 @@ int UpdateActors(float deltaTime, bool * showLog)
         ImNodes::EndCanvas();
     }
     ImGui::End();
+
+    if (txteditor_open) ShowTextEditor();
 
     return rc;
 }
