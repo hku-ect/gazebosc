@@ -6,23 +6,113 @@
 #elif defined(__WINDOWS__)
 #include <windows.h>
 #endif
+#ifdef __UTYPE_LINUX
+#include <sys/inotify.h>
 
-static const char *pythonactorcapabilities =
-        "capabilities\n"
-        "    data\n"
-        "        name = \"pyfile\"\n"
-        "        type = \"filename\"\n"
-        "        value = \"\"\n"
-        "        api_call = \"SET FILE\"\n"
-        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
-        "inputs\n"
-        "    input\n"
-        "        type = \"OSC\"\n"
-        "outputs\n"
-        "    output\n"
-        //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
-        "        type = \"OSC\"\n";
+zmsg_t *
+s_pythonactor_set_file(pythonactor_t *self, const char *filename);
 
+static void
+s_handle_inotify_events(pythonactor_t *self, sphactor_actor_t *actorinst, int fd, int *wd)
+{
+   /* Some systems cannot read integer variables if they are not
+      properly aligned. On other systems, incorrect alignment may
+      decrease performance. Hence, the buffer used for reading from
+      the inotify file descriptor should have the same alignment as
+      struct inotify_event. */
+
+   char buf[4096]
+       __attribute__ ((aligned(__alignof__(struct inotify_event))));
+   const struct inotify_event *event;
+   ssize_t len;
+
+   // TODO: We might need to loop on read until we have no events left?
+   /* If the nonblocking read() found no events to read, then
+      it returns -1 with errno set to EAGAIN. In that case,
+      we exit the loop. */
+
+   len = read(fd, buf, sizeof(buf));
+   if (len == -1 && errno != EAGAIN) {
+       zsys_error("Inotify read failure");
+   }
+
+   if (len <= 0)
+       return;
+
+   /* Loop over all events in the buffer. */
+
+   for (char *ptr = buf; ptr < buf + len;
+           ptr += sizeof(struct inotify_event) + event->len) {
+
+       event = (const struct inotify_event *) ptr;
+
+       if ( event->mask & IN_DELETE_SELF || event->mask & IN_DELETE )
+       {
+           zsys_warning("Watched file %s is deleted", self->main_filename);
+           s_pythonactor_set_file(self, "");
+           return;
+       }
+       /*
+       if (event->mask & IN_MODIFY)
+           printf("IN_MODIFY: ");
+       if (event->mask & IN_CLOSE_WRITE)
+           printf("IN_CLOSE_WRITE: ");
+       if (event->mask & IN_MOVE_SELF)
+           printf("IN_MOVE_SELF: ");
+        */
+       s_pythonactor_set_file(self, self->main_filename);
+   }
+   fflush(stdout);
+}
+
+static void
+s_destroy_inotify(pythonactor_t *self, sphactor_actor_t *actorinst)
+{
+    if (self->wd != -1)
+    {
+        // removing the watch from the watch list.
+        inotify_rm_watch( self->fd, self->wd );
+    }
+    if (self->fd != -1)
+    {
+        sphactor_actor_poller_remove(actorinst, (void *)&self->fd);
+        // closing the INOTIFY instance
+        close( self->fd );
+    }
+}
+
+static void
+s_init_inotify(pythonactor_t *self, const char *filename, sphactor_actor_t *actorinst)
+{
+    assert(self);
+    assert(filename);
+    assert(actorinst);
+    if (self->fd != -1)
+        s_destroy_inotify(self, actorinst);
+
+    self->fd = inotify_init1(0);
+    //zsys_info("Inotify fd is %i", self->fd);
+    /*checking for error*/
+    if (self->fd == -1)
+    {
+        zsys_error("inotify_init error");
+        return;
+    }
+    // add file watcher
+    self->wd = inotify_add_watch( self->fd, filename, IN_DELETE | IN_DELETE_SELF | IN_MOVE_SELF | IN_CLOSE_WRITE);
+    /*checking for error*/
+    if (self->wd == -1)
+    {
+        zsys_error("inotify_add_watch error %i", errno);
+        s_destroy_inotify(self, actorinst);
+        return;
+    }
+
+    sphactor_actor_poller_add(actorinst, (void *)&self->fd);
+
+    return;    
+}
+#endif
 
 // https://stackoverflow.com/questions/2736753/how-to-remove-extension-from-file-name
 static char *
@@ -59,6 +149,136 @@ s_dir_exists(const wchar_t *pypath)
     bool ret = zfile_is_directory(dir);
     zfile_destroy(&dir);
     return ret;
+}
+
+static const char *pythonactorcapabilities =
+        "capabilities\n"
+        "    data\n"
+        "        name = \"pyfile\"\n"
+        "        type = \"filename\"\n"
+        "        value = \"\"\n"
+        "        api_call = \"SET FILE\"\n"
+        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "inputs\n"
+        "    input\n"
+        "        type = \"OSC\"\n"
+        "outputs\n"
+        "    output\n"
+        //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
+        "        type = \"OSC\"\n";
+
+zmsg_t *
+s_pythonactor_set_file(pythonactor_t *self, const char *filename)
+{
+    char *filebasename = s_basename(filename);
+    char *pyname = s_remove_ext(filebasename);
+
+    // Load or reload the module
+    // first check if we need to reload
+    //  Acquire the GIL
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+    if (self->pymodule && self->main_filename && streq(filename, self->main_filename) )
+    {
+        PyObject *pyreloaded = PyImport_ReloadModule(self->pymodule);
+        if (pyreloaded == NULL)
+        {
+            if ( PyErr_Occurred() )
+                PyErr_Print();
+            zsys_error("Error reloading module %s", filename);
+            PyGILState_Release(gstate);
+            zstr_free(&pyname);
+            zstr_free(&filebasename);
+            return NULL;
+        }
+        Py_CLEAR(self->pymodule);
+        self->pymodule = pyreloaded;
+    }
+    else // load python file (module) normally
+    {
+        //  import our python file
+        PyObject *pName;
+        pName = PyUnicode_DecodeFSDefault( pyname );
+        if ( pName == NULL )
+        {
+            if ( PyErr_Occurred() )
+                PyErr_Print();
+            zsys_error("error loading %s", pyname);
+            PyGILState_Release(gstate);
+            zstr_free(&pyname);
+            zstr_free(&filebasename);
+            return NULL;
+        }
+
+        //  we loaded the file now import it
+        Py_CLEAR(self->pymodule);
+        self->pymodule = PyImport_Import( pName );
+        if ( self->pymodule == NULL )
+        {
+            if ( PyErr_Occurred() )
+                PyErr_Print();
+            zsys_error("error importing %s", filename);
+            Py_DECREF(pName);
+            PyGILState_Release(gstate);
+            zstr_free(&pyname);
+            zstr_free(&filebasename);
+            return NULL;
+        }
+        Py_DECREF(pName);
+        // to be sure we have the updated code we also reload the module (workaround for loading updated file in new actor)
+        PyObject *pyreloaded = PyImport_ReloadModule(self->pymodule);
+        if (pyreloaded == NULL)
+        {
+            if ( PyErr_Occurred() )
+                PyErr_Print();
+            zsys_error("Error reloading module on fresh load %s", filename);
+            PyGILState_Release(gstate);
+            zstr_free(&pyname);
+            zstr_free(&filebasename);
+            return NULL;
+        }
+        Py_CLEAR(self->pymodule);
+        self->pymodule = pyreloaded;
+    }
+    // load the class
+    //  get the class with the same name as the filename
+    PyObject *pClass = PyObject_GetAttrString(self->pymodule, pyname );
+    if (pClass == NULL )
+    {
+        if (PyErr_Occurred())
+            PyErr_Print();
+        zsys_error("pClass is NULL");
+        Py_CLEAR(self->pymodule);
+        PyGILState_Release(gstate);
+        zstr_free(&pyname);
+        zstr_free(&filebasename);
+        return NULL;
+    }
+
+    // instanciate the class and optionally destroy the old instance
+    // create an instance of the class
+    Py_CLEAR(self->pyinstance);
+    self->pyinstance = PyObject_CallObject((PyObject *) pClass, NULL);
+    if (self->pyinstance == NULL )
+    {
+        if (PyErr_Occurred())
+            PyErr_Print();
+        zsys_error("pClass instance is NULL");
+        Py_DECREF(pClass);
+        Py_DECREF(self->pymodule);
+        self->pymodule = NULL;
+        PyGILState_Release(gstate);
+        zstr_free(&pyname);
+        zstr_free(&filebasename);
+        return NULL;
+    }
+    zsys_info("Successfully (re)loaded %s", filename);
+    Py_DECREF(pClass);
+    PyGILState_Release(gstate);
+    zstr_free(&pyname);
+    zstr_free(&filebasename);
+    self->main_filename = strdup(filename);
+    return NULL;
 }
 
 static zosc_t *
@@ -235,6 +455,8 @@ pythonactor_new()
 
     self->pyinstance = NULL;
     self->main_filename = NULL;
+    self->fd = -1;
+    self->wd = -1;
 
     return self;
 }
@@ -292,122 +514,16 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
             zstr_free(&cmd);
             return NULL;
         }
-        char *filebasename = s_basename(filename);
-        char *pyname = s_remove_ext(filebasename);
 
-        // Load or reload the module
-        // first check if we need to reload
-        //  Acquire the GIL
-        PyGILState_STATE gstate;
-        gstate = PyGILState_Ensure();
-        if (self->pymodule && self->main_filename && streq(filename, self->main_filename) )
-        {
-            PyObject *pyreloaded = PyImport_ReloadModule(self->pymodule);
-            if (pyreloaded == NULL)
-            {
-                if ( PyErr_Occurred() )
-                    PyErr_Print();
-                zsys_error("Error reloading module %s", filename);
-                PyGILState_Release(gstate);
-                zstr_free(&pyname);
-                zstr_free(&filebasename);
-                zstr_free(&cmd);
-                return NULL;
-            }
-            Py_CLEAR(self->pymodule);
-            self->pymodule = pyreloaded;
-        }
-        else // load python file (module) normally
-        {
-            //  import our python file
-            PyObject *pName;
-            pName = PyUnicode_DecodeFSDefault( pyname );
-            if ( pName == NULL )
-            {
-                if ( PyErr_Occurred() )
-                    PyErr_Print();
-                zsys_error("error loading %s", pyname);
-                PyGILState_Release(gstate);
-                zstr_free(&pyname);
-                zstr_free(&filebasename);
-                zstr_free(&cmd);
-                return NULL;
-            }
+#ifdef __UTYPE_LINUX
+        if ( self->main_filename == NULL || ! streq(filename, self->main_filename) )
+            s_init_inotify(self, filename, (sphactor_actor_t *)ev->actor);
+#endif
+        s_pythonactor_set_file(self, filename);
 
-            //  we loaded the file now import it
-            Py_CLEAR(self->pymodule);
-            self->pymodule = PyImport_Import( pName );
-            if ( self->pymodule == NULL )
-            {
-                if ( PyErr_Occurred() )
-                    PyErr_Print();
-                zsys_error("error importing %s", filename);
-                Py_DECREF(pName);
-                PyGILState_Release(gstate);
-                zstr_free(&pyname);
-                zstr_free(&filebasename);
-                zstr_free(&cmd);
-                return NULL;
-            }
-            Py_DECREF(pName);
-            // to be sure we have the updated code we also reload the module (workaround for loading updated file in new actor)
-            PyObject *pyreloaded = PyImport_ReloadModule(self->pymodule);
-            if (pyreloaded == NULL)
-            {
-                if ( PyErr_Occurred() )
-                    PyErr_Print();
-                zsys_error("Error reloading module on fresh load %s", filename);
-                PyGILState_Release(gstate);
-                zstr_free(&pyname);
-                zstr_free(&filebasename);
-                zstr_free(&cmd);
-                return NULL;
-            }
-            Py_CLEAR(self->pymodule);
-            self->pymodule = pyreloaded;
-        }
-        // load the class
-        //  get the class with the same name as the filename
-        PyObject *pClass = PyObject_GetAttrString(self->pymodule, pyname );
-        if (pClass == NULL )
-        {
-            if (PyErr_Occurred())
-                PyErr_Print();
-            zsys_error("pClass is NULL");
-            Py_CLEAR(self->pymodule);
-            PyGILState_Release(gstate);
-            zstr_free(&pyname);
-            zstr_free(&filebasename);
-            zstr_free(&cmd);
-            return NULL;
-        }
 
-        // instanciate the class and optionally destroy the old instance
-        // create an instance of the class
-        Py_CLEAR(self->pyinstance);
-        self->pyinstance = PyObject_CallObject((PyObject *) pClass, NULL);
-        if (self->pyinstance == NULL )
-        {
-            if (PyErr_Occurred())
-                PyErr_Print();
-            zsys_error("pClass instance is NULL");
-            Py_DECREF(pClass);
-            Py_DECREF(self->pymodule);
-            self->pymodule = NULL;
-            PyGILState_Release(gstate);
-            zstr_free(&pyname);
-            zstr_free(&filebasename);
-            zstr_free(&cmd);
-            return NULL;
-        }
-        zsys_info("Successfully loaded %s", filename);
-        Py_DECREF(pClass);
-        PyGILState_Release(gstate);
-        zstr_free(&pyname);
-        zstr_free(&filebasename);
-        self->main_filename = filename;
-        zstr_free(&cmd);
         return NULL;
+
     }
 
     if ( ev->msg ) zmsg_destroy(&ev->msg);
@@ -468,7 +584,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
             }
             else
             {
-                zsys_warning("PyBytes has zero size");
+                zsys_warning("zsock_resolvePyBytes has zero size");
             }
             Py_DECREF(pReturn);  // decrease refcount to trigger destroy
             // Release the GIL again as we are ready with Python
@@ -543,6 +659,21 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
 zmsg_t *
 pythonactor_custom_socket(pythonactor_t *self, sphactor_event_t *ev)
 {
+    assert(self);
+    assert(ev->msg);
+    // Get the socket...
+    zframe_t *frame = zmsg_pop(ev->msg);
+    if (zframe_size(frame) == sizeof( void *) )
+    {
+        void *p = *(void **)zframe_data(frame);
+#ifdef __UTYPE_LINUX
+        assert(p == (void *)&self->fd);
+        s_handle_inotify_events(self, (sphactor_actor_t *)ev->actor, self->fd, &self->wd);
+#endif
+    }
+
+    zframe_destroy(&frame);
+    zmsg_destroy(&ev->msg);
     return NULL;
 }
 
@@ -564,6 +695,10 @@ pythonactor_stop(pythonactor_t *self, sphactor_event_t *ev)
         Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
         PyGILState_Release(gstate);
     }
+    // remove the watched file
+#ifdef __UTYPE_LINUX
+    s_destroy_inotify(self, (sphactor_actor_t *)ev->actor);
+#endif
     return NULL;
 }
 
@@ -610,27 +745,6 @@ pythonactor_handle_msg(pythonactor_t *self, sphactor_event_t *ev)
     }
     else if ( streq(ev->type, "FDSOCK") )
     {
-        zframe_t *frame = zmsg_pop(ev->msg);
-        assert(frame);
-        zmsg_destroy(&ev->msg);
-
-        if (zframe_size(frame) == sizeof( void *) )
-        {
-            void *p = *( (void **)zframe_data(frame));
-            zsock_t *sock = (zsock_t *)zsock_resolve(p);
-            if ( sock )
-            {
-                zmsg_t *msg = zmsg_recv(sock);
-                assert(msg);
-                ev->msg = msg;
-            }
-            else
-            {
-                zsys_error("we received a FDSOCK event but we didn't get a socket pointer");
-            }
-        }
-        zframe_destroy(&frame);
-
         return pythonactor_custom_socket(self, ev);
     }
     else if ( streq(ev->type, "STOP") )
