@@ -17,12 +17,6 @@ const char * OSCInput::capabilities =
 
 zmsg_t * OSCInput::handleInit( sphactor_event_t *ev )
 {
-    // Initialize report timestamp
-    zosc_t* msg = zosc_create("/report", "sh",
-        "lastActive", (int64_t)0);
-
-    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
-
     return Sphactor::handleInit(ev);
 }
 
@@ -81,11 +75,6 @@ zmsg_t * OSCInput::handleCustomSocket( sphactor_event_t *ev )
             // first message is the source address, pop it
             char *senderaddr = zmsg_popstr(retmsg);
             zstr_free(&senderaddr);
-            // set timestamp of last received packet in report
-            zosc_t* msg = zosc_create("/report", "sh",
-                "lastActive", (int64_t)clock());
-
-            sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
         }
     }
     return retmsg;

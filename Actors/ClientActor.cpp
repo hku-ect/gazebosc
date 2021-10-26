@@ -29,12 +29,6 @@ Client::capabilities =          "capabilities\n"
                                 "        type = \"OSC\"\n";
 
 zmsg_t* Client::handleInit( sphactor_event_t * ev ) {
-    // Initialize report timestamp
-    zosc_t* msg = zosc_create("/report", "sh",
-        "lastActive", (int64_t)0);
-
-    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
-
     this->dgrams = zsock_new_dgram("udp://*:*");
     return Sphactor::handleInit(ev);
 }
@@ -66,13 +60,6 @@ zmsg_t* Client::handleSocket( sphactor_event_t * ev ) {
             int rc = zsock_send(dgrams,  "b", msgBuffer, len);
             if ( rc != 0 ) {
                 zsys_info("Error sending zosc message to: %s, %i", url.c_str(), rc);
-            }
-            else {
-                // set timestamp of last sent packet in report
-                zosc_t* msg = zosc_create("/report", "sh",
-                    "lastActive", (int64_t)clock());
-
-                sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
             }
         }
     } while (frame != NULL );

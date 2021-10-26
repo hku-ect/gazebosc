@@ -149,7 +149,6 @@ struct ActorContainer {
             assert(new_connection.output_node);
             ((ActorContainer*) new_connection.input_node)->connections.push_back(new_connection);
             ((ActorContainer*) new_connection.output_node)->connections.push_back(new_connection);
-
         }
     }
 

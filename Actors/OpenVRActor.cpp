@@ -39,12 +39,6 @@ zmsg_t * OpenVR::handleInit( sphactor_event_t *ev )
         zsys_info("Could not initialize OpenVR");
     }
 
-    // Initialize report timestamp
-    zosc_t* msg = zosc_create("/report", "sh",
-        "lastActive", (int64_t)0);
-
-    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
-
     return Sphactor::handleInit(ev);
 }
 
