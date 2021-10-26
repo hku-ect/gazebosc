@@ -71,7 +71,7 @@ jobs:
 
     - name: Install
       if: matrix.os == 'macos-latest'
-      run: make install
+      run: cmake --install ${{github.workspace}}/build 
 
     - name: Test
       working-directory: ${{github.workspace}}/build
