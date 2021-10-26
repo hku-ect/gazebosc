@@ -59,7 +59,8 @@ zmsg_t * Midi2OSC::handleInit( sphactor_event_t *ev )
         }
     }
 
-    midiin->openPort(0);
+    if ( nPorts > 0 )
+        midiin->openPort(0);
 
     return Sphactor::handleInit(ev);
 }
