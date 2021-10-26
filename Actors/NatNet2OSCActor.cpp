@@ -741,15 +741,15 @@ void NatNet2OSC::Unpack( char ** pData ) {
         {
             uint64_t cameraMidExposureTimestamp = 0;
             memcpy(&cameraMidExposureTimestamp, ptr, 8); ptr += 8;
-            printf("Mid-exposure timestamp : %" PRIu64"\n", cameraMidExposureTimestamp);
+            //printf("Mid-exposure timestamp : %" PRIu64"\n", cameraMidExposureTimestamp);
 
             uint64_t cameraDataReceivedTimestamp = 0;
             memcpy(&cameraDataReceivedTimestamp, ptr, 8); ptr += 8;
-            printf("Camera data received timestamp : %" PRIu64"\n", cameraDataReceivedTimestamp);
+            //printf("Camera data received timestamp : %" PRIu64"\n", cameraDataReceivedTimestamp);
 
             uint64_t transmitTimestamp = 0;
             memcpy(&transmitTimestamp, ptr, 8); ptr += 8;
-            printf("Transmit timestamp : %" PRIu64"\n", transmitTimestamp);
+            //printf("Transmit timestamp : %" PRIu64"\n", transmitTimestamp);
         }
 
         // frame params
@@ -910,13 +910,13 @@ void NatNet2OSC::Unpack( char ** pData ) {
                         float* markerPosition = markerPositions + markerIdx * 3;
                         const int markerRequiredLabel = markerRequiredLabels[markerIdx];
 
-                        printf("\tMarker #%d:\n", markerIdx);
-                        printf("\t\tPosition: %.2f, %.2f, %.2f\n", markerPosition[0], markerPosition[1], markerPosition[2]);
+                        //printf("\tMarker #%d:\n", markerIdx);
+                        //printf("\t\tPosition: %.2f, %.2f, %.2f\n", markerPosition[0], markerPosition[1], markerPosition[2]);
 
-                        if (markerRequiredLabel != 0)
-                        {
-                            printf("\t\tRequired active label: %d\n", markerRequiredLabel);
-                        }
+                        //if (markerRequiredLabel != 0)
+                        //{
+                        //    printf("\t\tRequired active label: %d\n", markerRequiredLabel);
+                        //}
                     }
 
                     free(markerPositions);
