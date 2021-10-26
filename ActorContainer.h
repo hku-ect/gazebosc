@@ -284,6 +284,9 @@ struct ActorContainer {
             else if ( streq(typeStr, "mediacontrol")) {
                 RenderMediacontrol( nameStr, data );
             }
+            else if ( streq(typeStr, "trigger")) {
+                RenderTrigger( nameStr, data );
+            }
 
             data = zconfig_next(data);
         }
@@ -596,6 +599,15 @@ struct ActorContainer {
             zconfig_set_value(zvalue, "%s", buf);
             //SendAPI<char*>(zapic, zapiv, zvalue, &(p));
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf );
+        }
+    }
+
+    void RenderTrigger(const char* name, zconfig_t *data) {
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+
+        ImGui::SetNextItemWidth(200);
+        if ( ImGui::Button(name) ) {
+            sphactor_ask_api(this->actor, zconfig_value(zapic), "", "" );
         }
     }
 
