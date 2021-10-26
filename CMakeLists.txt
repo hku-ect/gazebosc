@@ -71,6 +71,8 @@ add_subdirectory("ext/libsphactor" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/SDL-mirror" EXCLUDE_FROM_ALL)
 add_subdirectory("ext/glm" EXCLUDE_FROM_ALL)
 set( RTMIDI_TARGETNAME_UNINSTALL "rtmidi_uninstall" CACHE STRING "Name of 'uninstall' build target")
+set( RTMIDI_BUILD_SHARED_LIBS "")
+set( RTMIDI_BUILD_STATIC_LIBS "#" )
 add_subdirectory("ext/rtmidi" EXCLUDE_FROM_ALL)
 
 # External system libraries through find_package
