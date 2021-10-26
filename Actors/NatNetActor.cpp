@@ -22,8 +22,6 @@ const char * NatNet::capabilities =
                                 "        name = \"network_interface\"\n"
                                 "        type = \"int\"\n"
                                 "        value = \"0\"\n"
-                                "        min = \"0\"\n"
-                                "        max = \"0\"\n"
                                 "        api_call = \"SET INTERFACE\"\n"
                                 "        api_value = \"i\"\n"           // optional picture format used in zsock_send
                                 "    data\n"
@@ -32,6 +30,10 @@ const char * NatNet::capabilities =
                                 "        value = \"60\"\n"
                                 "        api_call = \"SET TIMEOUT\"\n"
                                 "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+                                "    data\n"
+                                "        name = \"Reset\"\n"
+                                "        type = \"trigger\"\n"
+                                "        api_call = \"RESET\"\n"
                                 "outputs\n"
                                 "    output\n"
                                 //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -110,6 +112,13 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
     //pop msg for command
     char * cmd = zmsg_popstr(ev->msg);
     if (cmd) {
+        if ( streq(cmd, "RESET") ) {
+            this->rigidbodies.clear();
+            this->skeletons.clear();
+            this->rigidbodiesReady = false;
+            this->skeletonsReady = false;
+            this->sentRequest = 0;
+        }
         if ( streq(cmd, "SET HOST") ) {
             char *host_addr = zmsg_popstr(ev->msg);
             host = host_addr;
