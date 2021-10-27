@@ -66,7 +66,12 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     assert(rc == 0);
 
     // receive socket on CMD_PORT
-    url = "udp://" + activeInterface + ":" + PORT_COMMAND_STR;
+    if ( streq(host.c_str(), ifAddresses[0].c_str()) ) {
+        url = "udp://127.0.0.1:" + PORT_COMMAND_STR;
+    }
+    else {
+        url = "udp://*:" + PORT_COMMAND_STR;
+    }
     CommandSocket = zsock_new_dgram(url.c_str());
     assert( CommandSocket );
     rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
@@ -147,32 +152,41 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             zstr_free(&ifChar);
 
             // zsys_info("SET INTERFACE: %i", ifIndex);
+            if ( ifIndex >= ifNames.size() ) {
+                activeInterface = ifNames[ifIndex];
 
-            activeInterface = ifNames[ifIndex];
+                if (DataSocket != NULL) {
+                    sphactor_actor_poller_remove((sphactor_actor_t *) ev->actor, DataSocket);
+                    zsock_destroy(&DataSocket);
+                }
 
-            if ( DataSocket != NULL ) {
-                sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
-                zsock_destroy(&DataSocket);
+                std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+                DataSocket = zsock_new(ZMQ_DGRAM);
+                //zsock_connect(DataSocket, "%s", url.c_str());
+                zsock_bind(DataSocket, "%s", url.c_str());
+                assert(DataSocket);
+                int rc = sphactor_actor_poller_add((sphactor_actor_t *) ev->actor, DataSocket);
+                assert(rc == 0);
+
+                if (CommandSocket != NULL) {
+                    sphactor_actor_poller_remove((sphactor_actor_t *) ev->actor, CommandSocket);
+                    zsock_destroy(&CommandSocket);
+                }
+
+                // If motive host IP is our active interface, we need to listen to 127.0.0.1 instead
+                if (streq(host.c_str(), ifAddresses[ifIndex].c_str())) {
+                    url = "udp://127.0.0.1:" + PORT_COMMAND_STR;
+                } else {
+                    url = "udp://*:" + PORT_COMMAND_STR;
+                }
+                CommandSocket = zsock_new_dgram(url.c_str());
+                assert(CommandSocket);
+                rc = sphactor_actor_poller_add((sphactor_actor_t *) ev->actor, CommandSocket);
+                assert(rc == 0);
             }
-
-            std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
-            DataSocket = zsock_new(ZMQ_DGRAM);
-            //zsock_connect(DataSocket, "%s", url.c_str());
-            zsock_bind(DataSocket, "%s", url.c_str());
-            assert( DataSocket );
-            int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
-            assert(rc == 0);
-
-            if ( CommandSocket != NULL ) {
-                sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, CommandSocket);
-                zsock_destroy(&CommandSocket);
+            else {
+                zsys_info("ERROR: Invalid interface number");
             }
-
-            url = "udp://" + activeInterface + ":" + PORT_COMMAND_STR;
-            CommandSocket = zsock_new_dgram(url.c_str());
-            assert( CommandSocket );
-            rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
-            assert(rc == 0);
         }
 
         zstr_free(&cmd);
