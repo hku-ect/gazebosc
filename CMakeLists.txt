@@ -52,6 +52,7 @@ endif()
 
 ### SET OPTIONS
 option (WITH_UNWIND "Enable libunwind support" ON)
+option (WITH_IMGUI_DEMO "Enable ImGUI demo console" ON)
 option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" OFF)
 option (WITH_OPENVR "Enable OpenVR support" ON)
 ### END SET OPTIONS
@@ -104,6 +105,11 @@ if (Unwind_FOUND)
     set (HAVE_LIBUNWIND 1)
     set (HAVE_UNWIND_H 1)
 endif (Unwind_FOUND)
+
+if (WITH_IMGUI_DEMO)
+    add_definitions(-DHAVE_IMGUI_DEMO)
+endif (Unwind_FOUND)
+
 
 if (WITH_OPENVR)
     if (WIN32)

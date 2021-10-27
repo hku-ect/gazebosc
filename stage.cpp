@@ -85,6 +85,12 @@ bool txteditor_open = false;
 textfile* current_editor = nullptr;
 textfile* hardswap_editor = nullptr;
 
+#ifdef HAVE_IMGUI_DEMO
+// ImGui Demo window for dev purposes
+bool showDemo = false;
+void ImGui::ShowDemoWindow(bool* p_open);
+#endif
+
 void UpdateRegisteredActorsCache() {
     zhash_t *hash = sphactor_get_registered();
     zlist_t *list = zhash_keys(hash);
@@ -396,6 +402,12 @@ int RenderMenuBar( bool * showLog ) {
         if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Console") ) {
             *showLog = !(*showLog);
         }
+#ifdef HAVE_IMGUI_DEMO
+        if ( ImGui::MenuItem(ICON_FA_CARAVAN " Toggle Demo") ) {
+            showDemo = !showDemo;
+        }
+#endif
+
         ImGui::EndMenu();
     }
 
@@ -661,7 +673,10 @@ int UpdateActors(float deltaTime, bool * showLog)
     ImGui::End();
 
     if (txteditor_open) ShowTextEditor();
-
+#ifdef HAVE_IMGUI_DEMO
+    // ImGui Demo window for dev purposes
+    if (showDemo) ImGui::ShowDemoWindow(&showDemo);
+#endif
     return rc;
 }
 
