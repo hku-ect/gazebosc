@@ -65,8 +65,8 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
     assert(rc == 0);
 
-    // receive socket on CMD_PORT
-    url = "udp://*:"+ PORT_COMMAND_STR;
+
+    url = "udp://*:*";
     CommandSocket = zsock_new_dgram(url.c_str());
     assert( CommandSocket );
     rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
@@ -81,7 +81,7 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
 zmsg_t * NatNet::handleStop( sphactor_event_t * ev )
 {
     if ( CommandSocket != NULL ) {
-        sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
+        sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, CommandSocket);
         zsock_destroy(&CommandSocket);
         CommandSocket = NULL;
     }
@@ -147,21 +147,25 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             zstr_free(&ifChar);
 
             // zsys_info("SET INTERFACE: %i", ifIndex);
+            if ( ifIndex < ifNames.size() ) {
+                activeInterface = ifNames[ifIndex];
 
-            activeInterface = ifNames[ifIndex];
+                if (DataSocket != NULL) {
+                    sphactor_actor_poller_remove((sphactor_actor_t *) ev->actor, DataSocket);
+                    zsock_destroy(&DataSocket);
+                }
 
-            if ( DataSocket != NULL ) {
-                sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
-                zsock_destroy(&DataSocket);
+                std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
+                DataSocket = zsock_new(ZMQ_DGRAM);
+                //zsock_connect(DataSocket, "%s", url.c_str());
+                zsock_bind(DataSocket, "%s", url.c_str());
+                assert(DataSocket);
+                int rc = sphactor_actor_poller_add((sphactor_actor_t *) ev->actor, DataSocket);
+                assert(rc == 0);
             }
-
-            std::string url = "udp://" + activeInterface + ";" + MULTICAST_ADDRESS + ":" + PORT_DATA_STR;
-            DataSocket = zsock_new(ZMQ_DGRAM);
-            //zsock_connect(DataSocket, "%s", url.c_str());
-            zsock_bind(DataSocket, "%s", url.c_str());
-            assert( DataSocket );
-            int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
-            assert(rc == 0);
+            else {
+                zsys_info("ERROR: Invalid interface number");
+            }
         }
 
         zstr_free(&cmd);
