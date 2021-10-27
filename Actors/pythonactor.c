@@ -667,11 +667,11 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
     {
         zmsg_destroy(&ev->msg);
     }
-    // destroy the osc message & frame
-    zosc_destroy(&oscm);
     // call member 'handleMsg' with event arguments
     PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "sOsss", oscaddress, py_osctuple, ev->type, ev->name, ev->uuid);
     Py_XINCREF(pReturn);  // increase refcount to prevent destroy
+    // destroy the osc message
+    zosc_destroy(&oscm);
     if (pReturn == NULL)
     {
         PyErr_Print();
