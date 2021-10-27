@@ -66,7 +66,7 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     assert(rc == 0);
 
     // receive socket on CMD_PORT
-    url = "udp://*:"+ PORT_COMMAND_STR;
+    url = "udp://" + activeInterface + ":" + PORT_COMMAND_STR;
     CommandSocket = zsock_new_dgram(url.c_str());
     assert( CommandSocket );
     rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
@@ -81,7 +81,7 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
 zmsg_t * NatNet::handleStop( sphactor_event_t * ev )
 {
     if ( CommandSocket != NULL ) {
-        sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, DataSocket);
+        sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, CommandSocket);
         zsock_destroy(&CommandSocket);
         CommandSocket = NULL;
     }
@@ -161,6 +161,17 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             zsock_bind(DataSocket, "%s", url.c_str());
             assert( DataSocket );
             int rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
+            assert(rc == 0);
+
+            if ( CommandSocket != NULL ) {
+                sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, CommandSocket);
+                zsock_destroy(&CommandSocket);
+            }
+
+            url = "udp://" + activeInterface + ":" + PORT_COMMAND_STR;
+            CommandSocket = zsock_new_dgram(url.c_str());
+            assert( CommandSocket );
+            rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
             assert(rc == 0);
         }
 
