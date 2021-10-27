@@ -259,7 +259,7 @@ void ShowTextEditor()
             
             bool file_selected = false;
 
-            if (ImGui::Button(ICON_FA_FOLDER_OPEN " Load"))
+            if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Load"))
                 file_selected = true;
 
             if (file_selected)
@@ -324,7 +324,9 @@ void ShowTextEditor()
                         //TODO: refresh buffer
                         memset(text, 0, sizeof(text));
                         zchunk_t* fileChunk = zfile_read(it->file, zfile_cursize(it->file), 0);
+                        assert(zchunk_size(fileChunk)+1 < IM_ARRAYSIZE(text));
                         memcpy(text, zchunk_data(fileChunk), zchunk_size(fileChunk));
+                        text[zchunk_size(fileChunk)+1] = 0x0; // force null terminator
                         zchunk_destroy(&fileChunk);
                     }
 
