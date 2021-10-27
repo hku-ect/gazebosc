@@ -430,8 +430,9 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
             char chr;
             int rc = zosc_pop_char(oscmsg, &chr);
             assert(rc == 0);
+            char str[2] = {chr,0x0};
             // TODO char to pyobject???
-            PyObject *o = Py_BuildValue("s#", chr, 1);
+            PyObject *o = Py_BuildValue("s#", str, 1);
             assert( o );
             rc = PyTuple_SetItem(rettuple, pos, o);
             assert(rc == 0);
@@ -847,7 +848,7 @@ pythonactor_handle_msg(pythonactor_t *self, sphactor_event_t *ev)
     }
     else if (self->pyinstance == NULL)
     {
-        zsys_warning("No valid python file has been loaded (yet)");
+        //TODO this can kill the console zsys_warning("No valid python file has been loaded (yet)");
         return NULL;
     }
     // these calls require a pyinstance! (loaded python file)
