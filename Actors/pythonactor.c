@@ -355,6 +355,114 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
     return ret;
 }
 
+static PyObject *
+s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
+{
+    assert(self);
+    assert(oscmsg);
+    char *format = zosc_format(oscmsg);
+
+    PyObject *rettuple = PyTuple_New((Py_ssize_t) strlen(format) );
+
+    char type = '0';
+    Py_ssize_t pos = 0;
+    const void *data =  zosc_first(oscmsg, &type);
+    while(data)
+    {
+        switch (type)
+        {
+        case('i'):
+        {
+            int32_t val = 9;
+            int rc = zosc_pop_int32(oscmsg, &val);
+            assert(rc == 0);
+            PyObject *o = PyLong_FromLong((long)val);
+            assert( o );
+            rc = PyTuple_SetItem(rettuple, pos, o);
+            assert(rc == 0);
+            break;
+        }
+        case('h'):
+        {
+            int64_t val = 0;
+            int rc = zosc_pop_int64(oscmsg, &val);
+            assert(rc == 0);
+            PyObject *o = PyLong_FromLong((long)val);
+            assert( o );
+            rc = PyTuple_SetItem(rettuple, pos, o);
+            assert(rc == 0);
+            break;
+        }
+        case('f'):
+        {
+            float flt_v = 0.f;
+            int rc = zosc_pop_float(oscmsg, &flt_v);
+            PyObject *o = PyFloat_FromDouble((double)flt_v);
+            assert( o );
+            rc = PyTuple_SetItem(rettuple, pos, o);
+            assert(rc == 0);
+            break;
+        }
+        case 'd':
+        {
+            double dbl_v = 0.;
+            int rc = zosc_pop_double(oscmsg, &dbl_v);
+            PyObject *o = PyFloat_FromDouble(dbl_v);
+            assert( o );
+            rc = PyTuple_SetItem(rettuple, pos, o);
+            assert(rc == 0);
+            break;
+        }
+        case 's':
+        {
+            char *str;
+            int rc = zosc_pop_string(oscmsg, &str);
+            assert(rc == 0);
+            PyObject *o = PyUnicode_Decode(str, strlen(str), "ascii", "ignore");
+            assert( o );
+            rc = PyTuple_SetItem(rettuple, pos, o);
+            assert(rc == 0);
+            zstr_free(&str);
+            break;
+        }
+        case 'c':
+        {
+            char chr;
+            int rc = zosc_pop_char(oscmsg, &chr);
+            assert(rc == 0);
+            // TODO char to pyobject???
+            PyObject *o = Py_BuildValue("s#", chr, 1);
+            assert( o );
+            rc = PyTuple_SetItem(rettuple, pos, o);
+            assert(rc == 0);
+            break;
+        }
+        case 'F':
+        case 'T':
+        {
+            bool bl;
+            int rc = zosc_pop_bool(oscmsg, &bl);
+            assert(rc == 0);
+            PyObject *o = NULL;
+            if (bl)
+                o = Py_True;
+            else
+                o = Py_False;
+            assert( o );
+            Py_INCREF(o);
+            rc = PyTuple_SetItem(rettuple, pos, o);
+            assert(rc == 0);
+            break;
+        }
+        default:
+            assert(0);
+        }
+        data = zosc_next(oscmsg, &type);
+        pos++;
+    }
+    return rettuple;
+}
+
 int python_init()
 {
     Py_UnbufferedStdioFlag = 1;
@@ -521,7 +629,8 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
 #endif
         s_pythonactor_set_file(self, filename);
 
-
+        zstr_free(&filename);
+        zstr_free(&cmd);
         return NULL;
 
     }
@@ -543,19 +652,26 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
     PyGILState_STATE gstate;
     gstate = PyGILState_Ensure();
 
-    // pass the msg to our pyinstance
-    // build evmsg for member argument
-    PyZmsgObject *evmsg = (PyZmsgObject *)PyObject_CallObject((PyObject *)&PyZmsgType, NULL);
-    assert(evmsg);
+    // create a python tuple from the osc message
+    zframe_t *oscf = zmsg_pop(ev->msg);
+    assert(oscf);
+    zosc_t *oscm = zosc_fromframe(oscf);
+    assert(oscm);
+    char *oscaddress = zosc_address(oscm);
+    assert(oscaddress);
+    PyObject *py_osctuple = s_py_zosc_tuple(self, oscm);
+    assert(py_osctuple);
+
     // dispose the event message as we already copied it to a python object
     if (ev->msg)
     {
-        zmsg_destroy(&evmsg->msg);
-        evmsg->msg = ev->msg;
+        zmsg_destroy(&ev->msg);
     }
     // call member 'handleMsg' with event arguments
-    PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "Osss", evmsg, ev->type, ev->name, ev->uuid);
+    PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "sOsss", oscaddress, py_osctuple, ev->type, ev->name, ev->uuid);
     Py_XINCREF(pReturn);  // increase refcount to prevent destroy
+    // destroy the osc message
+    zosc_destroy(&oscm);
     if (pReturn == NULL)
     {
         PyErr_Print();
@@ -649,7 +765,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
             }
         }
     }
-    Py_DECREF(pReturn);  // decrease refcount to trigger destroy
+    Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
     // Release the GIL again as we are ready with Python
     PyGILState_Release(gstate); // TODO: didn't we already do this?
 

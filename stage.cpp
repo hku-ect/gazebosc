@@ -284,6 +284,7 @@ void ShowTextEditor()
                     if (rc == 0) {
                         zchunk_t* data = zchunk_frommem(text, strlen(text), nullptr, nullptr);
                         int rc = zfile_write(current_editor->file, data, 0);
+                        zfile_close(current_editor->file);
                         if (rc != 0) {
                             zsys_info("ERROR WRITING TO FILE: %i", rc);
                         }
