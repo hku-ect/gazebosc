@@ -65,13 +65,8 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, DataSocket );
     assert(rc == 0);
 
-    // receive socket on CMD_PORT
-    if ( streq(host.c_str(), ifAddresses[0].c_str()) ) {
-        url = "udp://127.0.0.1:" + PORT_COMMAND_STR;
-    }
-    else {
-        url = "udp://*:" + PORT_COMMAND_STR;
-    }
+
+    url = "udp://*:*";
     CommandSocket = zsock_new_dgram(url.c_str());
     assert( CommandSocket );
     rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
@@ -152,7 +147,7 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             zstr_free(&ifChar);
 
             // zsys_info("SET INTERFACE: %i", ifIndex);
-            if ( ifIndex >= ifNames.size() ) {
+            if ( ifIndex < ifNames.size() ) {
                 activeInterface = ifNames[ifIndex];
 
                 if (DataSocket != NULL) {
@@ -166,22 +161,6 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
                 zsock_bind(DataSocket, "%s", url.c_str());
                 assert(DataSocket);
                 int rc = sphactor_actor_poller_add((sphactor_actor_t *) ev->actor, DataSocket);
-                assert(rc == 0);
-
-                if (CommandSocket != NULL) {
-                    sphactor_actor_poller_remove((sphactor_actor_t *) ev->actor, CommandSocket);
-                    zsock_destroy(&CommandSocket);
-                }
-
-                // If motive host IP is our active interface, we need to listen to 127.0.0.1 instead
-                if (streq(host.c_str(), ifAddresses[ifIndex].c_str())) {
-                    url = "udp://127.0.0.1:" + PORT_COMMAND_STR;
-                } else {
-                    url = "udp://*:" + PORT_COMMAND_STR;
-                }
-                CommandSocket = zsock_new_dgram(url.c_str());
-                assert(CommandSocket);
-                rc = sphactor_actor_poller_add((sphactor_actor_t *) ev->actor, CommandSocket);
                 assert(rc == 0);
             }
             else {
