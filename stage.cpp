@@ -115,6 +115,7 @@ void RegisterActors() {
     sphactor_register<OpenVR>("OpenVR", OpenVR::capabilities);
 #endif
     sphactor_register<OSCInput>( "OSC Input", OSCInput::capabilities );
+    sphactor_register<OSCRecord>( "OSC Record", OSCRecord::capabilities );
     sphactor_register<ModPlayerActor>( "ModPlayer", ModPlayerActor::capabilities );
     sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
 #ifdef PYTHON3_FOUND
