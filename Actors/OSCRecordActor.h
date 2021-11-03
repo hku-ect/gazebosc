@@ -25,10 +25,11 @@ public:
     int offset = 0;
     bool playing = false;
     bool loop = false;
+    bool blockDuringPlay = false;
+
     unsigned int startTimeCode = 0;
     unsigned int startRecordTimeCode = 0;
     unsigned int read_offset = 0;
-    unsigned int cur_target = 0;
     time_bytes * current_tc = nullptr;
 
     OSCRecord() : Sphactor() {

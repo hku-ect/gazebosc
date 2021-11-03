@@ -8,10 +8,11 @@ const char * OSCRecord::capabilities =
         "capabilities\n"
         "    data\n"
         "        name = \"fileName\"\n"
-        "        type = \"string\"\n"
+        "        type = \"filename\"\n"
         "        value = \"\"\n"
         "        api_call = \"SET FILE\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "        options = \"rw\"\n"
         "    data\n"
         "        name = \"Record\"\n"
         "        type = \"trigger\"\n"
@@ -30,6 +31,12 @@ const char * OSCRecord::capabilities =
         "        name = \"loop\"\n"
         "        type = \"bool\"\n"
         "        api_call = \"SET LOOPING\"\n"
+        "        value = \"False\"\n"
+        "        api_value = \"s\"\n"
+        "    data\n"
+        "        name = \"blockDuringPlay\"\n"
+        "        type = \"bool\"\n"
+        "        api_call = \"SET BLOCKING\"\n"
         "        value = \"False\"\n"
         "        api_value = \"s\"\n"
         "inputs\n"
@@ -153,7 +160,7 @@ OSCRecord::handleAPI( sphactor_event_t *ev )
             // TODO: OR overwrite (for now, always overwrite)
             if ( file == nullptr ) {
                 if ( !zfile_exists(fileName) ) {
-                    file = zfile_new("./", fileName);
+                    file = zfile_new(NULL, fileName);
                     zfile_output(file);
                     offset = 0;
                     zsys_info("file created");
@@ -186,7 +193,7 @@ OSCRecord::handleAPI( sphactor_event_t *ev )
         else if ( streq(cmd, "PLAY_RECORDING") ) {
             if ( file == nullptr && !playing ) {
                 if ( zfile_exists(fileName) ) {
-                    file = zfile_new("./", fileName);
+                    file = zfile_new(NULL, fileName);
                     zfile_input(file);
                     playing = true;
                     startTimeCode = zclock_mono();
@@ -221,6 +228,9 @@ OSCRecord::handleAPI( sphactor_event_t *ev )
         else if ( streq(cmd, "SET LOOPING") ) {
             loop = streq( zmsg_popstr(ev->msg), "True" );
         }
+        else if ( streq(cmd, "SET BLOCKING") ) {
+            blockDuringPlay = streq( zmsg_popstr(ev->msg), "True" );
+        }
     }
 
     zmsg_destroy(&ev->msg);
@@ -230,8 +240,7 @@ OSCRecord::handleAPI( sphactor_event_t *ev )
 zmsg_t *
 OSCRecord::handleSocket( sphactor_event_t *ev )
 {
-    // TODO: Store message if recording
-    if ( file ) {
+    if ( file && !playing ) {
         zframe_t * frame = zmsg_pop(ev->msg);
         const char * retChar = "\n";
 
@@ -272,5 +281,11 @@ OSCRecord::handleSocket( sphactor_event_t *ev )
     }
 
     // Passthrough if no file
-    return ev->msg;
+    if ( !playing || !blockDuringPlay ) {
+        return ev->msg;
+    }
+    else {
+        zmsg_destroy(&ev->msg);
+        return nullptr;
+    }
 }
