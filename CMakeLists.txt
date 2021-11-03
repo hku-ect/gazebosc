@@ -224,8 +224,12 @@ target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
 set(RESOURCE_DEST "./")
+set(APPS "bin/gazebosc")
+set(LIBS )
+set(DIRS "${CMAKE_BINARY_DIR}")
 ### PLATFORM SPECIFICS
 if (APPLE)
+    set(APPS "gazebosc.app")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist" @ONLY)
@@ -252,6 +256,8 @@ elseif (WIN32)
         string(REGEX REPLACE "/" "\\\\" VS_DEBUGGER_BACKSLASH "${CMAKE_BINARY_DIR}/bin/Debug/")
         set_property(TARGET gazebosc PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${VS_DEBUGGER_BACKSLASH}")
     endif()
+    set(APPS "bin/gazebosc.exe")
+    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/win64")
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         czmq-static
@@ -289,9 +295,6 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc
 #endif(WITH_EMBED_PYTHON)
 
 ### POST BUILD/INSTALL
-set(APPS "\${CMAKE_INSTALL_PREFIX}/gazebosc.app")
-set(LIBS )
-set(DIRS "${CMAKE_BINARY_DIR}")
 # Path used for searching by FIND_XXX(), with appropriate suffixes added
 if(CMAKE_PREFIX_PATH)
     foreach(dir ${CMAKE_PREFIX_PATH})
@@ -302,7 +305,7 @@ endif()
 install(CODE "
         include(InstallRequiredSystemLibraries)
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/gazebosc.app\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
        )
 
 set(CPACK_VERBATIM_VARIABLES true)
