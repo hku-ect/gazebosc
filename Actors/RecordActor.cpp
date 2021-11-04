@@ -2,9 +2,9 @@
 // Created by Aaron Oostdijk on 28/10/2021.
 //
 
-#include "OSCRecordActor.h"
+#include "RecordActor.h"
 
-const char * OSCRecord::capabilities =
+const char * Record::capabilities =
         "capabilities\n"
         "    data\n"
         "        name = \"fileName\"\n"
@@ -26,6 +26,12 @@ const char * OSCRecord::capabilities =
         "        type = \"trigger\"\n"
         "        api_call = \"PLAY_RECORDING\"\n"
         "    data\n"
+        "        name = \"overwrite\"\n"
+        "        type = \"bool\"\n"
+        "        api_call = \"SET OVERWRITE\"\n"
+        "        value = \"False\"\n"
+        "        api_value = \"s\"\n"
+        "    data\n"
         "        name = \"loop\"\n"
         "        type = \"bool\"\n"
         "        api_call = \"SET LOOPING\"\n"
@@ -45,7 +51,7 @@ const char * OSCRecord::capabilities =
         "        type = \"Any\"\n";
 
 
-void OSCRecord::handleEOF(sphactor_actor_t* actor) {
+void Record::handleEOF(sphactor_actor_t* actor) {
     if ( loop ) {
         // reset playback values
         read_offset = 0;
@@ -69,7 +75,7 @@ void OSCRecord::handleEOF(sphactor_actor_t* actor) {
     }
 }
 
-void OSCRecord::setReport(sphactor_actor_t* actor) {
+void Record::setReport(sphactor_actor_t* actor) {
     // Build report
     std::string time_display;
     time_display += zsys_sprintf("%i", read_offset);
@@ -81,7 +87,7 @@ void OSCRecord::setReport(sphactor_actor_t* actor) {
 }
 
 zmsg_t *
-OSCRecord::handleTimer( sphactor_event_t *ev ) {
+Record::handleTimer(sphactor_event_t *ev ) {
     zmsg_destroy(&ev->msg);
 
     // Read data from current message
@@ -144,7 +150,7 @@ OSCRecord::handleTimer( sphactor_event_t *ev ) {
 }
 
 zmsg_t *
-OSCRecord::handleAPI( sphactor_event_t *ev )
+Record::handleAPI(sphactor_event_t *ev )
 {
     //pop msg for command
     char * cmd = zmsg_popstr(ev->msg);
@@ -157,10 +163,10 @@ OSCRecord::handleAPI( sphactor_event_t *ev )
             // if file does not exist
             // TODO: OR overwrite (for now, always overwrite)
             if ( file == nullptr ) {
-                if ( !zfile_exists(fileName) ) {
+                if ( !zfile_exists(fileName) || overwrite ) {
                     file = zfile_new(NULL, fileName);
                     zfile_output(file);
-                    offset = 0;
+                    write_offset = 0;
                     zsys_info("file created");
 
                     // Build report
@@ -168,8 +174,7 @@ OSCRecord::handleAPI( sphactor_event_t *ev )
                     sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
                 }
                 else {
-                    // TODO: how do we deal with an existing file?
-                    zsys_info("file exists");
+                    zsys_info("File exists. Check overwrite to replace before hitting record.");
                 }
             }
             else {
@@ -229,6 +234,9 @@ OSCRecord::handleAPI( sphactor_event_t *ev )
         else if ( streq(cmd, "SET BLOCKING") ) {
             blockDuringPlay = streq( zmsg_popstr(ev->msg), "True" );
         }
+        else if ( streq(cmd, "SET OVERWRITE") ) {
+            overwrite = streq( zmsg_popstr(ev->msg), "True" );
+        }
     }
 
     zmsg_destroy(&ev->msg);
@@ -236,7 +244,7 @@ OSCRecord::handleAPI( sphactor_event_t *ev )
 }
 
 zmsg_t *
-OSCRecord::handleSocket( sphactor_event_t *ev )
+Record::handleSocket(sphactor_event_t *ev )
 {
     if ( file && !playing ) {
         zframe_t * frame = zmsg_pop(ev->msg);
@@ -255,10 +263,10 @@ OSCRecord::handleSocket( sphactor_event_t *ev )
             tc->bytes = zchunk_size(chunk);
             zchunk_t *headerChunk = zchunk_new(tc, sizeof(time_bytes));
 
-            int rc = zfile_write(file, headerChunk, offset);
-            offset += zchunk_size(headerChunk);
-            rc = zfile_write(file, chunk, offset);
-            offset += zchunk_size(chunk);
+            int rc = zfile_write(file, headerChunk, write_offset);
+            write_offset += zchunk_size(headerChunk);
+            rc = zfile_write(file, chunk, write_offset);
+            write_offset += zchunk_size(chunk);
 
             if ( rc != 0 ) {
                 zsys_info("error writing");
