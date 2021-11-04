@@ -230,6 +230,7 @@ set(DIRS "${CMAKE_BINARY_DIR}")
 ### PLATFORM SPECIFICS
 if (APPLE)
     set(APPS "gazebosc.app")
+    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/osx32")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist" @ONLY)
@@ -241,7 +242,7 @@ if (APPLE)
     set(MACOSX_BUNDLE_COPYRIGHT "Gazebosc is licensed under the MPLv2 License")
     set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc")
     set(MACOSX_BUNDLE_ICON_FILE "AppIcon.icns")
-    set(RESOURCE_DEST "${CMAKE_INSTALL_PREFIX}/gazebosc.app/Contents/Resources")
+    set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
 
     target_link_libraries(gazebosc PUBLIC
@@ -268,6 +269,7 @@ elseif (WIN32)
         ${Python3_LIBRARIES}
         opengl32.lib DbgHelp.lib)
 else()
+    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linux64")
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
@@ -308,10 +310,14 @@ install(CODE "
         fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
        )
 
+set(CPACK_GENERATOR "ZIP")
+if(APPLE)
+    set(CPACK_GENERATOR "DragNDrop")
+endif(APPLE)
 set(CPACK_VERBATIM_VARIABLES true)
 set(CPACK_PACKAGE_VERSION_MAJOR 0)
 set(CPACK_PACKAGE_VERSION_MINOR 2)
-set(CPACK_PACKAGE_VERSION_PATCH 0)
+set(CPACK_PACKAGE_VERSION_PATCH 0)  # Todo: get git rev
 set(CPACK_PACKAGE_NAME "Gazebosc")
 set(CPACK_PACKAGE_VENDOR "HKU")
 set(CPACK_PACKAGE_FILE_NAME  "Gazebosc")
