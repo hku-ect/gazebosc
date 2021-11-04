@@ -737,13 +737,12 @@ bool Load( const char* configFile ) {
             {
                 Connection new_connection;
                 new_connection.input_node = gActor;
-                new_connection.input_slot = "OSC";
+                new_connection.input_slot = gActor->input_slots[0].title;
                 new_connection.output_node = peer_actor_container;
-                new_connection.output_slot = "OSC";
+                new_connection.output_slot = peer_actor_container->output_slots[0].title;
                 ((ActorContainer*) new_connection.input_node)->connections.push_back(new_connection);
                 ((ActorContainer*) new_connection.output_node)->connections.push_back(new_connection);
             }
-
         }
         ++it;
     }
