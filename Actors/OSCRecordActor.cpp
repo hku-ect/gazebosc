@@ -21,12 +21,10 @@ const char * OSCRecord::capabilities =
         "        name = \"Stop\"\n"
         "        type = \"trigger\"\n"
         "        api_call = \"STOP_RECORD\"\n"
-        "        value = \"\"\n"
         "    data\n"
         "        name = \"Play\"\n"
         "        type = \"trigger\"\n"
         "        api_call = \"PLAY_RECORDING\"\n"
-        "        value = \"\"\n"
         "    data\n"
         "        name = \"loop\"\n"
         "        type = \"bool\"\n"
@@ -41,10 +39,10 @@ const char * OSCRecord::capabilities =
         "        api_value = \"s\"\n"
         "inputs\n"
         "    input\n"
-        "        type = \"OSC\"\n"
+        "        type = \"Any\"\n"
         "outputs\n"
         "    output\n"
-        "        type = \"OSC\"\n";
+        "        type = \"Any\"\n";
 
 
 void OSCRecord::handleEOF(sphactor_actor_t* actor) {

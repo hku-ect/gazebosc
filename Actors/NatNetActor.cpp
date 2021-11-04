@@ -52,6 +52,14 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     }
     ziflist_destroy(&ifList);
 
+    //build report
+    SetReport(ev->actor);
+
+    if ( ifNames.size() == 0 ) {
+        zsys_info("Error: no available interfaces");
+        return nullptr;
+    }
+
     // initially we use the first interface
     activeInterface = ifNames[0];
 
@@ -71,9 +79,6 @@ zmsg_t * NatNet::handleInit( sphactor_event_t * ev )
     assert( CommandSocket );
     rc = sphactor_actor_poller_add((sphactor_actor_t*)ev->actor, CommandSocket );
     assert(rc == 0);
-
-    //build report
-    SetReport(ev->actor);
 
     return NULL;
 }
@@ -125,19 +130,22 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             zsys_info("SET HOST: %s", host_addr);
             zstr_free(&host_addr);
 
-            // Say hello to our new host
-            // send initial ping command
-            sPacket PacketOut;
-            PacketOut.iMessage = NAT_PING;
-            PacketOut.nDataBytes = 0;
-            int nTries = 3;
-            while (nTries--) {
-                //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-                std::string url = host + ":" + PORT_COMMAND_STR;
-                zstr_sendm(CommandSocket, url.c_str());
-                int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
-                if (rc != -1) {
-                    zsys_info("Sent ping to %s", url.c_str());
+
+            if ( CommandSocket != nullptr ) {
+                // Say hello to our new host
+                // send initial ping command
+                sPacket PacketOut;
+                PacketOut.iMessage = NAT_PING;
+                PacketOut.nDataBytes = 0;
+                int nTries = 3;
+                while (nTries--) {
+                    //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
+                    std::string url = host + ":" + PORT_COMMAND_STR;
+                    zstr_sendm(CommandSocket, url.c_str());
+                    int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
+                    if (rc != -1) {
+                        zsys_info("Sent ping to %s", url.c_str());
+                    }
                 }
             }
         }
