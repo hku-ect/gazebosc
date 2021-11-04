@@ -723,7 +723,7 @@ void EndSlot()
     {
         auto* payload = ImGui::GetDragDropPayload();
         char drag_id[32];
-        snprintf(drag_id, sizeof(drag_id), "new-node-connection-%08X", impl->slot.kind);
+        snprintf(drag_id, sizeof(drag_id), "new-node-connection-");//%08X", impl->slot.kind);
         if (payload == nullptr || !payload->IsDataType(drag_id))
         {
             _DragConnectionPayload drag_data{ };
@@ -748,7 +748,7 @@ void EndSlot()
     {
         // Accept drags from opposite type (input <-> output, and same kind)
         char drag_id[32];
-        snprintf(drag_id, sizeof(drag_id), "new-node-connection-%08X", impl->slot.kind * -1);
+        snprintf(drag_id, sizeof(drag_id), "new-node-connection-");//%08X", impl->slot.kind * -1);
 
         if (auto* payload = ImGui::AcceptDragDropPayload(drag_id))
         {
@@ -822,9 +822,10 @@ bool IsConnectingCompatibleSlot()
             return false;
 
         char drag_id[32];
-        snprintf(drag_id, sizeof(drag_id), "new-node-connection-%08X", impl->slot.kind * -1);
+        snprintf(drag_id, sizeof(drag_id), "new-node-connection-");//%08X", impl->slot.kind * -1);
+
         if (strcmp(drag_id, payload->DataType) != 0)
-            return false;
+           return false;
 
         for (int i = 0; i < impl->ignore_connections.size(); i++)
         {
