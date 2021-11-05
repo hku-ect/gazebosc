@@ -156,22 +156,23 @@ Record::handleAPI(sphactor_event_t *ev )
     char * cmd = zmsg_popstr(ev->msg);
     if (cmd) {
         if ( streq(cmd, "START_RECORD") ) {
-            zsys_info("TODO: start recording if valid file & not recording");
-
-            // if ! recording
-
             // if file does not exist
-            // TODO: OR overwrite (for now, always overwrite)
             if ( file == nullptr ) {
                 if ( !zfile_exists(fileName) || overwrite ) {
                     file = zfile_new(NULL, fileName);
-                    zfile_output(file);
-                    write_offset = 0;
-                    zsys_info("file created");
+                    int rc = zfile_output(file);
+                    if (rc == 0) {
+                        write_offset = 0;
+                        zsys_info("file created");
 
-                    // Build report
-                    zosc_t * msg = zosc_create("/report", "ss", "Recording", "...");
-                    sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+                        // Build report
+                        zosc_t* msg = zosc_create("/report", "ss", "Recording", "...");
+                        sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+                    }
+                    else{
+                        file = nullptr;
+                        zsys_info("Invalid output file");
+                    }
                 }
                 else {
                     zsys_info("File exists. Check overwrite to replace before hitting record.");
