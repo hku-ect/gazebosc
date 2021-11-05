@@ -69,9 +69,10 @@ jobs:
       # Build your program with the given configuration
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
-    - name: Install
+    - name: Pack
       if: matrix.os == 'macos-latest'
-      run: cmake --install ${{github.workspace}}/build 
+      working-directory: ${{github.workspace}}/build
+      run: cpack -V
 
     - name: Test
       working-directory: ${{github.workspace}}/build
@@ -80,16 +81,17 @@ jobs:
       run: ctest -C ${{env.BUILD_TYPE}} -VV
 
     - name: Upload file via SSH only on push
+      working-directory: ${{github.workspace}}/build
       if: github.event_name == 'push'
       env:
         BBPWD: ${{ secrets.BBPWD }}
       run: |
         git fetch --all --tags
-        cd ${{github.workspace}}/build/bin
-        zip -q -r $( echo $GITHUB_REPOSITORY | cut -d"/" -f2)_${RUNNER_OS}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*";
+        if [ "${RUNNER_OS}" == "Linux" ]; then zip -q -r $( echo $GITHUB_REPOSITORY | cut -d"/" -f2)_${RUNNER_OS}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*"; fi
+        if [ "${RUNNER_OS}" == "macOS" ]; then mv Gazebosc.dmg gazebosc_${RUNNER_OS}_$( git describe --tag --always --dirty --abbrev=4).dmg
         if [ ! -d "$HOME/.ssh" ]; then mkdir $HOME/.ssh; fi
         echo '|1|AurlN3z7WhvxYbuNdsouT5s7FYs=|cjTFODbUXIXKeWihh1BjnfXgARw= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=' >> $HOME/.ssh/known_hosts
         git clone https://github.com/clarkwang/passh.git
         cd passh
         cc -o passh passh.c
-        ./passh -p env:BBPWD scp ../gazebosc*.zip buildbot@pong.hku.nl:public_html/gazebosc/
+        ./passh -p env:BBPWD scp ../gazebosc_${RUNNER_OS}* buildbot@pong.hku.nl:public_html/gazebosc/

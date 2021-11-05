@@ -108,7 +108,7 @@ endif (Unwind_FOUND)
 
 if (WITH_IMGUI_DEMO)
     add_definitions(-DHAVE_IMGUI_DEMO)
-endif (Unwind_FOUND)
+endif (WITH_IMGUI_DEMO)
 
 
 if (WITH_OPENVR)
@@ -161,7 +161,7 @@ add_custom_command(
     VERBATIM
     )
 
-list(APPEND GZB_SOURCES 
+list(APPEND GZB_SOURCES
     main.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.cpp
@@ -223,15 +223,26 @@ target_link_options(gazebosc PUBLIC ${Python3_LINK_OPTIONS})
 target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
+set(RESOURCE_DEST "./")
+set(APPS "bin/gazebosc")
+set(LIBS )
+set(DIRS "${CMAKE_BINARY_DIR}")
 ### PLATFORM SPECIFICS
-if (MSVC)
-    string(REGEX REPLACE "/" "\\\\" VS_DEBUGGER_BACKSLASH "${CMAKE_BINARY_DIR}/bin/Debug/")
-    set_property(TARGET gazebosc PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${VS_DEBUGGER_BACKSLASH}")
-endif()
-
 if (APPLE)
+    set(APPS "gazebosc.app")
+    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/osx32")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist" @ONLY)
+    set_target_properties(gazebosc PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+        )
+    set(MACOSX_BUNDLE_BUNDLE_NAME gazebosc)
+    set(MACOSX_BUNDLE_COPYRIGHT "Gazebosc is licensed under the MPLv2 License")
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc")
+    set(MACOSX_BUNDLE_ICON_FILE "AppIcon.icns")
+    set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
 
     target_link_libraries(gazebosc PUBLIC
@@ -241,44 +252,13 @@ if (APPLE)
         ${OPENVR_LIBRARIES}
         ${Python3_LIBRARIES}
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
-    SET_TARGET_PROPERTIES(gazebosc PROPERTIES
-        MACOSX_BUNDLE TRUE 
-        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Info.plist.in
-    )
-    SET(MACOSX_BUNDLE_BUNDLE_NAME gazebosc)
-    set(MACOSX_BUNDLE_COPYRIGHT "Gazebosc is licensed under the MPLv2 License")
-    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc")
-    set(MACOSX_BUNDLE_ICON_FILE "AppIcon.icns")
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/AppIcon.iconset DESTINATION ${CMAKE_BINARY_DIR})
-    set(ICON_TARGET "${CMAKE_BINARY_DIR}/AppIcon.iconset")
-    set(ICON_OUTPUT "${CMAKE_BINARY_DIR}/AppIcon.icns")
-    set(SOURCE_ICON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/misc/logo")
-    add_custom_command(OUTPUT ${ICON_OUTPUT}
-        COMMAND cp icon_x16.png   ${ICON_TARGET}/icon_16x16.png
-        COMMAND cp icon_x32.png   ${ICON_TARGET}/icon_16x16@2x.png
-        COMMAND cp icon_x32.png   ${ICON_TARGET}/icon_32x32.png
-        COMMAND cp icon_x64.png   ${ICON_TARGET}/icon_32x32@2x.png
-        COMMAND cp icon_x128.png  ${ICON_TARGET}/icon_128x128.png
-        COMMAND cp icon_x256.png  ${ICON_TARGET}/icon_128x128@2x.png
-        COMMAND cp icon_x256.png  ${ICON_TARGET}/icon_256x256.png
-        COMMAND cp icon_x512.png  ${ICON_TARGET}/icon_256x256@2x.png
-        COMMAND cp icon_x512.png  ${ICON_TARGET}/icon_512x512.png
-        COMMAND cp icon_x1024.png ${ICON_TARGET}/icon_512x512@2x.png
-        COMMAND iconutil -c icns ${ICON_TARGET}
-        WORKING_DIRECTORY ${SOURCE_ICON_DIR}
-    )
-    set(BUNDLE_RESOURCES ${ICON_OUTPUT})
-#    list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CHANGELOG.md)
-#    list(APPEND BUNDLE_RESOURCES ${CMAKE_CURRENT_SOURCE_DIR}/CONTRIBUTORS.MD)
-    set_target_properties(${PROJECT} PROPERTIES RESOURCE "${BUNDLE_RESOURCES}")
-    target_sources(gazebosc PUBLIC ${BUNDLE_RESOURCES})
-#    file(GLOB BUNDLE_LANGUAGES "${CMAKE_CURRENT_SOURCE_DIR}/data/language/*")
-#    target_sources(${PROJECT} PUBLIC ${BUNDLE_LANGUAGES})
-#    set_property(
-#        SOURCE ${BUNDLE_LANGUAGES}
-#        PROPERTY MACOSX_PACKAGE_LOCATION "Resources/language"
-#    )
 elseif (WIN32)
+    if (MSVC)
+        string(REGEX REPLACE "/" "\\\\" VS_DEBUGGER_BACKSLASH "${CMAKE_BINARY_DIR}/bin/Debug/")
+        set_property(TARGET gazebosc PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${VS_DEBUGGER_BACKSLASH}")
+    endif()
+    set(APPS "bin/gazebosc.exe")
+    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/win64")
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         czmq-static
@@ -289,6 +269,7 @@ elseif (WIN32)
         ${Python3_LIBRARIES}
         opengl32.lib DbgHelp.lib)
 else()
+    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linux64")
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
@@ -299,61 +280,53 @@ else()
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 endif()
 
-### POST BUILD/INSTALL
-if(APPLE)
-    install(TARGETS gazebosc BUNDLE DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-    set(APPS "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${PROJECT_NAME}.app")
-    set(LIBS )
-    set(DIRS "${CMAKE_BINARY_DIR}")
-    if (WITH_EMBED_PYTHON )
-        # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
-        install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${APPS}/Contents/Resources
-            USE_SOURCE_PERMISSIONS
-            PATTERN exe_with_* EXCLUDE
-        )
-    endif(WITH_EMBED_PYTHON)
-    install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc DESTINATION ${APPS}/Contents/Resources)
-    install(FILES ${CMAKE_SOURCE_DIR}/tester.py DESTINATION ${APPS}/Contents/Resources)
-    # Path used for searching by FIND_XXX(), with appropriate suffixes added
-    if(CMAKE_PREFIX_PATH)
-        foreach(dir ${CMAKE_PREFIX_PATH})
-                list(APPEND DIRS "${dir}/bin" "${dir}/lib")
-        endforeach()
-    endif()
-    if (WITH_EMBED_PYTHON )
-        # only make the bundle standalone if we are embedding python
-        install(CODE "
-            include(BundleUtilities)
-            fixup_bundle(\"${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
-           )
-    endif(WITH_EMBED_PYTHON)
-    add_custom_command(
-        TARGET gazebosc POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_SOURCE_DIR}/tester.py
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/tester.py)
-    add_custom_command(
-        TARGET gazebosc POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/misc
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/misc)
-else()
-    install(TARGETS gazebosc DESTINATION bin)
-    if (WIN32 AND WITH_OPENVR)
-        add_custom_command(TARGET gazebosc POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
-                "${PROJECT_SOURCE_DIR}/ext/openvr/bin/win${ARCH}/openvr_api.dll"
-                $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-        message("COPY OPENVER")
-    endif()
-    add_custom_command(
+# This is just for running the binary from an ide
+add_custom_command(
         TARGET gazebosc POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 ${CMAKE_SOURCE_DIR}/misc
                 $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
-    add_custom_command(
-        TARGET gazebosc POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_SOURCE_DIR}/tester.py
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>/tester.py)
+
+install(TARGETS gazebosc
+        BUNDLE DESTINATION . COMPONENT Runtime
+        RUNTIME DESTINATION bin COMPONENT Runtime
+        )
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc
+        DESTINATION ${RESOURCE_DEST})
+
+# THIS NEEDS FIXING, FIXUP BUNDLE SHOULD TAKE CARE OF THIS
+#if (WITH_EMBED_PYTHON )
+#    # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
+#    install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION python LIBRARY
+#        USE_SOURCE_PERMISSIONS
+#        PATTERN exe_with_* EXCLUDE
+#    )
+#endif(WITH_EMBED_PYTHON)
+
+### POST BUILD/INSTALL
+# Path used for searching by FIND_XXX(), with appropriate suffixes added
+if(CMAKE_PREFIX_PATH)
+    foreach(dir ${CMAKE_PREFIX_PATH})
+        list(APPEND DIRS "${dir}/bin" "${dir}/lib")
+    endforeach()
+endif()
+
+install(CODE "
+        include(InstallRequiredSystemLibraries)
+        include(BundleUtilities)
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+       )
+
+set(CPACK_GENERATOR "ZIP")
+if(APPLE)
+    set(CPACK_GENERATOR "DragNDrop")
 endif(APPLE)
+set(CPACK_VERBATIM_VARIABLES true)
+set(CPACK_PACKAGE_VERSION_MAJOR 0)
+set(CPACK_PACKAGE_VERSION_MINOR 2)
+set(CPACK_PACKAGE_VERSION_PATCH 0)  # Todo: get git rev
+set(CPACK_PACKAGE_NAME "Gazebosc")
+set(CPACK_PACKAGE_VENDOR "HKU")
+set(CPACK_PACKAGE_FILE_NAME  "Gazebosc")
+#set(CPACK_PACKAGE_ICON "${ICON_TARGET}")
+include(CPack)

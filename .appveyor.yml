@@ -28,12 +28,12 @@ matrix:
   fast_finish: false
 
 init:
-  - cmd: set PATH=%PY_DIR%;%PY_DIR%\Scripts;%PATH%
+  - cmd: set PATH=%PY_DIR%;%PY_DIR%/Scripts;%PATH%
   - cmake --version
   - msbuild /version
   - cmd: reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f
   - cmd: echo "Platform='%env:Platform%'"
-  - cmd: set INSTALL_PREFIX=C:\tmp\ci_build 
+  - cmd: set INSTALL_PREFIX=C:/tmp/ci_build 
 
 install:
   - cmd: |
@@ -52,8 +52,8 @@ before_build:
       cmake --build . --config %Configuration% --target install
   - cmd: |
       python --version
-      set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%\build
-      set PY_INSTALLDIR=%GZB_BUILDDIR%\bin\%Configuration%\python
+      set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%/build
+      set PY_INSTALLDIR=%GZB_BUILDDIR%/bin/%Configuration%/python
       set PY_EXE=python.exe
       set PY_LAYOUTOPTS=--include-dev --include-pip
       md "%PY_INSTALLDIR%"
@@ -71,7 +71,7 @@ build_script:
       git submodule update --init --recursive
       cd "%GZB_BUILDDIR%"
       cmake .. -Ax64 -DCMAKE_PREFIX_PATH="%INSTALL_PREFIX%" -DPython3_ROOT_DIR="%PY_INSTALLDIR%"
-  -    cmake --build . --config %Configuration% --target install
+  - cmake --build . --config %Configuration% --target install
 #      ctest -C %Configuration% -V
 after_build:
   - cmd: cd "%GZB_BUILDDIR%\bin\%Configuration%"
