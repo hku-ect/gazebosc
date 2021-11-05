@@ -115,7 +115,7 @@ void RegisterActors() {
     sphactor_register<OpenVR>("OpenVR", OpenVR::capabilities);
 #endif
     sphactor_register<OSCInput>( "OSC Input", OSCInput::capabilities );
-    sphactor_register<OSCRecord>( "OSC Record", OSCRecord::capabilities );
+    sphactor_register<Record>("Record", Record::capabilities );
     sphactor_register<ModPlayerActor>( "ModPlayer", ModPlayerActor::capabilities );
     sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
 #ifdef PYTHON3_FOUND
@@ -737,13 +737,12 @@ bool Load( const char* configFile ) {
             {
                 Connection new_connection;
                 new_connection.input_node = gActor;
-                new_connection.input_slot = "OSC";
+                new_connection.input_slot = gActor->input_slots[0].title;
                 new_connection.output_node = peer_actor_container;
-                new_connection.output_slot = "OSC";
+                new_connection.output_slot = peer_actor_container->output_slots[0].title;
                 ((ActorContainer*) new_connection.input_node)->connections.push_back(new_connection);
                 ((ActorContainer*) new_connection.output_node)->connections.push_back(new_connection);
             }
-
         }
         ++it;
     }

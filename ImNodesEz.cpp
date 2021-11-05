@@ -62,7 +62,7 @@ void EndNode()
     ImNodes::EndNode();
 }
 
-bool Slot(const char* title, int kind)
+bool Slot(const char* title, int kind, bool any)
 {
     auto* storage = ImGui::GetStateStorage();
     const auto& style = ImGui::GetStyle();
@@ -74,7 +74,7 @@ bool Slot(const char* title, int kind)
         item_offset_x = -item_offset_x;
     ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2{item_offset_x, 0});
 
-    if (ImNodes::BeginSlot(title, kind))
+    if (ImNodes::BeginSlot(title, kind, any))
     {
         auto* draw_lists = ImGui::GetWindowDrawList();
 
@@ -145,7 +145,7 @@ void InputSlots(const SlotInfo* slots, int snum)
     ImGui::BeginGroup();
     {
         for (int i = 0; i < snum; i++)
-            ImNodes::Ez::Slot(slots[i].title, ImNodes::InputSlotKind(slots[i].kind));
+            ImNodes::Ez::Slot(slots[i].title, ImNodes::InputSlotKind(slots[i].kind), slots[i].any);
     }
     ImGui::EndGroup();
 
@@ -168,7 +168,7 @@ void OutputSlots(const SlotInfo* slots, int snum)
     ImGui::BeginGroup();
     {
         for (int i = 0; i < snum; i++)
-            ImNodes::Ez::Slot(slots[i].title, ImNodes::OutputSlotKind(slots[i].kind));
+            ImNodes::Ez::Slot(slots[i].title, ImNodes::OutputSlotKind(slots[i].kind), slots[i].any);
     }
     ImGui::EndGroup();
 }

@@ -53,6 +53,8 @@ struct _DragConnectionPayload
     const char* slot_title = nullptr;
     /// Source slot kind.
     int slot_kind = 0;
+    /// Source slot accept any status
+    bool slot_any = false;
 };
 
 /// Node-slot combination.
@@ -64,11 +66,13 @@ struct _IgnoreSlot
     const char* slot_name = nullptr;
     /// Slot kind. Not actual slot kind, but +1 or -1. Used to determine if slot is input or output.
     int slot_kind = 0;
+    /// Slot accept any status
+    bool slot_any = false;
 
     /// Equality operator, required by ImVector.
     bool operator==(const _IgnoreSlot& other) const
     {
-        if (node_id != other.node_id || slot_kind != other.slot_kind)
+        if (node_id != other.node_id || slot_kind != other.slot_kind || slot_any != other.slot_any )
             return false;
 
         if (slot_name != nullptr && other.slot_name != nullptr)
@@ -97,6 +101,7 @@ struct _CanvasStateImpl
     {
         int kind = 0;
         const char* title = nullptr;
+        bool any = false;
     } slot{};
     /// Node id which will be positioned at the mouse cursor on next frame.
     void* auto_position_node_id = nullptr;
@@ -569,22 +574,24 @@ bool GetNewConnection(void** input_node, const char** input_slot_title, void** o
     return false;
 }
 
-bool GetPendingConnection(void** node_id, const char** slot_title, int* slot_kind)
+bool GetPendingConnection(void** node_id, const char** slot_title, int* slot_kind, bool* slot_any)
 {
     assert(gCanvas != nullptr);
     assert(node_id != nullptr);
     assert(slot_title != nullptr);
     assert(slot_kind != nullptr);
+    assert(slot_any != nullptr);
 
     if (auto* payload = ImGui::GetDragDropPayload())
     {
         char drag_id[] = "new-node-connection-";
-        if (strncmp(drag_id, payload->DataType, sizeof(drag_id) - 1) == 0)
+        auto* drag_payload = (_DragConnectionPayload*)payload->Data;
+        if (strncmp(drag_id, payload->DataType, sizeof(drag_id) - 1) == 0 || drag_payload->slot_any)
         {
-            auto* drag_payload = (_DragConnectionPayload*)payload->Data;
             *node_id = drag_payload->node_id;
             *slot_title = drag_payload->slot_title;
             *slot_kind = drag_payload->slot_kind;
+            *slot_any = drag_payload->slot_any;
             return true;
         }
     }
@@ -636,7 +643,8 @@ bool Connection(void* input_node, const char* input_slot, void* output_node, con
     void* pending_node_id;
     const char* pending_slot_title;
     int pending_slot_kind;
-    if (GetPendingConnection(&pending_node_id, &pending_slot_title, &pending_slot_kind))
+    bool pending_slot_any;
+    if (GetPendingConnection(&pending_node_id, &pending_slot_title, &pending_slot_kind, &pending_slot_any))
     {
         _IgnoreSlot ignore_connection{};
         if (IsInputSlotKind(pending_slot_kind))
@@ -646,6 +654,7 @@ bool Connection(void* input_node, const char* input_slot, void* output_node, con
                 ignore_connection.node_id = output_node;
                 ignore_connection.slot_name = output_slot;
                 ignore_connection.slot_kind = OutputSlotKind(1);
+                ignore_connection.slot_any = false; // TODO: what is the correct value here?
             }
         }
         else
@@ -655,6 +664,7 @@ bool Connection(void* input_node, const char* input_slot, void* output_node, con
                 ignore_connection.node_id = input_node;
                 ignore_connection.slot_name = input_slot;
                 ignore_connection.slot_kind = InputSlotKind(1);
+                ignore_connection.slot_any = false; // TODO: what is the correct value here?
             }
         }
         if (ignore_connection.node_id)
@@ -672,13 +682,14 @@ CanvasState* GetCurrentCanvas()
     return gCanvas;
 }
 
-bool BeginSlot(const char* title, int kind)
+bool BeginSlot(const char* title, int kind, bool any)
 {
     auto* canvas = gCanvas;
     auto* impl = canvas->_impl;
 
     impl->slot.title = title;
     impl->slot.kind = kind;
+    impl->slot.any = any;
 
     ImGui::BeginGroup();
     return true;
@@ -730,6 +741,7 @@ void EndSlot()
             drag_data.node_id = impl->node.id;
             drag_data.slot_kind = impl->slot.kind;
             drag_data.slot_title = impl->slot.title;
+            drag_data.slot_any = impl->slot.any;
 
             ImGui::SetDragDropPayload(drag_id, &drag_data, sizeof(drag_data));
 
@@ -750,15 +762,32 @@ void EndSlot()
         char drag_id[32];
         snprintf(drag_id, sizeof(drag_id), "new-node-connection-%08X", impl->slot.kind * -1);
 
-        if (auto* payload = ImGui::AcceptDragDropPayload(drag_id))
-        {
-            auto* drag_data = (_DragConnectionPayload*) payload->Data;
+        auto* payload = ImGui::AcceptDragDropPayload(drag_id);
 
+        // Used to determine if an any-slot was hovered / dropped
+        auto* peek_payload = ImGui::GetDragDropPayload();
+        auto* peek_data = (_DragConnectionPayload*)peek_payload->Data;
+        ImGuiContext* context = ImGui::GetCurrentContext();
+        bool acceptAny = (impl->slot.any && peek_payload || peek_payload && peek_data->slot_any);
+        
+        // Render payload accept visuals in case of any slot (normally happens in AcceptDragDropPayload)
+        if (!payload && acceptAny) {
+            ImGuiWindow * window = ImGui::GetCurrentWindow();
+            ImRect r = context->DragDropTargetRect;
+            r.Expand(3.5f);
+            bool push_clip_rect = !window->ClipRect.Contains(r);
+            if (push_clip_rect) window->DrawList->PushClipRect(r.Min - ImVec2(1, 1), r.Max + ImVec2(1, 1));
+            window->DrawList->AddRect(r.Min, r.Max, ImGui::GetColorU32(ImGuiCol_DragDropTarget), 0.0f, ~0, 2.0f);
+            if (push_clip_rect) window->DrawList->PopClipRect();
+        }
+
+        if ( payload || acceptAny && !ImGui::IsMouseDown(context->DragDropMouseButton))
+        {
             // Store info of source slot to be queried by ImNodes::GetConnection()
             if (!IsInputSlotKind(impl->slot.kind))
             {
-                impl->new_connection.input_node = drag_data->node_id;
-                impl->new_connection.input_slot = drag_data->slot_title;
+                impl->new_connection.input_node = peek_data->node_id;
+                impl->new_connection.input_slot = peek_data->slot_title;
                 impl->new_connection.output_node = impl->node.id;
                 impl->new_connection.output_slot = impl->slot.title;
             }
@@ -766,8 +795,8 @@ void EndSlot()
             {
                 impl->new_connection.input_node = impl->node.id;
                 impl->new_connection.input_slot = impl->slot.title;
-                impl->new_connection.output_node = drag_data->node_id;
-                impl->new_connection.output_slot = drag_data->slot_title;
+                impl->new_connection.output_node = peek_data->node_id;
+                impl->new_connection.output_slot = peek_data->slot_title;
             }
             impl->just_connected = true;
             canvas->_impl->ignore_connections.clear();
@@ -795,11 +824,12 @@ bool IsSlotCurveHovered()
     void* node_id;
     const char* slot_title;
     int slot_kind;
-    if (ImNodes::GetPendingConnection(&node_id, &slot_title, &slot_kind))
+    bool slot_any;
+    if (ImNodes::GetPendingConnection(&node_id, &slot_title, &slot_kind, &slot_any))
     {
         // In-progress connection to current slot is hovered
         return node_id == impl->node.id && strcmp(slot_title, impl->slot.title) == 0 &&
-               slot_kind == impl->slot.kind;
+               slot_kind == impl->slot.kind && slot_any == impl->slot.any;
     }
 
     // Actual curve is hovered
@@ -823,8 +853,13 @@ bool IsConnectingCompatibleSlot()
 
         char drag_id[32];
         snprintf(drag_id, sizeof(drag_id), "new-node-connection-%08X", impl->slot.kind * -1);
-        if (strcmp(drag_id, payload->DataType) != 0)
-            return false;
+        
+        bool matchInOut =   IsInputSlotKind(impl->slot.kind) && IsOutputSlotKind(drag_payload->slot_kind)
+                                ||
+                            IsOutputSlotKind(impl->slot.kind) && IsInputSlotKind(drag_payload->slot_kind);
+
+        if (strcmp(drag_id, payload->DataType) != 0 && !( (impl->slot.any || drag_payload->slot_any) && matchInOut ) )
+           return false;
 
         for (int i = 0; i < impl->ignore_connections.size(); i++)
         {

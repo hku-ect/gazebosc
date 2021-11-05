@@ -38,6 +38,7 @@ struct SlotInfo
     const char* title;
     /// Slot kind, will be used for matching connections to slots of same kind.
     int kind;
+    bool any;
 };
 
 /// Begin rendering of node in a graph. Render node content when returns `true`.

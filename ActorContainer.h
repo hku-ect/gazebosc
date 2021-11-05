@@ -93,10 +93,13 @@ struct ActorContainer {
 
                 char* typeStr = zconfig_value(type);
                 if ( streq(typeStr, "OSC")) {
-                    input_slots.push_back({ "OSC", ActorSlotOSC });
+                    input_slots.push_back({ "OSC", ActorSlotOSC, false });
                 }
                 else if ( streq(typeStr, "NatNet")) {
-                    input_slots.push_back({ "NatNet", ActorSlotNatNet });
+                    input_slots.push_back({ "NatNet", ActorSlotNatNet, false });
+                }
+                else if ( streq(typeStr, "Any")) {
+                    input_slots.push_back({ "Any", ActorSlotAny, true });
                 }
                 else {
                     zsys_error("Unsupported input type: %s", typeStr);
@@ -112,10 +115,13 @@ struct ActorContainer {
 
                 char* typeStr = zconfig_value(type);
                 if ( streq(typeStr, "OSC")) {
-                    output_slots.push_back({ "OSC", ActorSlotOSC });
+                    output_slots.push_back({ "OSC", ActorSlotOSC, false });
                 }
                 else if ( streq(typeStr, "NatNet")) {
-                    output_slots.push_back({ "NatNet", ActorSlotNatNet });
+                    output_slots.push_back({ "NatNet", ActorSlotNatNet, false });
+                }
+                else if ( streq(typeStr, "Any")) {
+                    output_slots.push_back({ "Any", ActorSlotAny, true });
                 }
                 else {
                     zsys_error("Unsupported output type: %s", typeStr);

@@ -90,7 +90,7 @@ IMGUI_API void AutoPositionNode(void* node_id);
 /// called at id scope created by BeginNode().
 IMGUI_API bool GetNewConnection(void** input_node, const char** input_slot_title, void** output_node, const char** output_slot_title);
 /// Get information of connection that is being made and has only one end connected. Returns true when pending connection exists, false otherwise.
-IMGUI_API bool GetPendingConnection(void** node_id, const char** slot_title, int* slot_kind);
+IMGUI_API bool GetPendingConnection(void** node_id, const char** slot_title, int* slot_kind, bool* slot_any);
 /// Render a connection. Returns `true` when connection is present, `false` if it is deleted.
 IMGUI_API bool Connection(void* input_node, const char* input_slot, void* output_node, const char* output_slot);
 /// Returns active canvas state when called between BeginCanvas() and EndCanvas(). Returns nullptr otherwise. This function is not thread-safe.
@@ -104,11 +104,11 @@ inline bool IsInputSlotKind(int kind) { return kind < 0; }
 /// Returns `true` if `kind` is from output slot.
 inline bool IsOutputSlotKind(int kind) { return kind > 0; }
 /// Begins slot region. Kind is unique value indicating slot type. Negative values mean input slots, positive - output slots.
-IMGUI_API bool BeginSlot(const char* title, int kind);
+IMGUI_API bool BeginSlot(const char* title, int kind, bool any);
 /// Begins slot region. Kind is unique value whose sign is ignored.
-inline bool BeginInputSlot(const char* title, int kind) { return BeginSlot(title, InputSlotKind(kind)); }
+inline bool BeginInputSlot(const char* title, int kind, bool any) { return BeginSlot(title, InputSlotKind(kind), any); }
 /// Begins slot region. Kind is unique value whose sign is ignored.
-inline bool BeginOutputSlot(const char* title, int kind) { return BeginSlot(title, OutputSlotKind(kind)); }
+inline bool BeginOutputSlot(const char* title, int kind, bool any) { return BeginSlot(title, OutputSlotKind(kind), any); }
 /// Rends rendering of slot. Call only if Begin*Slot() returned `true`.
 IMGUI_API void EndSlot();
 /// Returns `true` if curve connected to current slot is hovered. Call between `Begin*Slot()` and `EndSlot()`. In-progress

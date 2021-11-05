@@ -2,8 +2,8 @@
 // Created by Aaron Oostdijk on 28/10/2021.
 //
 
-#ifndef GAZEBOSC_OSCRECORDACTOR_H
-#define GAZEBOSC_OSCRECORDACTOR_H
+#ifndef GAZEBOSC_RECORDACTOR_H
+#define GAZEBOSC_RECORDACTOR_H
 
 #include "libsphactor.hpp"
 #include <string>
@@ -14,25 +14,28 @@ public:
     unsigned int bytes;
 };
 
-class OSCRecord : public Sphactor {
+class Record : public Sphactor {
 private:
 
 public:
     static const char *capabilities;
 
-    const char* fileName = nullptr;
+    // State variables
     zfile_t * file = nullptr;
-    int offset = 0;
     bool playing = false;
-    bool loop = false;
-    bool blockDuringPlay = false;
-
     unsigned int startTimeCode = 0;
     unsigned int startRecordTimeCode = 0;
     unsigned int read_offset = 0;
+    unsigned int write_offset = 0;
     time_bytes * current_tc = nullptr;
 
-    OSCRecord() : Sphactor() {
+    // Controls
+    const char* fileName = nullptr;
+    bool loop = false;
+    bool blockDuringPlay = false;
+    bool overwrite = false;
+
+    Record() : Sphactor() {
 
     }
 
@@ -46,4 +49,4 @@ public:
     // Or perhaps a fixed buffer, that writes when something is bigger than it can store?
 };
 
-#endif //GAZEBOSC_OSCRECORDACTOR_H
+#endif //GAZEBOSC_RECORDACTOR_H
