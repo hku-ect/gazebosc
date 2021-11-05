@@ -762,14 +762,27 @@ void EndSlot()
         char drag_id[32];
         snprintf(drag_id, sizeof(drag_id), "new-node-connection-%08X", impl->slot.kind * -1);
 
-        auto* peek_payload = ImGui::GetDragDropPayload();
-        auto* peek_data = (_DragConnectionPayload*)peek_payload->Data;
         auto* payload = ImGui::AcceptDragDropPayload(drag_id);
 
-        ImGuiContext * context = ImGui::GetCurrentContext();
-        if ( payload || ( impl->slot.any && peek_payload || peek_payload && peek_data->slot_any ) && !ImGui::IsMouseDown(context->DragDropMouseButton))
-        {
+        // Used to determine if an any-slot was hovered / dropped
+        auto* peek_payload = ImGui::GetDragDropPayload();
+        auto* peek_data = (_DragConnectionPayload*)peek_payload->Data;
+        ImGuiContext* context = ImGui::GetCurrentContext();
+        bool acceptAny = (impl->slot.any && peek_payload || peek_payload && peek_data->slot_any);
+        
+        // Render payload accept visuals in case of any slot (normally happens in AcceptDragDropPayload)
+        if (!payload && acceptAny) {
+            ImGuiWindow * window = ImGui::GetCurrentWindow();
+            ImRect r = context->DragDropTargetRect;
+            r.Expand(3.5f);
+            bool push_clip_rect = !window->ClipRect.Contains(r);
+            if (push_clip_rect) window->DrawList->PushClipRect(r.Min - ImVec2(1, 1), r.Max + ImVec2(1, 1));
+            window->DrawList->AddRect(r.Min, r.Max, ImGui::GetColorU32(ImGuiCol_DragDropTarget), 0.0f, ~0, 2.0f);
+            if (push_clip_rect) window->DrawList->PopClipRect();
+        }
 
+        if ( payload || acceptAny && !ImGui::IsMouseDown(context->DragDropMouseButton))
+        {
             // Store info of source slot to be queried by ImNodes::GetConnection()
             if (!IsInputSlotKind(impl->slot.kind))
             {
