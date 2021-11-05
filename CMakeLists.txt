@@ -280,6 +280,13 @@ else()
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 endif()
 
+# This is just for running the binary from an ide
+add_custom_command(
+        TARGET gazebosc POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_SOURCE_DIR}/misc
+                $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+
 install(TARGETS gazebosc
         BUNDLE DESTINATION . COMPONENT Runtime
         RUNTIME DESTINATION bin COMPONENT Runtime
