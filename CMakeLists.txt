@@ -149,11 +149,15 @@ endif ()
 ### PROJECT SOURCES
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
 
+# get git version
+include(GitVersion)
+message(STATUS "GIT_REPO_VERSION=${GIT_REPO_VERSION} VERSION_MAJOR=${VERSION_MAJOR} VERSION_MINOR=${VERSION_MINOR} VERSION_PATCH=${VERSION_PATCH}")
+# create config.h
+# configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h) # this is not run every build
 add_custom_command(
     OUTPUT config.h
     COMMAND ${CMAKE_COMMAND}
-            -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-            -D GIT_PATH=${CMAKE_CURRENT_SOURCE_DIR}
+            -D GIT_REPO_VERSION=${GIT_REPO_VERSION}
             -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/config.h.in
             -D OUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/config.h
             -P ${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/Configure.cmake
@@ -317,16 +321,17 @@ install(CODE "
         fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
        )
 
+string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} CMAKE_HOST_SYSTEM_NAME)
 set(CPACK_GENERATOR "ZIP")
 if(APPLE)
     set(CPACK_GENERATOR "DragNDrop")
 endif(APPLE)
 set(CPACK_VERBATIM_VARIABLES true)
-set(CPACK_PACKAGE_VERSION_MAJOR 0)
-set(CPACK_PACKAGE_VERSION_MINOR 2)
-set(CPACK_PACKAGE_VERSION_PATCH 0)  # Todo: get git rev
+set(CPACK_PACKAGE_VERSION_MAJOR ${VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${VERSION_PATCH})
 set(CPACK_PACKAGE_NAME "Gazebosc")
 set(CPACK_PACKAGE_VENDOR "HKU")
-set(CPACK_PACKAGE_FILE_NAME  "Gazebosc")
+set(CPACK_PACKAGE_FILE_NAME  "gazebosc_${CMAKE_HOST_SYSTEM_NAME}_${GIT_REPO_VERSION}")
 #set(CPACK_PACKAGE_ICON "${ICON_TARGET}")
 include(CPack)
