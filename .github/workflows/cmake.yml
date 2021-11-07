@@ -55,7 +55,8 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         ./dist/osx/build_python.sh ${{github.workspace}}/build/python
-        echo "CMAKE_OPTIONS=-DPython3_ROOT_DIR=${{github.workspace}}/build/python -DWITH_EMBED_PYTHON=ON -DWITH_OPENVR=OFF" >> $GITHUB_ENV
+        PY_ROOT=`${{github.workspace}}/build/python/Python.framework/Versions/Current/bin/python3 -c "import sys;print(sys.base_prefix)"`
+        echo "CMAKE_OPTIONS=-DPython3_ROOT_DIR=$PY_ROOT -DWITH_EMBED_PYTHON=ON -DWITH_OPENVR=OFF" >> $GITHUB_ENV
 
     - name: Submodule Checkout
       run: git submodule update --init --recursive
