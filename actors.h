@@ -10,6 +10,7 @@
 #include "Actors/RecordActor.h"
 #include "Actors/ModPlayerActor.h"
 #include "Actors/ProcessActor.h"
+#include "Actors/DmxActor.h"
 #ifdef PYTHON3_FOUND
 #include "Actors/pythonactor.h"
 #endif

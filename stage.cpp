@@ -118,6 +118,7 @@ void RegisterActors() {
     sphactor_register<Record>("Record", Record::capabilities );
     sphactor_register<ModPlayerActor>( "ModPlayer", ModPlayerActor::capabilities );
     sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
+    sphactor_register<DmxActor>( "DmxOut", DmxActor::capabilities );
 #ifdef PYTHON3_FOUND
     int rc = python_init();
     assert( rc == 0);
