@@ -89,7 +89,7 @@ after_build:
   - cmd: |
       choco install -y winscp
       echo open ftpes://buildbot:%BBPWD%@pong.hku.nl:public_html/gazebosc/ > ftp.txt
-      echo put "gazebosc-%Platform%-%Configuration%.zip" / >> ftp.txt
+      echo put <gazebosc-%Platform%-%Configuration%.zip> / >> ftp.txt
       echo exit >> ftp.txt
       "C:\Program Files (x86)\WinSCP\winscp.com" /script=ftp.txt
 
