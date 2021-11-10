@@ -124,7 +124,7 @@ DmxActor::handleAPI(sphactor_event_t *ev)
             zstr_free(&portname);
             return nullptr;
         }
-        int fd = open (portname, O_RDWR | O_NOCTTY | O_SYNC);
+        int fd = open (portname, O_RDWR | O_NOCTTY | O_NONBLOCK);
         if (fd < 0)
         {
             zosc_t *msg = zosc_create("/error", "sssiss",
@@ -178,7 +178,10 @@ DmxActor::handleSocket(sphactor_event_t *ev)
         if (val > 255) val = 255;
         if (val < 0) val = 0;
         dmxdata[channel+4] = (unsigned char)val;
-        write (this->fd, this->dmxdata, 513);
+        dmxdata[2] = channels & 0xFF;
+        dmxdata[3] = channels >> 8;
+        dmxdata[channels + 4 ] = 0xe7; // end value
+        write (this->fd, this->dmxdata, channels + 5);
     }
     return NULL;
 }
