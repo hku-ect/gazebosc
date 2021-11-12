@@ -257,20 +257,22 @@ if (APPLE)
         ${Python3_LIBRARIES}
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
 
-    # This is handled by fixup_bundle, however it fails to patch Python (Todo?)
-    #if (WITH_EMBED_PYTHON )
-    #    # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
-    #    install(DIRECTORY ${CMAKE_BINARY_DIR}/python/Python.framework DESTINATION ${RESOURCE_DEST}/../Frameworks
-    #        USE_SOURCE_PERMISSIONS
-    #        PATTERN exe_with_* EXCLUDE
-    #    )
+    # This is handled by fixup_bundle as well but it doesn't copy all required files
+    if (WITH_EMBED_PYTHON )
+        # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
+        install(DIRECTORY ${CMAKE_BINARY_DIR}/python/Python.framework DESTINATION ${RESOURCE_DEST}/../Frameworks
+            USE_SOURCE_PERMISSIONS
+            PATTERN exe_with_* EXCLUDE
+        )
         # Todo: fix paths in the framework, perhaps run install_name_tool manually?
+        # problem is that the python binaries end up with the wrong rpaths, see otool -L python3.8
+        # see: https://pong.hku.nl/redmine/issues/303#change-1041
         #install(CODE
         #        "Include(BundleUtilities)\n
         #       message(STATUS \"Fixing bundled python rpaths\")\n
         #       fixup_bundle_item(\"$\{CMAKE_INSTALL_PREFIX\}/gazebosc.app/Contents/Frameworks/Python.framework/Python\" \"$\{CMAKE_INSTALL_PREFIX\}/gazebosc.app/Contents/Frameworks/Python.framework\" \"\")"
         #)
-    #endif(WITH_EMBED_PYTHON)
+    endif(WITH_EMBED_PYTHON)
 
 elseif (WIN32)
     if (MSVC)
@@ -325,7 +327,7 @@ endif()
 install(CODE "
         include(InstallRequiredSystemLibraries)
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip;Python;python3\")"
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip;Python;python3;python3.8\")"
        )
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} CMAKE_HOST_SYSTEM_NAME)
