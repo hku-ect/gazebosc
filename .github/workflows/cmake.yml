@@ -26,7 +26,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      submodules: recursive
+      with:
+        submodules: recursive
 
     - name: add Debian Packages
       if: matrix.os == 'ubuntu-latest'
