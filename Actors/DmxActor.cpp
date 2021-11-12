@@ -6,7 +6,187 @@
 #include <unistd.h>
 #include <stdio.h>
 
-int
+#ifdef __WINDOWS__
+// needed for serial bus enumeration:
+// 4d36e978-e325-11ce-bfc1-08002be10318}
+DEFINE_GUID (GUID_SERENUM_BUS_ENUMERATOR, 0x4D36E978, 0xE325,
+0x11CE, 0xBF, 0xC1, 0x08, 0x00, 0x2B, 0xE1, 0x03, 0x18);
+
+zlist_t *
+list_winserialports()
+{
+    zlist_t *ports = zlist_new();
+    zlist_autofree(ports);
+    HDEVINFO hDevInfo = nullptr;
+    SP_DEVINFO_DATA DeviceInterfaceData;
+    DWORD dataType, actualSize = 0;
+
+    // Reset Port List
+    nPorts = 0;
+    // Search device set
+    hDevInfo = SetupDiGetClassDevs((struct _GUID *)&GUID_SERENUM_BUS_ENUMERATOR, 0, 0, DIGCF_PRESENT);
+    if(hDevInfo){
+        int i = 0;
+        unsigned char dataBuf[MAX_PATH + 1];
+        while(TRUE){
+            ZeroMemory(&DeviceInterfaceData, sizeof(DeviceInterfaceData));
+            DeviceInterfaceData.cbSize = sizeof(DeviceInterfaceData);
+            if(!SetupDiEnumDeviceInfo(hDevInfo, i, &DeviceInterfaceData)){
+                // SetupDiEnumDeviceInfo failed
+                break;
+            }
+
+        if(SetupDiGetDeviceRegistryPropertyA(hDevInfo,
+                                             &DeviceInterfaceData,
+                                             SPDRP_FRIENDLYNAME,
+                                             &dataType,
+                                             dataBuf,
+                                             sizeof(dataBuf),
+                                             &actualSize)){
+
+             zlist_append(ports, strdup(dataBuf));
+             portNamesShort[nPorts][0] = 0;
+
+             // turn blahblahblah(COM4) into COM4
+
+             char * begin = nullptr;
+             char * end = nullptr;
+             begin = strstr((char *)dataBuf, "COM");
+
+             if(begin){
+                 end = strstr(begin, ")");
+                 if(end){
+                     *end = 0;   // get rid of the )...
+                     strcpy(portNamesShort[nPorts], begin);
+                 }
+                 if(nPorts++ > MAX_SERIAL_PORTS)
+                     break;
+                }
+            }
+            i++;
+        }
+    }
+    SetupDiDestroyDeviceInfoList(hDevInfo);
+
+    return ports;
+}
+
+bool
+open_winserialport(HANDLE hComm, const char *portname, int baud)
+{
+    // I just borrowed this from openframeworks, credits go there!
+    char pn[sizeof(portname)];
+    int num;
+    if(sscanf(portame, "COM%d", &num) == 1){
+        // Microsoft KB115831 a.k.a if COM > COM9 you have to use a different
+        // syntax
+        sprintf(pn, "\\\\.\\COM%d", num);
+    } else {
+        strncpy(pn, portname, sizeof(portname)-1);
+    }
+
+    // open the serial port:
+    // "COM4", etc...
+
+    hComm = CreateFileA(pn, GENERIC_READ|GENERIC_WRITE, 0, 0,
+                        OPEN_EXISTING, 0, 0);
+
+    if(hComm == INVALID_HANDLE_VALUE){
+        zsys_error("open_winserialport: can't open %s", portname);
+        return false;
+    }
+
+
+    // now try the settings:
+    COMMCONFIG cfg;
+    DWORD cfgSize;
+    WCHAR buf[80];
+
+    cfgSize = sizeof(cfg);
+    GetCommConfig(hComm, &cfg, &cfgSize);
+    int bps = baud;
+    swprintf(buf, L"baud=%d parity=N data=8 stop=1", baud);
+
+    if(!BuildCommDCBW(buf, &cfg.dcb)){
+        zsys_error("open_winserialport: unable to build comm dcb %s", buf);
+    }
+
+    // Set baudrate and bits etc.
+    // Note that BuildCommDCB() clears XON/XOFF and hardware control by default
+
+    if(!SetCommState(hComm, &cfg.dcb))
+    {
+        zsys_error("open_winserialport: couldn't set comm state: %i %i %i %i", cfg.dcb.BaudRate, baud, xio, cfg.dcb.fOutX);
+    }
+
+    // Set communication timeouts (NT)
+    COMMTIMEOUTS tOut;
+    //GetCommTimeouts(hComm, &oldTimeout);
+    tOut = oldTimeout;
+    // Make timeout so that:
+    // - return immediately with buffered characters
+    tOut.ReadIntervalTimeout = MAXDWORD;
+    tOut.ReadTotalTimeoutMultiplier = 0;
+    tOut.ReadTotalTimeoutConstant = 0;
+    SetCommTimeouts(hComm, &tOut);
+
+    return true;
+}
+
+#endif
+
+static zlist_t *
+s_get_serialports()
+{
+#ifdef __UTYPE_LINUX
+    zdir_t *serdir =zdir_new("/dev/serial/by-id", "-");
+    zlist_t *dirlist = zdir_list(serdir);
+    zfile_t *item = (zfile_t *)zlist_first(dirlist);
+    zlist_t *names = zlist_new();
+    zlist_autofree(names);
+    while(item)
+    {
+        const char *name = zfile_filename(item, NULL);
+        zsys_info("serial port: %s", name);
+        zlist_append(names, (void *)name);
+        item = (zfile_t *)zlist_next(dirlist);
+    }
+    zlist_destroy(&dirlist);
+    zdir_destroy(&serdir);
+
+    return names;
+#elif defined __UTYPE_OSX
+    zdir_t *serdir =zdir_new("/dev/", "-");
+    zlist_t *dirlist = zdir_list(serdir);
+    zfile_t *item = (zfile_t *)zlist_first(dirlist);
+    zlist_t *names = zlist_new();
+    zlist_autofree(names);
+    while(item)
+    {
+        const char *name = zfile_filename(item, NULL);
+        if ( strncmp("/dev/tty.", name, 9) == 0 )
+        {
+            zsys_info("serial port: %s", name);
+            zlist_append(names, name);
+        }
+        item = (zfile_t *)zlist_next(dirlist);
+    }
+
+    zlist_destroy(&dirlist);
+    zdir_destroy(&serdir);
+#elif defined __WINDOWS__
+    zlist_t *dirlist = list_winserialports();
+    char *item = (char *)zlist_first(dirlist);
+    while(item)
+    {
+        zsys_info("serial port: %s", item);
+        item = (char *)zlist_next(dirlist);
+    }
+    return dirlist;
+#endif
+}
+
+static int
 set_interface_attribs (int fd, int speed, int parity)
 {
         struct termios tty;
@@ -46,7 +226,7 @@ set_interface_attribs (int fd, int speed, int parity)
         return 0;
 }
 
-void
+static void
 set_blocking (int fd, int should_block)
 {
         struct termios tty;
@@ -72,6 +252,18 @@ const char *DmxActor::capabilities =
         "        value = \"\"\n"
         "        api_call = \"SET PORT\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"max channels\"\n"
+        "        type = \"int\"\n"
+        "        value = \"512\"\n"
+        "        min = \"1\"\n"
+        "        max = \"512\"\n"
+        "        api_call = \"SET CHANNELS\"\n"
+        "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"refresh ports\"\n"
+        "        type = \"trigger\"\n"
+        "        api_call = \"REFRESH PORTS\"\n"
         "inputs\n"
         "    input\n"
         "        type = \"OSC\"\n";
@@ -79,35 +271,60 @@ const char *DmxActor::capabilities =
 zmsg_t *
 DmxActor::handleInit(sphactor_event_t *ev)
 {
-#ifdef __UTYPE_LINUX
-    zdir_t *serdir =zdir_new("/dev/serial/by-id", "-");
-    zlist_t *dirlist = zdir_list(serdir);
-    zfile_t *item = (zfile_t *)zlist_first(dirlist);
-    while(item)
+    if (available_ports)
+        zlist_destroy(&available_ports);
+
+    available_ports = s_get_serialports();
+
+
+    if (zlist_size(this->available_ports) > 0)
     {
-        const char *name = zfile_filename(item, NULL);
-        zsys_info("serial port: %s", name);
-        item = (zfile_t *)zlist_next(dirlist);
-    }
-    zlist_destroy(&dirlist);
-    zdir_destroy(&serdir);
-#elif defined __UTYPE_OSX
-    zdir_t *serdir =zdir_new("/dev/", "-");
-    zlist_t *dirlist = zdir_list(serdir);
-    zfile_t *item = (zfile_t *)zlist_first(dirlist);
-    while(item)
-    {
-        const char *name = zfile_filename(item, NULL);
-        if ( strncmp("/dev/tty.", name, 9) == 0 )
+        zosc_t *msg = zosc_create("/serialports", "ss",
+                                  "available", "ports");
+        char *item = (char *)zlist_first(this->available_ports);
+        int i = 0;
+        while(item)
         {
-            zsys_info("serial port: %s", name);
+            zosc_append(msg, "is", i, item);
+            item = (char *)zlist_next(this->available_ports);
+            i++;
         }
-        item = (zfile_t *)zlist_next(dirlist);
+        sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+
     }
-    zlist_destroy(&dirlist);
-    zdir_destroy(&serdir);
+    else
+    {
+        zosc_t *msg = zosc_create("/serialports", "ss",
+                                  "no ports", "available");
+        sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+    }
+
+    return nullptr;
+}
+
+void
+DmxActor::open_serialport()
+{
+
+    int fd = open (portname, O_RDWR | O_NOCTTY | O_NONBLOCK);
+
+}
+
+void
+DmxActor::close_serialport()
+{
+#ifdef __WINDOWS__
+    if(bInited){
+        //SetCommTimeouts(hComm, &oldTimeout);
+        CloseHandle(hComm);
+        hComm = INVALID_HANDLE_VALUE;
+    }
+#else
+    if (this->fd != -1)
+        // reset attributes?
+        close(this->fd);
+    this->fd = -1;
 #endif
-    return NULL;
 }
 
 zmsg_t *
@@ -124,6 +341,19 @@ DmxActor::handleAPI(sphactor_event_t *ev)
             zstr_free(&portname);
             return nullptr;
         }
+        close_serialport();
+#ifdef __WINDOWS__
+        if ( ! open_winserialport(portname, 57600) )
+        {
+            zosc_t *msg = zosc_create("/error", "ss",
+                                      "open error", portname);
+            sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+            zstr_free(&cmd);
+            zstr_free(&portname);
+            return nullptr;
+        }
+        fd = 666;
+#else
         int fd = open (portname, O_RDWR | O_NOCTTY | O_NONBLOCK);
         if (fd < 0)
         {
@@ -143,9 +373,9 @@ DmxActor::handleAPI(sphactor_event_t *ev)
                                       "opened", portname);
             sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
         }
-
         set_interface_attribs (fd, B57600, 0);  // set speed to 115,200 bps, 8n1 (no parity)
         set_blocking (fd, 0);                // set no blocking
+#endif
 
         if (this->portname)
         {
@@ -155,6 +385,44 @@ DmxActor::handleAPI(sphactor_event_t *ev)
         this->fd = fd;
 
     }
+    else if (streq(cmd, "SET CHANNELS") )
+    {
+        char *c = zmsg_popstr(ev->msg);
+        this->channels = atoi(c);
+        zsys_info("SET CHANNELS to: %i", channels);
+        zstr_free(&c);
+    }
+    else if (streq(cmd, "REFRESH PORTS") )
+    {
+        if (available_ports)
+            zlist_destroy(&available_ports);
+
+        available_ports = s_get_serialports();
+
+
+        if (zlist_size(this->available_ports) > 0)
+        {
+            zosc_t *msg = zosc_create("/serialports", "ss",
+                                      "available", "ports");
+            char *item = (char *)zlist_first(this->available_ports);
+            int i = 0;
+            while(item)
+            {
+                zosc_append(msg, "is", i, item);
+                item = (char *)zlist_next(this->available_ports);
+                i++;
+            }
+            sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+
+        }
+        else
+        {
+            zosc_t *msg = zosc_create("/serialports", "ss",
+                                      "no ports", "available");
+            sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
+        }
+    }
+    zstr_free(&cmd);
     return NULL;
 }
 
@@ -181,7 +449,15 @@ DmxActor::handleSocket(sphactor_event_t *ev)
         dmxdata[2] = channels & 0xFF;
         dmxdata[3] = channels >> 8;
         dmxdata[channels + 4 ] = 0xe7; // end value
+#ifdef __WINDOWS__
+        DWORD written;
+        if( !WriteFile(this->hComm, this->dmxdata, channels+5, &written, 0) )
+        {
+               zsys_error("DMX actor: couldn't write to port");
+        }
+#else
         write (this->fd, this->dmxdata, channels + 5);
+#endif
     }
     return NULL;
 }
@@ -196,5 +472,7 @@ zmsg_t *
 DmxActor::handleStop(sphactor_event_t *ev)
 {
     close(this->fd);
+    if (this->available_ports)
+        zlist_destroy(&this->available_ports);
     return NULL;
 }

@@ -10,8 +10,16 @@ public:
 
     static const char *capabilities;
     int fd = -1;
+#ifdef __WINDOWS__
+    HANDLE hComm = INVALID_HANDLE_VALUE;
+#endif
     char *portname = NULL;
     int channels = 488;
+
+    zlist_t *available_ports = NULL;
+    void close_serialport();
+
+    void open_serialport();
 
     zmsg_t *
     handleInit(sphactor_event_t *ev);
