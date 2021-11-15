@@ -70,7 +70,7 @@ build_script:
       cd "%APPVEYOR_BUILD_FOLDER%"
       git submodule update --init --recursive
       cd "%GZB_BUILDDIR%"
-      cmake .. -Ax64 -DCMAKE_PREFIX_PATH="%INSTALL_PREFIX%" -DPython3_ROOT_DIR="%PY_INSTALLDIR%"
+      cmake .. -Ax64 -DCMAKE_PREFIX_PATH="%INSTALL_PREFIX%" -DPython3_ROOT_DIR="%PY_INSTALLDIR%" -DWITH_DMX=OFF
   - cmake --build . --config %Configuration% --target install
 #      ctest -C %Configuration% -V
 after_build:

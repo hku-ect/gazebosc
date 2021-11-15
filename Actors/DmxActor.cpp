@@ -1,3 +1,4 @@
+#ifdef HAVE_DMX
 #include "DmxActor.h"
 #include <errno.h>
 #include <fcntl.h>
@@ -476,3 +477,4 @@ DmxActor::handleStop(sphactor_event_t *ev)
         zlist_destroy(&this->available_ports);
     return NULL;
 }
+#endif
