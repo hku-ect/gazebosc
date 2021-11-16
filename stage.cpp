@@ -287,10 +287,24 @@ void ShowTextEditor()
             }
             if (ImGui::MenuItem(ICON_FA_SAVE " Save")) {
                 if (current_editor != nullptr) {
+                    // the zfile class is missing truncating files on write if the file is smaller than the old file
+                    // see https://github.com/zeromq/czmq/issues/2203
+                    ssize_t oldSize = zfile_size(zfile_filename(current_editor->file, NULL));
                     int rc = zfile_output(current_editor->file);
                     if (rc == 0) {
                         zchunk_t* data = zchunk_frommem(text, strlen(text), nullptr, nullptr);
                         int rc = zfile_write(current_editor->file, data, 0);
+                        if (oldSize > strlen(text) )
+                        {
+#ifdef __WINDOWS__          // truncate the file
+                            if ( _chsize_s(fileno(zfile_handle(current_editor->file)), (__int64)strlen(text)) != 0 )
+                            {
+                                zsys_error("Some error trying to truncate the file");
+                            }
+#else
+                            ftruncate(fileno(zfile_handle(current_editor->file)), strlen(text));
+#endif
+                        }
                         zfile_close(current_editor->file);
                         if (rc != 0) {
                             zsys_info("ERROR WRITING TO FILE: %i", rc);
