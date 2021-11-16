@@ -270,7 +270,7 @@ const char *DmxActor::capabilities =
         "        api_call = \"SET PORT\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
         "    data\n"
-        "        name = \"max channels\"\n"
+        "        name = \"max_channels\"\n"
         "        type = \"int\"\n"
         "        value = \"512\"\n"
         "        min = \"1\"\n"
