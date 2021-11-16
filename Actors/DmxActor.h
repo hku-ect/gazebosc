@@ -6,7 +6,7 @@
 class DmxActor : public Sphactor
 {
 public:
-    DmxActor() {};
+    DmxActor() : Sphactor() {}
 
     static const char *capabilities;
     int fd = -1;
