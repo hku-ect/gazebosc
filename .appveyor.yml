@@ -23,8 +23,6 @@ environment:
     - platform: x64
       configuration: Release
       PY_DIR: C:/Python38-x64
-  BBPWD:
-    secure: tnqG0dYp6Vb0YvjL6tB8ow==
 
 matrix:
   fast_finish: false
@@ -85,11 +83,11 @@ after_build:
       %SIGNTOOL% sign /t http://timestamp.digicert.com /f tmpcrt /p %CSRTPW% /a gazebosc.exe & exit 0
       del tmp64 tmpcrt
   - cmd: 7z a -r gazebosc.zip *.*
-  - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc-${env:Platform}-${env:Configuration}.zip"
+  - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc_${env:Platform}-${env:Configuration}_{env:APPVEYOR_REPO_COMMIT}.zip"
   - cmd: |
       choco install -y winscp
-      echo open ftpes://buildbot:%BBPWD%@pong.hku.nl:public_html/gazebosc/ > ftp.txt
-      echo put <gazebosc-%Platform%-%Configuration%.zip> / >> ftp.txt
+      echo open ftpes://buildbot:%BBPWD%@pong.hku.nl -hostkey="ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=" > ftp.txt
+      echo put <gazebosc_%Platform%-%Configuration%_%APPVEYOR_REPO_COMMIT%.zip> /public_html/gazebosc/ >> ftp.txt
       echo exit >> ftp.txt
       "C:\Program Files (x86)\WinSCP\winscp.com" /script=ftp.txt
 
