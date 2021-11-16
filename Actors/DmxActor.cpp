@@ -302,7 +302,7 @@ DmxActor::handleInit(sphactor_event_t *ev)
         int i = 0;
         while(item)
         {
-            char num[2] = { '0' + i,0x0 };
+            char num[2] = { '0' + (char)i,0x0 };
             zosc_append(msg, "ss", num, item);
             item = (char*)zlist_next(this->available_ports);
 
@@ -431,7 +431,7 @@ DmxActor::handleAPI(sphactor_event_t *ev)
             int i = 0;
             while(item)
             {
-                char num[2] = { '0' + i,0x0 };
+                char num[2] = { '0' + (char)i,0x0 };
                 zosc_append(msg, "ss", num, item);
                 item = (char *)zlist_next(this->available_ports);
                 i++;
