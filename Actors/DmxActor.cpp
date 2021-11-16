@@ -87,10 +87,10 @@ list_winserialports()
  };
 
 static bool
-open_winserialport(HANDLE hComm, const char *portname, int baud)
+open_winserialport(HANDLE &hComm, const char *portname, int baud)
 {
     // I just borrowed this from openframeworks, credits go there!
-    char pn[sizeof(portname)];
+    char pn[sizeof(portname) + 10]; // create enough space for the portname
     int num;
     if(sscanf(portname, "COM%d", &num) == 1){
         // Microsoft KB115831 a.k.a if COM > COM9 you have to use a different
@@ -136,7 +136,7 @@ open_winserialport(HANDLE hComm, const char *portname, int baud)
 
     // Set communication timeouts (NT)
     COMMTIMEOUTS tOut;
-    //GetCommTimeouts(hComm, &oldTimeout);
+    GetCommTimeouts(hComm, &tOut);
     //tOut = oldTimeout;
     // Make timeout so that:
     // - return immediately with buffered characters
@@ -373,6 +373,9 @@ DmxActor::handleAPI(sphactor_event_t *ev)
             return nullptr;
         }
         fd = 666;
+        zosc_t* msg = zosc_create("/success", "ss",
+            "opened", portname);
+        sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
 #else
         int fd = open (portname, O_RDWR | O_NOCTTY | O_NONBLOCK);
         if (fd < 0)
@@ -429,7 +432,7 @@ DmxActor::handleAPI(sphactor_event_t *ev)
             while(item)
             {
                 char num[2] = { '0' + i,0x0 };
-                zosc_append(msg, "ss", num[0], item);
+                zosc_append(msg, "ss", num, item);
                 item = (char *)zlist_next(this->available_ports);
                 i++;
             }
