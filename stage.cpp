@@ -297,7 +297,7 @@ void ShowTextEditor()
                         if (oldSize > strlen(text) )
                         {
 #ifdef __WINDOWS__          // truncate the file
-                            if ( _chsize_(fileno(zfile_handle(current_editor->file)), (__int64)strlen(text)) != 0 )
+                            if ( _chsize_s(fileno(zfile_handle(current_editor->file)), (__int64)strlen(text)) != 0 )
                             {
                                 zsys_error("Some error trying to truncate the file");
                             }
