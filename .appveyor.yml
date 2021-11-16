@@ -86,7 +86,7 @@ after_build:
   - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc_${env:Platform}-${env:Configuration}_{env:APPVEYOR_REPO_COMMIT}.zip"
   - cmd: |
       choco install -y winscp
-      echo open ftpes://buildbot:%BBPWD%@pong.hku.nl -hostkey="ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=" > ftp.txt
+      echo open sftp://buildbot:%BBPWD%@pong.hku.nl -hostkey="ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=" > ftp.txt
       echo put <gazebosc.zip> /public_html/gazebosc/gazebosc_%Platform%-%Configuration%_%APPVEYOR_REPO_COMMIT%.zip >> ftp.txt
       echo exit >> ftp.txt
       "C:\Program Files (x86)\WinSCP\winscp.com" /script=ftp.txt
