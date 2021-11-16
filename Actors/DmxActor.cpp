@@ -168,7 +168,7 @@ s_get_serialports()
         if ( strncmp("/dev/tty.", name, 9) == 0 )
         {
             zsys_info("serial port: %s", name);
-            zlist_append(names, name);
+            zlist_append(names, (void *)name);
         }
         item = (zfile_t *)zlist_next(dirlist);
     }
