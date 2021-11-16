@@ -3,11 +3,25 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdio.h>
+#ifdef __UNIX__
 #include <termios.h>
 #include <unistd.h>
-#include <stdio.h>
+#endif
 
 #ifdef __WINDOWS__
+#include <winbase.h>
+#include <tchar.h>
+#include <iostream>
+#include <string.h>
+#include <devpropdef.h>
+#include <setupapi.h>
+#include <regstr.h>
+/// \cond INTERNAL
+#define MAX_SERIAL_PORTS 256
+/// \endcond
+#include <winioctl.h>
+
 // needed for serial bus enumeration:
 // 4d36e978-e325-11ce-bfc1-08002be10318}
 DEFINE_GUID (GUID_SERENUM_BUS_ENUMERATOR, 0x4D36E978, 0xE325,
@@ -22,63 +36,63 @@ list_winserialports()
     SP_DEVINFO_DATA DeviceInterfaceData;
     DWORD dataType, actualSize = 0;
 
-    // Reset Port List
-    nPorts = 0;
     // Search device set
     hDevInfo = SetupDiGetClassDevs((struct _GUID *)&GUID_SERENUM_BUS_ENUMERATOR, 0, 0, DIGCF_PRESENT);
-    if(hDevInfo){
+    if (hDevInfo) {
         int i = 0;
         unsigned char dataBuf[MAX_PATH + 1];
-        while(TRUE){
+        while (TRUE) {
             ZeroMemory(&DeviceInterfaceData, sizeof(DeviceInterfaceData));
             DeviceInterfaceData.cbSize = sizeof(DeviceInterfaceData);
-            if(!SetupDiEnumDeviceInfo(hDevInfo, i, &DeviceInterfaceData)){
+            if (!SetupDiEnumDeviceInfo(hDevInfo, i, &DeviceInterfaceData)) 
+            {
                 // SetupDiEnumDeviceInfo failed
                 break;
             }
 
-        if(SetupDiGetDeviceRegistryPropertyA(hDevInfo,
-                                             &DeviceInterfaceData,
-                                             SPDRP_FRIENDLYNAME,
-                                             &dataType,
-                                             dataBuf,
-                                             sizeof(dataBuf),
-                                             &actualSize)){
+            if (SetupDiGetDeviceRegistryPropertyA(hDevInfo,
+                &DeviceInterfaceData,
+                SPDRP_FRIENDLYNAME,
+                &dataType,
+                dataBuf,
+                sizeof(dataBuf),
+                &actualSize)) 
+            {
+                // turn blahblahblah(COM4) into COM4
 
-             zlist_append(ports, strdup(dataBuf));
-             portNamesShort[nPorts][0] = 0;
+                /*char* begin = nullptr;
+                char * end = nullptr;
+                begin = strstr((char *)dataBuf, "COM");
+                char *portname;
+                if(begin)
+                {
+                    end = strstr(begin, ")");
+                    if(end)
+                    {
+                        *end = 0;   // get rid of the )...
+                        strcpy(portname, begin);
+                    }
+                    if(nPorts++ > MAX_SERIAL_PORTS)
+                        break;
+                }*/
+                zlist_append(ports, (void*)strdup((const char*)dataBuf));
+            }               
 
-             // turn blahblahblah(COM4) into COM4
-
-             char * begin = nullptr;
-             char * end = nullptr;
-             begin = strstr((char *)dataBuf, "COM");
-
-             if(begin){
-                 end = strstr(begin, ")");
-                 if(end){
-                     *end = 0;   // get rid of the )...
-                     strcpy(portNamesShort[nPorts], begin);
-                 }
-                 if(nPorts++ > MAX_SERIAL_PORTS)
-                     break;
-                }
-            }
             i++;
         }
     }
     SetupDiDestroyDeviceInfoList(hDevInfo);
 
     return ports;
-}
+ };
 
-bool
+static bool
 open_winserialport(HANDLE hComm, const char *portname, int baud)
 {
     // I just borrowed this from openframeworks, credits go there!
     char pn[sizeof(portname)];
     int num;
-    if(sscanf(portame, "COM%d", &num) == 1){
+    if(sscanf(portname, "COM%d", &num) == 1){
         // Microsoft KB115831 a.k.a if COM > COM9 you have to use a different
         // syntax
         sprintf(pn, "\\\\.\\COM%d", num);
@@ -117,13 +131,13 @@ open_winserialport(HANDLE hComm, const char *portname, int baud)
 
     if(!SetCommState(hComm, &cfg.dcb))
     {
-        zsys_error("open_winserialport: couldn't set comm state: %i %i %i %i", cfg.dcb.BaudRate, baud, xio, cfg.dcb.fOutX);
+        zsys_error("open_winserialport: couldn't set comm state: %i bps, xio %i / %i set baud %i", cfg.dcb.BaudRate, cfg.dcb.fInX, cfg.dcb.fOutX, baud);
     }
 
     // Set communication timeouts (NT)
     COMMTIMEOUTS tOut;
     //GetCommTimeouts(hComm, &oldTimeout);
-    tOut = oldTimeout;
+    //tOut = oldTimeout;
     // Make timeout so that:
     // - return immediately with buffered characters
     tOut.ReadIntervalTimeout = MAXDWORD;
@@ -187,6 +201,7 @@ s_get_serialports()
 #endif
 }
 
+#ifdef __UNIX__
 static int
 set_interface_attribs (int fd, int speed, int parity)
 {
@@ -244,6 +259,7 @@ set_blocking (int fd, int should_block)
         if (tcsetattr (fd, TCSANOW, &tty) != 0)
                 printf ("error %d setting term attributes\n", errno);
 }
+#endif
 
 const char *DmxActor::capabilities =
         "capabilities\n"
@@ -286,8 +302,12 @@ DmxActor::handleInit(sphactor_event_t *ev)
         int i = 0;
         while(item)
         {
-            zosc_append(msg, "is", i, item);
-            item = (char *)zlist_next(this->available_ports);
+            char num[2] = { '0' + i,0x0 };
+            zosc_append(msg, "ss", num, item);
+            item = (char*)zlist_next(this->available_ports);
+
+            //zosc_append(msg, "is", i, item);
+            //item = (char *)zlist_next(this->available_ports);
             i++;
         }
         sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
@@ -303,23 +323,22 @@ DmxActor::handleInit(sphactor_event_t *ev)
     return nullptr;
 }
 
+
 void
 DmxActor::open_serialport()
 {
-
+#ifdef __UNIX__
     int fd = open (portname, O_RDWR | O_NOCTTY | O_NONBLOCK);
-
+#endif
 }
 
 void
 DmxActor::close_serialport()
 {
 #ifdef __WINDOWS__
-    if(bInited){
-        //SetCommTimeouts(hComm, &oldTimeout);
-        CloseHandle(hComm);
-        hComm = INVALID_HANDLE_VALUE;
-    }
+    //SetCommTimeouts(hComm, &oldTimeout);
+    CloseHandle(hComm);
+    hComm = INVALID_HANDLE_VALUE;
 #else
     if (this->fd != -1)
         // reset attributes?
@@ -344,7 +363,7 @@ DmxActor::handleAPI(sphactor_event_t *ev)
         }
         close_serialport();
 #ifdef __WINDOWS__
-        if ( ! open_winserialport(portname, 57600) )
+        if ( ! open_winserialport(this->hComm, portname, 57600) )
         {
             zosc_t *msg = zosc_create("/error", "ss",
                                       "open error", portname);
@@ -409,7 +428,8 @@ DmxActor::handleAPI(sphactor_event_t *ev)
             int i = 0;
             while(item)
             {
-                zosc_append(msg, "is", i, item);
+                char num[2] = { '0' + i,0x0 };
+                zosc_append(msg, "ss", num[0], item);
                 item = (char *)zlist_next(this->available_ports);
                 i++;
             }
@@ -472,7 +492,7 @@ DmxActor::handleTimer(sphactor_event_t *ev)
 zmsg_t *
 DmxActor::handleStop(sphactor_event_t *ev)
 {
-    close(this->fd);
+    close_serialport();
     if (this->available_ports)
         zlist_destroy(&this->available_ports);
     return NULL;
