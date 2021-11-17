@@ -87,7 +87,8 @@ after_build:
   - cmd: |
       choco install -y winscp
       echo open sftp://buildbot:%BBPWD%@pong.hku.nl -hostkey="ssh-ed25519 255 AdIjQaHUT94TVDcs05Vkhjr1WnhCSKNJ9rOCa0AXbDA=" > ftp.txt
-      echo put <gazebosc.zip> /public_html/gazebosc/gazebosc_%Platform%-%Configuration%_%APPVEYOR_REPO_COMMIT%.zip >> ftp.txt
+      echo cd public_html/gazebosc
+      echo put gazebosc.zip ./gazebosc_%Platform%-%Configuration%_%APPVEYOR_REPO_COMMIT%.zip >> ftp.txt
       echo exit >> ftp.txt
       "C:\Program Files (x86)\WinSCP\winscp.com" /script=ftp.txt
 
