@@ -278,7 +278,7 @@ const char *DmxActor::capabilities =
         "        api_call = \"SET CHANNELS\"\n"
         "        api_value = \"i\"\n"           // optional picture format used in zsock_send
         "    data\n"
-        "        name = \"refresh ports\"\n"
+        "        name = \"refresh_ports\"\n"
         "        type = \"trigger\"\n"
         "        api_call = \"REFRESH PORTS\"\n"
         "inputs\n"
@@ -480,7 +480,36 @@ DmxActor::handleSocket(sphactor_event_t *ev)
                zsys_error("DMX actor: couldn't write to port");
         }
 #else
-        write (this->fd, this->dmxdata, channels + 5);
+        size_t written = 0;
+        fd_set wfds;
+        struct timeval tv;
+        size_t length = channels + 5; // header 4 bytes + end byte
+        while (written < length)
+        {
+            auto n = write(this->fd, this->dmxdata + written, length - written);
+            if (n < 0 && (errno == EAGAIN || errno == EINTR))
+                n = 0;
+            //printf("Write, n = %d\n", n);
+            if (n < 0)
+                zsys_error("Error writing bytes to serial port");
+            if (n > 0)
+            {
+                written += n;
+            }
+            else
+            {
+                tv.tv_sec = 10;
+                tv.tv_usec = 0;
+                FD_ZERO(&wfds);
+                FD_SET(fd, &wfds);
+                n = select(fd+1, NULL, &wfds, NULL, &tv);
+                if (n < 0 && errno == EINTR)
+                    n = 1;
+                if (n <= 0)
+                    zsys_error("Error waiting for serial port write availability");
+            }
+        }
+        assert(written == length);
 #endif
     }
     return NULL;
