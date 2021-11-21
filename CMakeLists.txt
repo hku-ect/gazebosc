@@ -81,12 +81,11 @@ add_subdirectory("ext/rtmidi" EXCLUDE_FROM_ALL)
 # include(CheckIncludeFile)
 # CHECK_INCLUDE_FILE(/opt/vc/include/bcm_host.h RPI) # doesn't work :S
 # Just check if the file is there
-#if (EXISTS "/opt/vc/include/bcm_host.h")
-# However SDL also checks for the RPI so we can rely on that if it builds for RPI video
-if (${VIDEO_RPI})
+if (EXISTS "/opt/vc/include/bcm_host.h")
+    message(WARNING "BLALA")
     set(RPI "ON")
     add_definitions(-DIMGUI_IMPL_OPENGL_ES2)
-endif(${VIDEO_RPI})
+endif(EXISTS "/opt/vc/include/bcm_host.h")
 
 # External system libraries through find_package
 find_package(libzmq REQUIRED)

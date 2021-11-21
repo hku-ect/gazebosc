@@ -12,6 +12,7 @@ const char * ModPlayerActor::capabilities =
         "    data\n"
         "        name = \"modfile\"\n"
         "        type = \"filename\"\n"
+        "        valid_files = \".mod\"\n"
         "        value = \"\"\n"
         "        api_call = \"SET MOD\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
