@@ -29,10 +29,6 @@ set(DEP_IMGUI_VERSION "1.85" CACHE STRING "ImGui version to use")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/dist/cmake")
 
-#Test for RPI
-include(CheckIncludeFile)
-CHECK_INCLUDE_FILE(/opt/vc/include/bcm_host.h RPI)
-
 ##  Test availability of git and fetch submodules if needed
 find_package(Git QUIET)
 #if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -79,6 +75,18 @@ set( RTMIDI_TARGETNAME_UNINSTALL "rtmidi_uninstall" CACHE STRING "Name of 'unins
 set( RTMIDI_BUILD_SHARED_LIBS "")
 set( RTMIDI_BUILD_STATIC_LIBS "#" )
 add_subdirectory("ext/rtmidi" EXCLUDE_FROM_ALL)
+
+# Test for RPI
+# We can check if the bcm_host.h exists
+# include(CheckIncludeFile)
+# CHECK_INCLUDE_FILE(/opt/vc/include/bcm_host.h RPI) # doesn't work :S
+# Just check if the file is there
+#if (EXISTS "/opt/vc/include/bcm_host.h")
+# However SDL also checks for the RPI so we can rely on that if it builds for RPI video
+if (${VIDEO_RPI})
+    set(RPI "ON")
+    add_definitions(-DIMGUI_IMPL_OPENGL_ES2)
+endif(${VIDEO_RPI})
 
 # External system libraries through find_package
 find_package(libzmq REQUIRED)
