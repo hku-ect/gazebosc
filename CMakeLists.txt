@@ -82,7 +82,7 @@ add_subdirectory("ext/rtmidi" EXCLUDE_FROM_ALL)
 # CHECK_INCLUDE_FILE(/opt/vc/include/bcm_host.h RPI) # doesn't work :S
 # Just check if the file is there
 if (EXISTS "/opt/vc/include/bcm_host.h")
-    message(WARNING "BLALA")
+    message(STATUS "Enabling building for the Raspberry Pi")
     set(RPI "ON")
     add_definitions(-DIMGUI_IMPL_OPENGL_ES2)
 endif(EXISTS "/opt/vc/include/bcm_host.h")
