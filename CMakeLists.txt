@@ -29,6 +29,10 @@ set(DEP_IMGUI_VERSION "1.85" CACHE STRING "ImGui version to use")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/dist/cmake")
 
+#Test for RPI
+include(CheckIncludeFile)
+CHECK_INCLUDE_FILE(/opt/vc/include/bcm_host.h RPI)
+
 ##  Test availability of git and fetch submodules if needed
 find_package(Git QUIET)
 #if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
@@ -139,10 +143,11 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip")
         file(DOWNLOAD "https://github.com/ocornut/imgui/archive/v${DEP_IMGUI_VERSION}.zip" ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip)
     endif ()
-    if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}")
-        file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip
-          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-          )
+    if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}")        
+        execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip)
+        #file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip
+        #  DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+        #  )
     endif ()
 endif ()
 
@@ -289,6 +294,16 @@ elseif (WIN32)
         ${libzmq_LIBRARIES}
         ${Python3_LIBRARIES}
         opengl32.lib DbgHelp.lib)
+elseif (RPI)
+    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linuxarm64")
+    target_link_libraries(gazebosc PUBLIC
+        SDL2-static
+        sphactor-static
+        rtmidi
+        ${OPENVR_LIBRARIES}
+        ${Python3_LIBRARIES}
+        -lasound -ldl -L/opt/vc/lib -lbrcmGLESv2)
+    target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 else()
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linux64")
     target_link_libraries(gazebosc PUBLIC
