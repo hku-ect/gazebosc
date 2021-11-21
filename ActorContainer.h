@@ -439,6 +439,7 @@ struct ActorContainer {
         zconfig_t * zapic = zconfig_locate(data, "api_call");
         zconfig_t * zapiv = zconfig_locate(data, "api_value");
         zconfig_t * zoptions = zconfig_locate(data, "options");
+        zconfig_t * zvalidfiles = zconfig_locate(data, "valid_files");
         assert(zvalue);
 
         zconfig_t * zmax = zconfig_locate(data, "max");
@@ -455,6 +456,7 @@ struct ActorContainer {
         if ( zoptions != nullptr ) {
             zoptStr = zconfig_value(zoptions);
         }
+        const char *valid_files = zvalidfiles == nullptr ? "*.*" : zconfig_value(zvalidfiles);
 
         ImGui::SetNextItemWidth(180);
         if ( ImGui::InputTextWithHint("", name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
@@ -472,7 +474,7 @@ struct ActorContainer {
         if ( actor_file_dialog.showFileDialog("Actor Open File",
                                               streq(zoptStr, "rw" ) ? imgui_addons::ImGuiFileBrowser::DialogMode::SAVE : imgui_addons::ImGuiFileBrowser::DialogMode::OPEN,
                                               ImVec2(700, 310),
-                                              "*.*") ) // TODO: perhaps add type hint for extensions?
+                                              valid_files) ) // TODO: perhaps add type hint for extensions?
         {
             zconfig_set_value(zvalue, "%s", actor_file_dialog.selected_path.c_str() );
             strcpy(buf, actor_file_dialog.selected_path.c_str());

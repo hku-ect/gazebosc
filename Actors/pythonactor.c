@@ -156,6 +156,7 @@ static const char *pythonactorcapabilities =
         "    data\n"
         "        name = \"pyfile\"\n"
         "        type = \"filename\"\n"
+        "        valid_files = \".py\"\n"
         "        value = \"\"\n"
         "        api_call = \"SET FILE\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
