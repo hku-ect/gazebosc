@@ -118,6 +118,9 @@ void RegisterActors() {
     sphactor_register<Record>("Record", Record::capabilities );
     sphactor_register<ModPlayerActor>( "ModPlayer", ModPlayerActor::capabilities );
     sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
+#ifdef HAVE_OPENVR
+    sphactor_register<DmxActor>( "DmxOut", DmxActor::capabilities );
+#endif
 #ifdef PYTHON3_FOUND
     int rc = python_init();
     assert( rc == 0);

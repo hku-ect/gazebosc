@@ -55,6 +55,7 @@ option (WITH_UNWIND "Enable libunwind support" ON)
 option (WITH_IMGUI_DEMO "Enable ImGUI demo console" ON)
 option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" OFF)
 option (WITH_OPENVR "Enable OpenVR support" ON)
+option (WITH_DMX "Enable DMX support" ON)
 ### END SET OPTIONS
 
 ### EXTERNAL LIBS
@@ -144,6 +145,10 @@ if (WITH_OPENVR)
     add_definitions(-DHAVE_OPENVR)
     message("Found OpenVR at ${OPENVR_LIBRARIES}")
 endif(WITH_OPENVR)
+
+if(WITH_DMX)
+    add_definitions(-DHAVE_DMX)
+endif(WITH_DMX)
 
 # include Dear ImGui
 if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
