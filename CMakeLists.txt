@@ -214,6 +214,7 @@ if(WIN32)
     )
     list(APPEND GZB_INCLUDEDIRS
         ext/StackWalker/Main/StackWalker/
+        ext/ImGui-Addons/FileBrowser/Dirent/
     )
 endif(WIN32)
 
