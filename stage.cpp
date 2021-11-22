@@ -625,7 +625,7 @@ int UpdateActors(float deltaTime, bool * showLog)
             ImNodes::Ez::EndNode();
 
             bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || ( ImGui::IsKeyPressedMap(ImGuiKey_Backspace) && ImGui::GetActiveID() == 0 );
-            if (actor->selected && del)
+            if (actor->selected && del && ImGui::IsWindowFocused() )
             {
                 // Loop and delete connections of actors connected to us
                 for (auto& connection : actor->connections)
