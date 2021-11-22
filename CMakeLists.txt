@@ -25,7 +25,7 @@ endif()
 message(STATUS "Compilation set for ${ARCH}bits architectures.")
 
 set(CMAKE_CXX_STANDARD 14)
-set(DEP_IMGUI_VERSION "1.79" CACHE STRING "ImGui version to use")
+set(DEP_IMGUI_VERSION "1.85" CACHE STRING "ImGui version to use")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/dist/cmake")
 
@@ -75,6 +75,17 @@ set( RTMIDI_TARGETNAME_UNINSTALL "rtmidi_uninstall" CACHE STRING "Name of 'unins
 set( RTMIDI_BUILD_SHARED_LIBS "")
 set( RTMIDI_BUILD_STATIC_LIBS "#" )
 add_subdirectory("ext/rtmidi" EXCLUDE_FROM_ALL)
+
+# Test for RPI
+# We can check if the bcm_host.h exists
+# include(CheckIncludeFile)
+# CHECK_INCLUDE_FILE(/opt/vc/include/bcm_host.h RPI) # doesn't work :S
+# Just check if the file is there
+if (EXISTS "/opt/vc/include/bcm_host.h")
+    message(STATUS "Enabling building for the Raspberry Pi")
+    set(RPI "ON")
+    add_definitions(-DIMGUI_IMPL_OPENGL_ES2)
+endif(EXISTS "/opt/vc/include/bcm_host.h")
 
 # External system libraries through find_package
 find_package(libzmq REQUIRED)
@@ -139,10 +150,15 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip")
         file(DOWNLOAD "https://github.com/ocornut/imgui/archive/v${DEP_IMGUI_VERSION}.zip" ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip)
     endif ()
-    if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}")
-        file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip
-          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-          )
+    if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}")        
+        if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
+            message(STATUS "cmake version below 3.18")
+            execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip)
+        else()
+            file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip
+                DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+            )
+        endif()
     endif ()
 endif ()
 
@@ -167,14 +183,14 @@ add_custom_command(
 
 list(APPEND GZB_SOURCES
     main.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_opengl3.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/imgui_impl_sdl.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/backends/imgui_impl_opengl3.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/backends/imgui_impl_sdl.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imconfig.h
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_draw.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_widgets.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_tables.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_demo.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w/GL/gl3w.c
     ImNodes.cpp
     ImNodesEz.cpp
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
@@ -188,8 +204,7 @@ list(APPEND GZB_INCLUDEDIRS
     ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/examples/libs/gl3w
+    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/backends
 )
 
 if(WIN32)
@@ -199,6 +214,7 @@ if(WIN32)
     )
     list(APPEND GZB_INCLUDEDIRS
         ext/StackWalker/Main/StackWalker/
+        ext/ImGui-Addons/FileBrowser/Dirent/
     )
 endif(WIN32)
 
@@ -281,6 +297,7 @@ elseif (WIN32)
     endif()
     set(APPS "bin/gazebosc.exe")
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/win64")
+    add_definitions(-DNOMINMAX) # Prevent defining min max macros
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         czmq-static
@@ -290,6 +307,16 @@ elseif (WIN32)
         ${libzmq_LIBRARIES}
         ${Python3_LIBRARIES}
         opengl32.lib DbgHelp.lib)
+elseif (RPI)
+    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linuxarm64")
+    target_link_libraries(gazebosc PUBLIC
+        SDL2-static
+        sphactor-static
+        rtmidi
+        ${OPENVR_LIBRARIES}
+        ${Python3_LIBRARIES}
+        -lasound -ldl -L/opt/vc/lib -lbrcmGLESv2)
+    target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 else()
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linux64")
     target_link_libraries(gazebosc PUBLIC

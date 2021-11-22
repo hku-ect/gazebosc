@@ -197,10 +197,10 @@ bool RenderConnection(const ImVec2& input_pos, const ImVec2& output_pos, float t
     ImVec2 p2 = input_pos - ImVec2{100 * canvas->zoom, 0};
     ImVec2 p3 = output_pos + ImVec2{100 * canvas->zoom, 0};
 
-    ImVec2 closest_pt = ImBezierClosestPointCasteljau(input_pos, p2, p3, output_pos, ImGui::GetMousePos(), style.CurveTessellationTol);
+    ImVec2 closest_pt = ImBezierCubicClosestPointCasteljau(input_pos, p2, p3, output_pos, ImGui::GetMousePos(), style.CurveTessellationTol);
     float min_square_distance = ImFabs(ImLengthSqr(ImGui::GetMousePos() - closest_pt));
     bool is_close = min_square_distance <= thickness * thickness;
-    draw_list->AddBezierCurve(input_pos, p2, p3, output_pos, is_close ? canvas->colors[ColConnectionActive] : canvas->colors[ColConnection], thickness, 0);
+    draw_list->AddBezierCubic(input_pos, p2, p3, output_pos, is_close ? canvas->colors[ColConnectionActive] : canvas->colors[ColConnection], thickness, 0);
     return is_close;
 }
 

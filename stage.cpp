@@ -465,14 +465,14 @@ int RenderMenuBar( bool * showLog ) {
         return -1;
     }
 
-    if(file_dialog.showFileDialog("MenuAction_Load", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), "*.*"))
+    if(file_dialog.showFileDialog("MenuAction_Load", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), ".gzs"))
     {
         Load(file_dialog.selected_path.c_str());
         editingFile = file_dialog.selected_fn;
         editingPath = file_dialog.selected_path;
     }
 
-    if(file_dialog.showFileDialog("MenuAction_Save", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), "*.*"))
+    if(file_dialog.showFileDialog("MenuAction_Save", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), ".gzs"))
     {
         if ( !Save(file_dialog.selected_path.c_str()) ) {
             editingFile = "";
