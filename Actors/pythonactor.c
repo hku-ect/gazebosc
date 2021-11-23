@@ -335,7 +335,8 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             else
                 zsys_warning("I don't know what to do with these bytes, please help: https://github.com/hku-ect/gazebosc");
         }
-        else {
+        else
+        {
             // not a supported native python type try ctypes
             PyTypeObject* type = Py_TYPE(item);
             const char * typename = _PyType_Name(type);
@@ -345,8 +346,6 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             }
             else
                 zsys_warning("unsupported python type");
-
-            Py_DECREF(type);
         }
 
     }
