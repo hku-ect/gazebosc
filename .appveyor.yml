@@ -85,13 +85,11 @@ after_build:
   - cmd: 7z a -r gazebosc.zip *.*
   - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc_${env:Platform}-${env:Configuration}.zip"
   - ps: $env:APPVEYOR_REPO_COMMIT=$(git rev-parse --short HEAD)
-  - IF %APPVEYOR_REPO_BRANCH%==master cmd: |
-      choco install -y winscp
-      echo open sftp://buildbot:%BBPWD%@pong.hku.nl -hostkey="ssh-ed25519 255 AdIjQaHUT94TVDcs05Vkhjr1WnhCSKNJ9rOCa0AXbDA=" > ftp.txt
-      echo put gazebosc.zip ./public_html/gazebosc/gazebosc_%Platform%-%Configuration%_%APPVEYOR_REPO_COMMIT%.zip >> ftp.txt
-      echo exit >> ftp.txt
-      "C:\Program Files (x86)\WinSCP\winscp.com" /script=ftp.txt
-
+  - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" choco install -y winscp
+  - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" echo open sftp://buildbot:%BBPWD%@pong.hku.nl -hostkey="ssh-ed25519 255 AdIjQaHUT94TVDcs05Vkhjr1WnhCSKNJ9rOCa0AXbDA=" > ftp.txt
+  - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" echo put gazebosc.zip ./public_html/gazebosc/gazebosc_%Platform%-%Configuration%_%APPVEYOR_REPO_COMMIT%.zip >> ftp.txt
+  - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" echo exit >> ftp.txt
+  - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" "C:\Program Files (x86)\WinSCP\winscp.com" /script=ftp.txt
 #on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
