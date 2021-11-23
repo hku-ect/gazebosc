@@ -85,7 +85,7 @@ after_build:
   - cmd: 7z a -r gazebosc.zip *.*
   - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc_${env:Platform}-${env:Configuration}.zip"
   - ps: $env:APPVEYOR_REPO_COMMIT=$(git rev-parse --short HEAD)
-  - cmd: >-
+  - cmd: |
     IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" (
       choco install -y winscp
       echo open sftp://buildbot:%BBPWD%@pong.hku.nl -hostkey="ssh-ed25519 255 AdIjQaHUT94TVDcs05Vkhjr1WnhCSKNJ9rOCa0AXbDA=" > ftp.txt
