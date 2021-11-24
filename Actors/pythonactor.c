@@ -335,7 +335,8 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             else
                 zsys_warning("I don't know what to do with these bytes, please help: https://github.com/hku-ect/gazebosc");
         }
-        else {
+        else
+        {
             // not a supported native python type try ctypes
             PyTypeObject* type = Py_TYPE(item);
             const char * typename = _PyType_Name(type);
@@ -345,14 +346,10 @@ s_py_zosc(PyObject *pAddress, PyObject *pData)
             }
             else
                 zsys_warning("unsupported python type");
-
-            Py_DECREF(type);
         }
 
     }
 
-    Py_DECREF(pAddress);
-    Py_DECREF(pData);
     return ret;
 }
 
@@ -398,6 +395,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
         {
             float flt_v = 0.f;
             int rc = zosc_pop_float(oscmsg, &flt_v);
+            assert(rc == 0);
             PyObject *o = PyFloat_FromDouble((double)flt_v);
             assert( o );
             rc = PyTuple_SetItem(rettuple, pos, o);
@@ -408,6 +406,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
         {
             double dbl_v = 0.;
             int rc = zosc_pop_double(oscmsg, &dbl_v);
+            assert(rc == 0);
             PyObject *o = PyFloat_FromDouble(dbl_v);
             assert( o );
             rc = PyTuple_SetItem(rettuple, pos, o);
@@ -659,7 +658,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
     assert(oscf);
     zosc_t *oscm = zosc_fromframe(oscf);
     assert(oscm);
-    char *oscaddress = zosc_address(oscm);
+    const char *oscaddress = zosc_address(oscm);
     assert(oscaddress);
     PyObject *py_osctuple = s_py_zosc_tuple(self, oscm);
     assert(py_osctuple);
@@ -671,7 +670,6 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
     }
     // call member 'handleMsg' with event arguments
     PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "sOsss", oscaddress, py_osctuple, ev->type, ev->name, ev->uuid);
-    Py_XINCREF(pReturn);  // increase refcount to prevent destroy
     // destroy the osc message
     zosc_destroy(&oscm);
     if (pReturn == NULL)
