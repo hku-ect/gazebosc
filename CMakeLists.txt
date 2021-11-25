@@ -51,6 +51,7 @@ endif()
 ## End getting the submodules
 
 ### SET OPTIONS
+option (WITH_DEV "Enable running from an IDE" ON)
 option (WITH_UNWIND "Enable libunwind support" ON)
 option (WITH_IMGUI_DEMO "Enable ImGUI demo console" ON)
 option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" OFF)
@@ -334,11 +335,13 @@ else()
 endif()
 
 # This is just for running the binary from an ide
-add_custom_command(
+if (WITH_DEV)
+    add_custom_command(
         TARGET gazebosc POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 ${CMAKE_SOURCE_DIR}/misc
                 $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+endif(WITH_DEV)
 
 install(TARGETS gazebosc
         BUNDLE DESTINATION . COMPONENT Runtime
