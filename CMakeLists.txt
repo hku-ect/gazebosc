@@ -302,7 +302,6 @@ elseif (WIN32)
     endif()
     set(APPS "bin/gazebosc.exe")
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/win64")
-    add_definitions(-DNOMINMAX) # Prevent defining min max macros
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         czmq-static
