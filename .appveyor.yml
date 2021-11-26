@@ -53,7 +53,7 @@ before_build:
   - cmd: |
       python --version
       set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%/build
-      set PY_INSTALLDIR=%GZB_BUILDDIR%/bin/%Configuration%/python
+      set PY_INSTALLDIR=%GZB_BUILDDIR%/python
       set PY_EXE=python.exe
       set PY_LAYOUTOPTS=--include-dev --include-pip
       md "%PY_INSTALLDIR%"
