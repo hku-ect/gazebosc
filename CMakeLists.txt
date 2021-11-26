@@ -361,7 +361,7 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc
 # Path used for searching by FIND_XXX(), with appropriate suffixes added
 if(CMAKE_PREFIX_PATH)
     foreach(dir ${CMAKE_PREFIX_PATH})
-        list(APPEND DIRS "${dir}/bin" "${dir}/lib")
+        list(APPEND DIRS "${dir}" "${dir}/bin" "${dir}/lib")
     endforeach()
 endif()
 

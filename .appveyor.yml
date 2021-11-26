@@ -80,7 +80,7 @@ after_build:
       certutil -decode tmp64 tmpcrt & exit 0
       %SIGNTOOL% sign /t http://timestamp.digicert.com /f tmpcrt /p %CSRTPW% /a bin/%Configuration%/gazebosc.exe & exit 0
       del tmp64 tmpcrt
-  - cmd: cpack -V
+  - cmd: cpack -V -C %Configuration%
   - ps: Push-AppveyorArtifact "gazebosc_windows_*.zip"
   - ps: $env:APPVEYOR_REPO_COMMIT=$(git rev-parse --short HEAD)
   - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" choco install -y winscp
