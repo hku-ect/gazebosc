@@ -51,6 +51,7 @@ endif()
 ## End getting the submodules
 
 ### SET OPTIONS
+option (WITH_DEV "Enable running from an IDE" ON)
 option (WITH_UNWIND "Enable libunwind support" ON)
 option (WITH_IMGUI_DEMO "Enable ImGUI demo console" ON)
 option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" OFF)
@@ -219,7 +220,7 @@ if(WIN32)
     )
     list(APPEND GZB_INCLUDEDIRS
         ext/StackWalker/Main/StackWalker/
-        ext/ImGui-Addons/FileBrowser/Dirent/
+        ext/ImGui-Addons/FileBrowser/
     )
 endif(WIN32)
 
@@ -302,7 +303,6 @@ elseif (WIN32)
     endif()
     set(APPS "bin/gazebosc.exe")
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/win64")
-    add_definitions(-DNOMINMAX) # Prevent defining min max macros
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         czmq-static
@@ -335,11 +335,13 @@ else()
 endif()
 
 # This is just for running the binary from an ide
-add_custom_command(
+if (WITH_DEV)
+    add_custom_command(
         TARGET gazebosc POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 ${CMAKE_SOURCE_DIR}/misc
                 $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+endif(WITH_DEV)
 
 install(TARGETS gazebosc
         BUNDLE DESTINATION . COMPONENT Runtime

@@ -58,7 +58,7 @@ jobs:
       run: |
         ./dist/osx/build_python.sh ${{github.workspace}}/build/python
         PY_ROOT=`${{github.workspace}}/build/python/Python.framework/Versions/Current/bin/python3 -c "import sys;print(sys.base_prefix)"`
-        echo "CMAKE_OPTIONS=-DPython3_ROOT_DIR=$PY_ROOT -DWITH_EMBED_PYTHON=ON -DWITH_OPENVR=OFF" >> $GITHUB_ENV
+        echo "CMAKE_OPTIONS=-DPython3_ROOT_DIR=$PY_ROOT -DWITH_EMBED_PYTHON=ON -DWITH_OPENVR=OFF -DWITH_DEV=OFF" >> $GITHUB_ENV
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
