@@ -312,6 +312,13 @@ elseif (WIN32)
         ${libzmq_LIBRARIES}
         ${Python3_LIBRARIES}
         opengl32.lib DbgHelp.lib)
+    if (WITH_EMBED_PYTHON )
+        # copy embedded python, we force binary_dir/python just because :S
+        install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${RESOURCE_DEST}
+            USE_SOURCE_PERMISSIONS
+            PATTERN exe_with_* EXCLUDE
+        )
+    endif(WITH_EMBED_PYTHON)
 elseif (RPI)
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linuxarm64")
     target_link_libraries(gazebosc PUBLIC
