@@ -250,6 +250,7 @@ target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
 target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
 set(RESOURCE_DEST "./")
+set(RUNTIME_DEST "bin")
 set(APPS "bin/gazebosc")
 set(LIBS )
 set(DIRS "${CMAKE_BINARY_DIR}")
@@ -297,11 +298,12 @@ if (APPLE)
     endif(WITH_EMBED_PYTHON)
 
 elseif (WIN32)
+    set(RUNTIME_DEST "./")
+    set(APPS "gazebosc.exe")
     if (MSVC)
         string(REGEX REPLACE "/" "\\\\" VS_DEBUGGER_BACKSLASH "${CMAKE_BINARY_DIR}/bin/Debug/")
         set_property(TARGET gazebosc PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${VS_DEBUGGER_BACKSLASH}")
     endif()
-    set(APPS "bin/gazebosc.exe")
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/win64")
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
@@ -352,7 +354,7 @@ endif(WITH_DEV)
 
 install(TARGETS gazebosc
         BUNDLE DESTINATION . COMPONENT Runtime
-        RUNTIME DESTINATION bin COMPONENT Runtime
+        RUNTIME DESTINATION ${RUNTIME_DEST} COMPONENT Runtime
         )
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc
         DESTINATION ${RESOURCE_DEST})
