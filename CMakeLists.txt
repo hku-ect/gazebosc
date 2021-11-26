@@ -312,7 +312,7 @@ elseif (WIN32)
         ${libzmq_LIBRARIES}
         ${Python3_LIBRARIES}
         opengl32.lib DbgHelp.lib)
-    if (WITH_EMBED_PYTHON )
+    if (WITH_EMBED_PYTHON)
         # copy embedded python, we force binary_dir/python just because :S
         install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${RESOURCE_DEST}
             USE_SOURCE_PERMISSIONS
