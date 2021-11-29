@@ -53,7 +53,7 @@ before_build:
   - cmd: |
       python --version
       set GZB_BUILDDIR=%APPVEYOR_BUILD_FOLDER%/build
-      set PY_INSTALLDIR=%GZB_BUILDDIR%/bin/%Configuration%/python
+      set PY_INSTALLDIR=%GZB_BUILDDIR%/python
       set PY_EXE=python.exe
       set PY_LAYOUTOPTS=--include-dev --include-pip
       md "%PY_INSTALLDIR%"
@@ -70,24 +70,22 @@ build_script:
       cd "%APPVEYOR_BUILD_FOLDER%"
       git submodule update --init --recursive
       cd "%GZB_BUILDDIR%"
-      cmake .. -Ax64 -DCMAKE_PREFIX_PATH="%INSTALL_PREFIX%" -DPython3_ROOT_DIR="%PY_INSTALLDIR%"
-  - cmake --build . --config %Configuration% --target install
+      cmake .. -Ax64 -DCMAKE_PREFIX_PATH="%INSTALL_PREFIX%" -DPython3_ROOT_DIR="%PY_INSTALLDIR%" -DWITH_EMBED_PYTHON=ON -DWITH_DEV=OFF
+  - cmake --build . --config %Configuration%
 #      ctest -C %Configuration% -V
 after_build:
-  - cmd: cd "%GZB_BUILDDIR%\bin\%Configuration%"
-  - cmd: copy "%INSTALL_PREFIX%\bin\*.dll" .
-  - cmd: copy python\*.dll" .
+  - cmd: cd "%GZB_BUILDDIR%"
   - cmd: |
       echo %CSCRT% > tmp64
       certutil -decode tmp64 tmpcrt & exit 0
-      %SIGNTOOL% sign /t http://timestamp.digicert.com /f tmpcrt /p %CSRTPW% /a gazebosc.exe & exit 0
+      %SIGNTOOL% sign /t http://timestamp.digicert.com /f tmpcrt /p %CSRTPW% /a bin/%Configuration%/gazebosc.exe & exit 0
       del tmp64 tmpcrt
-  - cmd: 7z a -r gazebosc.zip *.*
-  - ps: Push-AppveyorArtifact "gazebosc.zip" -Filename "gazebosc_${env:Platform}-${env:Configuration}.zip"
+  - cmd: cpack -V -C %Configuration%
+  - ps: Push-AppveyorArtifact "gazebosc_windows_*.zip"
   - ps: $env:APPVEYOR_REPO_COMMIT=$(git rev-parse --short HEAD)
   - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" choco install -y winscp
   - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" echo open sftp://buildbot:%BBPWD%@pong.hku.nl -hostkey="ssh-ed25519 255 AdIjQaHUT94TVDcs05Vkhjr1WnhCSKNJ9rOCa0AXbDA=" > ftp.txt
-  - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" echo put gazebosc.zip ./public_html/gazebosc/gazebosc_%Platform%-%Configuration%_%APPVEYOR_REPO_COMMIT%.zip >> ftp.txt
+  - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" echo put gazebosc_windows_*.zip ./public_html/gazebosc/ >> ftp.txt
   - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" echo exit >> ftp.txt
   - cmd: IF "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" "C:\Program Files (x86)\WinSCP\winscp.com" /script=ftp.txt
 #on_finish:
