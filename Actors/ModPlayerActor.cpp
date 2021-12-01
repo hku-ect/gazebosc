@@ -64,9 +64,9 @@ ModPlayerActor::queueAudio()
     if ( this->modctx.mod_loaded == 1 )
     {
         trackbuf_state1.nb_of_state = 0;
-        /* TODO: This doesn't work correctly yet. The idea is we calculate the time
+        /* TODO: This might need tweaking. The idea is we calculate the time
          * it takes to process one row, this time is used for the actor timeout so
-         * we have events on every row.
+         * we have events on every row. See handle_timer function
          * The formula is not easy as it's not very clear how tempo and speed is related
          * to the row time. In openMPT it's documented somewhat:
          * https://wiki.openmpt.org/Manual:_Song_Properties#Tempo_Mode
@@ -76,37 +76,11 @@ ModPlayerActor::queueAudio()
          * of the time on each row is incorrect.
          */
 
-        // calculate the required buffer size
+        // calculate the required buffer size for a single row
         // fileSize = (bitsPerSample * samplesPerSecond * channels * duration) / 8;
-        // we double the buffer size to prevent underrun
         // see MPT documentation about timing, that's where the 2500ms comes from
         int duration = (2500/this->modctx.bpm)*this->modctx.song.speed;
         unsigned int buffersize = (16*48000*2*duration)/1000/8;
-        unsigned int maxbuffer = buffersize * 4;
-        // always try to fill the buffer but not more
-        unsigned int qs = SDL_GetQueuedAudioSize(audiodev);
-        if (qs <= 8192)
-        {
-            if (qs <= 0)
-            {
-                zsys_warning("Buffer underrun (or just starting)!");
-                qs = 0;
-            }
-            // fill the buffer to the max
-            buffersize = maxbuffer - qs;
-        }
-        //zsys_info("bs %i, qs %i, mb %i",buffersize,qs, maxbuffer);
-        else if ( qs > maxbuffer )
-        {
-            zsys_warning("Buffer overrun!");
-            buffersize = 4;
-        }
-        else if ( qs <= maxbuffer )
-        {
-            unsigned int fillsize = maxbuffer - qs;
-            if ( buffersize > fillsize )
-                buffersize = fillsize;
-        }
 #ifdef _MSC_VER
         msample *stream = (msample *)_malloca( buffersize * sizeof(msample) );
         hxcmod_fillbuffer(&modctx, stream, buffersize / 4, &trackbuf_state1);
@@ -216,6 +190,8 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
                 // free modfile
                 free( this->modfile );
                 memset(this->orig_patterntable, 0, 128);
+                if (audiodev != -1)
+                    SDL_ClearQueuedAudio(audiodev);
             }
 
             FILE *f;
@@ -363,7 +339,20 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
                                   "pattern", this->modctx.song.patterntable[this->modctx.tablepos] );
         sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
         // determine next timeout based on speed and bpm of the song! 2500ms/bpm*speed
-        sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
+        int duration = (2500/this->modctx.bpm)*this->modctx.song.speed;
+        unsigned int buffersize = (16*48000*2*duration)/1000/8 *2;
+        unsigned int qs = SDL_GetQueuedAudioSize(audiodev);
+        float fillpct = qs/float(buffersize);
+        if (fillpct < 1.0f && fillpct > 0.1f)
+        {
+            zsys_warning("buffersize: %i, qs: %i, fill %f", buffersize, qs, fillpct);
+            duration = fillpct * duration;
+        }
+        else if (fillpct > 2.0f )
+        {
+            zsys_error("Audio queue is too large, this should not happen");
+        }
+        sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, duration);
         // we save messages in a circular buffer to provide row delaying
         delayed_msgs[delayed_msgs_idx] = getPatternEventMsg();
         int sendidx = MOD(delayed_msgs_idx - rowdelay, rowdelay+1);
