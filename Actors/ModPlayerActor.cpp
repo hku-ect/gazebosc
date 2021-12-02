@@ -1,12 +1,6 @@
 ﻿#include "ModPlayerActor.h"
 static SDL_AudioSpec fmt;
 
-// callback audio
-static void mixaudio(void *userdata, Uint8 *stream, int len)
-{
-    static_cast<ModPlayerActor *>(userdata)->mixAudio(stream, len);
-}
-
 const char * ModPlayerActor::capabilities =
         "capabilities\n"
         "    data\n"
@@ -46,6 +40,12 @@ const char * ModPlayerActor::capabilities =
         "        step = \"1\"\n"
         "        api_call = \"SET ROWDELAY\"\n"
         "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"loop\"\n"
+        "        type = \"bool\"\n"
+        "        value = \"True\"\n"
+        "        api_call = \"SET LOOPPLAY\"\n"
+        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
         "outputs\n"
         "    output\n"
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -110,6 +110,12 @@ ModPlayerActor::getPatternEventMsg()
     if (state->cur_pattern_pos == prev_row )
         return NULL;
 
+    // cheap loop detection
+    bool loop = false;
+    if (state->cur_pattern_table_pos == this->modctx.song.length-1 && state->cur_pattern_pos == 63)
+    {
+        loop = true;
+    }
     if (state->cur_pattern_pos - prev_row > 1 ) zsys_warning("OMG we're skipping rows %i to %i", prev_row, state->cur_pattern_pos);
 
     note *cur_note = modctx.patterndata[state->cur_pattern] + (state->cur_pattern_pos * 4);
@@ -157,6 +163,14 @@ ModPlayerActor::getPatternEventMsg()
     zmsg_t *ret = zmsg_new();
     zframe_t *data = zosc_packx(&oscm);
     zmsg_append(ret, &data);
+    if (loop)
+    {
+        zosc_t *loopmsg = zosc_create("/loop", this->loopplay ? "T" : "F" );
+        zframe_t *loopdata = zosc_packx(&loopmsg);
+        zmsg_append(ret, &loopdata);
+        if (!this->loopplay)
+            this->playing = false;
+    }
     prev_row = state->cur_pattern_pos;
     return ret;
 }
@@ -314,6 +328,11 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
         this->rowdelay = atoi(rowd);
         assert(rowdelay < 64);
         zframe_destroy(&f);
+    }
+    else if ( streq(cmd, "SET LOOPPLAY") )
+    {
+        char *value = zmsg_popstr(event->msg);
+        this->loopplay = streq( value, "True");
     }
 
     if ( cmd )
