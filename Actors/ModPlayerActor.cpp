@@ -1,12 +1,6 @@
 ﻿#include "ModPlayerActor.h"
 static SDL_AudioSpec fmt;
 
-// callback audio
-static void mixaudio(void *userdata, Uint8 *stream, int len)
-{
-    static_cast<ModPlayerActor *>(userdata)->mixAudio(stream, len);
-}
-
 const char * ModPlayerActor::capabilities =
         "capabilities\n"
         "    data\n"
@@ -46,6 +40,12 @@ const char * ModPlayerActor::capabilities =
         "        step = \"1\"\n"
         "        api_call = \"SET ROWDELAY\"\n"
         "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"loop\"\n"
+        "        type = \"bool\"\n"
+        "        value = \"True\"\n"
+        "        api_call = \"SET LOOPPLAY\"\n"
+        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
         "outputs\n"
         "    output\n"
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -64,9 +64,9 @@ ModPlayerActor::queueAudio()
     if ( this->modctx.mod_loaded == 1 )
     {
         trackbuf_state1.nb_of_state = 0;
-        /* TODO: This doesn't work correctly yet. The idea is we calculate the time
+        /* TODO: This might need tweaking. The idea is we calculate the time
          * it takes to process one row, this time is used for the actor timeout so
-         * we have events on every row.
+         * we have events on every row. See handle_timer function
          * The formula is not easy as it's not very clear how tempo and speed is related
          * to the row time. In openMPT it's documented somewhat:
          * https://wiki.openmpt.org/Manual:_Song_Properties#Tempo_Mode
@@ -76,37 +76,11 @@ ModPlayerActor::queueAudio()
          * of the time on each row is incorrect.
          */
 
-        // calculate the required buffer size
+        // calculate the required buffer size for a single row
         // fileSize = (bitsPerSample * samplesPerSecond * channels * duration) / 8;
-        // we double the buffer size to prevent underrun
         // see MPT documentation about timing, that's where the 2500ms comes from
         int duration = (2500/this->modctx.bpm)*this->modctx.song.speed;
         unsigned int buffersize = (16*48000*2*duration)/1000/8;
-        unsigned int maxbuffer = buffersize * 4;
-        // always try to fill the buffer but not more
-        unsigned int qs = SDL_GetQueuedAudioSize(audiodev);
-        if (qs <= 8192)
-        {
-            if (qs <= 0)
-            {
-                zsys_warning("Buffer underrun (or just starting)!");
-                qs = 0;
-            }
-            // fill the buffer to the max
-            buffersize = maxbuffer - qs;
-        }
-        //zsys_info("bs %i, qs %i, mb %i",buffersize,qs, maxbuffer);
-        else if ( qs > maxbuffer )
-        {
-            zsys_warning("Buffer overrun!");
-            buffersize = 4;
-        }
-        else if ( qs <= maxbuffer )
-        {
-            unsigned int fillsize = maxbuffer - qs;
-            if ( buffersize > fillsize )
-                buffersize = fillsize;
-        }
 #ifdef _MSC_VER
         msample *stream = (msample *)_malloca( buffersize * sizeof(msample) );
         hxcmod_fillbuffer(&modctx, stream, buffersize / 4, &trackbuf_state1);
@@ -136,6 +110,12 @@ ModPlayerActor::getPatternEventMsg()
     if (state->cur_pattern_pos == prev_row )
         return NULL;
 
+    // cheap loop detection
+    bool loop = false;
+    if (state->cur_pattern_table_pos == this->modctx.song.length-1 && state->cur_pattern_pos == 63)
+    {
+        loop = true;
+    }
     if (state->cur_pattern_pos - prev_row > 1 ) zsys_warning("OMG we're skipping rows %i to %i", prev_row, state->cur_pattern_pos);
 
     note *cur_note = modctx.patterndata[state->cur_pattern] + (state->cur_pattern_pos * 4);
@@ -183,6 +163,14 @@ ModPlayerActor::getPatternEventMsg()
     zmsg_t *ret = zmsg_new();
     zframe_t *data = zosc_packx(&oscm);
     zmsg_append(ret, &data);
+    if (loop)
+    {
+        zosc_t *loopmsg = zosc_create("/loop", this->loopplay ? "T" : "F" );
+        zframe_t *loopdata = zosc_packx(&loopmsg);
+        zmsg_append(ret, &loopdata);
+        if (!this->loopplay)
+            this->playing = false;
+    }
     prev_row = state->cur_pattern_pos;
     return ret;
 }
@@ -216,6 +204,8 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
                 // free modfile
                 free( this->modfile );
                 memset(this->orig_patterntable, 0, 128);
+                if (audiodev != -1)
+                    SDL_ClearQueuedAudio(audiodev);
             }
 
             FILE *f;
@@ -339,6 +329,11 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
         assert(rowdelay < 64);
         zframe_destroy(&f);
     }
+    else if ( streq(cmd, "SET LOOPPLAY") )
+    {
+        char *value = zmsg_popstr(event->msg);
+        this->loopplay = streq( value, "True");
+    }
 
     if ( cmd )
         zstr_free(&cmd);
@@ -363,7 +358,22 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
                                   "pattern", this->modctx.song.patterntable[this->modctx.tablepos] );
         sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
         // determine next timeout based on speed and bpm of the song! 2500ms/bpm*speed
-        sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
+        // i think this still does not handle different row speeds? beginning go rainforest??
+        int duration = (2500/this->modctx.bpm)*this->modctx.song.speed;
+        unsigned int buffersize = (16*48000*2*duration)/1000/8 *2;
+        unsigned int qs = SDL_GetQueuedAudioSize(audiodev);
+        float fillpct = qs/float(buffersize);
+        if (fillpct < 1.0f && fillpct > 0.1f)
+        {
+            //zsys_warning("buffersize: %i, qs: %i, fill %f", buffersize, qs, fillpct);
+            duration = fillpct * duration;
+        }
+        else if (fillpct > 2.0f )
+        {
+            zsys_debug("Audio queue is too large, adding some timing delay");
+            duration = 2.0f * duration;
+        }
+        sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, duration);
         // we save messages in a circular buffer to provide row delaying
         delayed_msgs[delayed_msgs_idx] = getPatternEventMsg();
         int sendidx = MOD(delayed_msgs_idx - rowdelay, rowdelay+1);
