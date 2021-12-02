@@ -346,12 +346,13 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
         float fillpct = qs/float(buffersize);
         if (fillpct < 1.0f && fillpct > 0.1f)
         {
-            zsys_warning("buffersize: %i, qs: %i, fill %f", buffersize, qs, fillpct);
+            //zsys_warning("buffersize: %i, qs: %i, fill %f", buffersize, qs, fillpct);
             duration = fillpct * duration;
         }
         else if (fillpct > 2.0f )
         {
-            zsys_error("Audio queue is too large, this should not happen");
+            zsys_debug("Audio queue is too large, adding some timing delay");
+            duration = 2.0f * duration;
         }
         sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, duration);
         // we save messages in a circular buffer to provide row delaying
