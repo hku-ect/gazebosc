@@ -339,6 +339,7 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
                                   "pattern", this->modctx.song.patterntable[this->modctx.tablepos] );
         sphactor_actor_set_custom_report_data((sphactor_actor_t*)event->actor, msg);
         // determine next timeout based on speed and bpm of the song! 2500ms/bpm*speed
+        // i think this still does not handle different row speeds? beginning go rainforest??
         int duration = (2500/this->modctx.bpm)*this->modctx.song.speed;
         unsigned int buffersize = (16*48000*2*duration)/1000/8 *2;
         unsigned int qs = SDL_GetQueuedAudioSize(audiodev);
