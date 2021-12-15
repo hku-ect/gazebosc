@@ -367,6 +367,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
     const void *data =  zosc_first(oscmsg, &type);
     while(data)
     {
+        PyObject *o = NULL;
         switch (type)
         {
         case('i'):
@@ -374,10 +375,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
             int32_t val = 9;
             int rc = zosc_pop_int32(oscmsg, &val);
             assert(rc == 0);
-            PyObject *o = PyLong_FromLong((long)val);
-            assert( o );
-            rc = PyTuple_SetItem(rettuple, pos, o);
-            assert(rc == 0);
+            o = PyLong_FromLong((long)val);
             break;
         }
         case('h'):
@@ -385,10 +383,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
             int64_t val = 0;
             int rc = zosc_pop_int64(oscmsg, &val);
             assert(rc == 0);
-            PyObject *o = PyLong_FromLong((long)val);
-            assert( o );
-            rc = PyTuple_SetItem(rettuple, pos, o);
-            assert(rc == 0);
+            o = PyLong_FromLong((long)val);
             break;
         }
         case('f'):
@@ -396,10 +391,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
             float flt_v = 0.f;
             int rc = zosc_pop_float(oscmsg, &flt_v);
             assert(rc == 0);
-            PyObject *o = PyFloat_FromDouble((double)flt_v);
-            assert( o );
-            rc = PyTuple_SetItem(rettuple, pos, o);
-            assert(rc == 0);
+            o = PyFloat_FromDouble((double)flt_v);
             break;
         }
         case 'd':
@@ -407,10 +399,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
             double dbl_v = 0.;
             int rc = zosc_pop_double(oscmsg, &dbl_v);
             assert(rc == 0);
-            PyObject *o = PyFloat_FromDouble(dbl_v);
-            assert( o );
-            rc = PyTuple_SetItem(rettuple, pos, o);
-            assert(rc == 0);
+            o = PyFloat_FromDouble(dbl_v);
             break;
         }
         case 's':
@@ -418,10 +407,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
             char *str;
             int rc = zosc_pop_string(oscmsg, &str);
             assert(rc == 0);
-            PyObject *o = PyUnicode_Decode(str, strlen(str), "ascii", "ignore");
-            assert( o );
-            rc = PyTuple_SetItem(rettuple, pos, o);
-            assert(rc == 0);
+            o = PyUnicode_Decode(str, strlen(str), "ascii", "ignore");
             zstr_free(&str);
             break;
         }
@@ -430,12 +416,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
             char chr;
             int rc = zosc_pop_char(oscmsg, &chr);
             assert(rc == 0);
-            char str[2] = {chr,0x0};
-            // TODO char to pyobject???
-            PyObject *o = Py_BuildValue("s#", str, 1);
-            assert( o );
-            rc = PyTuple_SetItem(rettuple, pos, o);
-            assert(rc == 0);
+            o = Py_BuildValue("C", chr);
             break;
         }
         case 'F':
@@ -444,20 +425,27 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
             bool bl;
             int rc = zosc_pop_bool(oscmsg, &bl);
             assert(rc == 0);
-            PyObject *o = NULL;
             if (bl)
                 o = Py_True;
             else
                 o = Py_False;
-            assert( o );
             Py_INCREF(o);
-            rc = PyTuple_SetItem(rettuple, pos, o);
-            assert(rc == 0);
             break;
         }
         default:
             assert(0);
         }
+
+        if (o == NULL && PyErr_Occurred())
+        {
+            PyErr_Print();
+        }
+        else
+        {
+            int rc = PyTuple_SetItem(rettuple, pos, o);
+            assert(rc == 0);
+        }
+
         data = zosc_next(oscmsg, &type);
         pos++;
     }
