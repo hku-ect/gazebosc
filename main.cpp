@@ -299,6 +299,8 @@ int main(int argc, char** argv)
     Clear();
     sphactor_dispose();
 
+    zargs_destroy(&args);
+
     fflush(stdout);
     return 0;
 }
