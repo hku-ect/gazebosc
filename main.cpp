@@ -227,40 +227,18 @@ int main(int argc, char** argv)
     RegisterActors();
 
     // Argument capture
-    bool headless = false;
+    zargs_t *args = zargs_new(argc, argv);
+    if ( zargs_hasx (args, "--help", "-h", NULL) )
+    {
+        zargs_print(args);
+        return 0;
+    }
+    bool verbose = zargs_hasx (args, "--verbose", "-v", NULL);
+    bool headless = zargs_hasx (args, "--background", "-b", NULL);
+    const char *stage_file = zargs_first(args);
+
     int loops = -1;
     int loopCount = 0;
-    for (int i = 0; i < argc; ++i) {
-        if (strcmp(argv[i], "-h") == 0 )
-        {
-            if ( i + 1 < argc ) {
-                // try to load the given file
-                if ( Load(argv[i+1])) {
-                    zsys_info("Loaded file: %s", argv[i+1]);
-                    headless = true;
-                }
-                else {
-                    zsys_info("Headless run error. Stage file not found.");
-                    return -1;
-                }
-            }
-            else {
-                zsys_info("Headless run error. No stage file provided.");
-                return -1;
-            }
-        }
-        else if(strcmp(argv[i], "-test") == 0 ) {
-            if ( Load("test.txt")) {
-                headless = true;
-                loops = 10000;
-            }
-            else {
-                zsys_info("Test error. Stage file not found.");
-                return -1;
-            }
-        }
-    }
-
     /*
     if (!headless) {
         //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
@@ -302,6 +280,14 @@ int main(int argc, char** argv)
 
         zsys_info("VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
+
+        if ( stage_file )
+        {
+            if ( ! Load(stage_file))
+            {
+                zsys_error("Failed loading %s", stage_file);
+            }
+        }
 
         // Blocking UI loop
         UILoop(window, io);
