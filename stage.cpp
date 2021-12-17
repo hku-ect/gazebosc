@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2017-2019 Rokas Kupstys.
+// Copyright (c) 21021 Arnaud Loonstra/Aaron Oostdijk.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 #include "ActorContainer.h"
 #include "actors.h"
 #include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
+#include "config.h"
 
 //enum for menu actions
 enum MenuAction
@@ -90,6 +91,8 @@ textfile* hardswap_editor = nullptr;
 bool showDemo = false;
 void ImGui::ShowDemoWindow(bool* p_open);
 #endif
+
+bool showAbout = true;
 
 void UpdateRegisteredActorsCache() {
     zhash_t *hash = sphactor_get_registered();
@@ -187,6 +190,59 @@ void ShowConfigWindow(bool * showLog) {
     ImGui::Checkbox("Show Log Window", showLog);
 
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::End();
+}
+
+
+/* Ref: https://github.com/ocornut/imgui/issues/3606
+ * These guys are amazing! Just copied one of the entries
+ */
+#define V2 ImVec2
+#define F float
+V2 conv(V2 v, F z, V2 sz, V2 o){return V2((v.x/z)*sz.x*5.f+sz.x*0.5f,(v.y/z)*sz.y*5.f+sz.y*0.5f)+o;}
+V2 R(V2 v, F ng){ng*=0.1f;return V2(v.x*cosf(ng)-v.y*sinf(ng),v.x*sinf(ng)+v.y*cosf(ng));}
+void FX(ImDrawList* d, V2 o, V2 b, V2 sz, ImVec4, F t){d->AddRectFilled(o,b,0xFF000000,0);t*=4;
+for (int i = 0; i < 20; i++){
+F z=21.-i-(t-floorf(t))*2.,ng=-t*2.1+z,ot0=-t+z*0.2,ot1=-t+(z+1.)*0.2,os=0.3;
+V2 s[]={V2(cosf((t+z)*0.1)*0.2+1.,sinf((t+z)*0.1)*0.2+1.),V2(cosf((t+z+1.)*0.1)*0.2+1.,sinf((t+z+1.)*0.1)*0.2+1.)};
+V2 of[]={V2(cosf(ot0)*os,sinf(ot0)*os),V2(cosf(ot1)*os,sinf(ot1)*os)};
+V2 p[]={V2(-1,-1),V2(1,-1),V2(1,1),V2(-1,1)};
+ImVec2 pts[8];int j;
+for (j=0;j<8;j++){int n = (j/4);pts[j]=conv(R(p[j%4]*s[n]+of[n],ng+n),(z+n)*2.,sz,o);}
+for (j=0;j<4;j++){V2 q[4]={pts[j],pts[(j+1)%4],pts[((j+1)%4)+4],pts[j+4]};
+F it=(((i&1)?0.5:0.6)+j*0.05)*((21.-z)/21.);
+d->AddConvexPolyFilled(q,4,ImColor::HSV(0.6+sinf(t*0.03)*0.5,1,sqrtf(it)));
+}}}
+
+void ShowAboutWindow(bool *open)
+{
+    ImGuiIO& io = ImGui::GetIO();    
+    //TODO: try to center window, doesn't work somehow
+    ImGui::SetNextWindowPos(ImGui::GetWindowSize()/2, ImGuiCond_Once, ImVec2(0.5,0.5));
+    ImGui::Begin("About", open, ImGuiWindowFlags_AlwaysAutoResize);
+    ImVec2 size(320.0f, 180.0f);
+    ImGui::InvisibleButton("canvas", size);
+    ImVec2 p0 = ImGui::GetItemRectMin();
+    ImVec2 p1 = ImGui::GetItemRectMax();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    draw_list->PushClipRect(p0, p1);
+
+    ImVec4 mouse_data;
+    mouse_data.x = (io.MousePos.x - p0.x) / size.x;
+    mouse_data.y = (io.MousePos.y - p0.y) / size.y;
+    mouse_data.z = io.MouseDownDuration[0];
+    mouse_data.w = io.MouseDownDuration[1];
+    float time = (float)ImGui::GetTime();
+    FX(draw_list, p0, p1, size, mouse_data, time);
+    draw_list->AddText(ImGui::GetFont(), ImGui::GetFontSize()*4.f, p0 + ImVec2(16,120), ImColor::HSV(mouse_data.x,mouse_data.x,0.9), "GazebOsc");
+    //draw_list->AddText(p0 + size/2, IM_COL32(255,0,255,255), "GazebOsc");
+    //draw_list->AddCircleFilled( p0 + size/2, 10.f, IM_COL32_WHITE, 8);
+    draw_list->PopClipRect();
+    ImGui::Text("Gazebosc: " GIT_VERSION);
+    ImGui::Text("ZeroMQ: %i.%i.%i", ZMQ_VERSION_MAJOR, ZMQ_VERSION_MINOR, ZMQ_VERSION_PATCH);
+    ImGui::Text("CZMQ: %i.%i.%i", CZMQ_VERSION_MAJOR, CZMQ_VERSION_MINOR, CZMQ_VERSION_PATCH);
+    ImGui::Text("Sphactor: %i.%i.%i", SPHACTOR_VERSION_MAJOR, SPHACTOR_VERSION_MINOR, SPHACTOR_VERSION_PATCH);
+    ImGui::Text("Dear ImGui: %s", IMGUI_VERSION);
     ImGui::End();
 }
 
@@ -425,6 +481,9 @@ int RenderMenuBar( bool * showLog ) {
             showDemo = !showDemo;
         }
 #endif
+        if ( ImGui::MenuItem(ICON_FA_INFO " Toggle About") ) {
+            showAbout = !showAbout;
+        }
 
         ImGui::EndMenu();
     }
@@ -689,6 +748,8 @@ int UpdateActors(float deltaTime, bool * showLog)
         ImNodes::EndCanvas();
     }
     ImGui::End();
+
+    if (showAbout) ShowAboutWindow(&showAbout);
 
     if (txteditor_open) ShowTextEditor();
 #ifdef HAVE_IMGUI_DEMO
