@@ -333,6 +333,7 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
     {
         char *value = zmsg_popstr(event->msg);
         this->loopplay = streq( value, "True");
+        zstr_free(&value);
     }
 
     if ( cmd )
