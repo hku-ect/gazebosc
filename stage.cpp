@@ -92,7 +92,7 @@ bool showDemo = false;
 void ImGui::ShowDemoWindow(bool* p_open);
 #endif
 
-bool showAbout = true;
+bool showAbout = false;
 
 void UpdateRegisteredActorsCache() {
     zhash_t *hash = sphactor_get_registered();
