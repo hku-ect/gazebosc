@@ -110,12 +110,6 @@ ModPlayerActor::getPatternEventMsg()
     if (state->cur_pattern_pos == prev_row )
         return NULL;
 
-    // cheap loop detection
-    bool loop = false;
-    if (state->cur_pattern_table_pos == this->modctx.song.length-1 && state->cur_pattern_pos == 63)
-    {
-        loop = true;
-    }
     if (state->cur_pattern_pos - prev_row > 1 ) zsys_warning("OMG we're skipping rows %i to %i", prev_row, state->cur_pattern_pos);
 
     note *cur_note = modctx.patterndata[state->cur_pattern] + (state->cur_pattern_pos * 4);
@@ -130,6 +124,22 @@ ModPlayerActor::getPatternEventMsg()
     sprintf(effect_param_hex, "%02X", effect_param);
     //muchar effect_param_l = effect_param & 0x0F;
     //muchar effect_param_h = effect_param >> 4;
+
+    // cheap loop detection
+    bool loop = false;
+    // if we are on the last position
+    if (state->cur_pattern_table_pos == this->modctx.song.length-1 )
+    {
+        // we're on the final row or we have a jump to zero position
+        if (state->cur_pattern_pos == 63)
+        {
+            loop = true;
+        }
+        else if ( effect_op == 13 && effect_param == 0 )
+        {
+            loop = true;
+        }
+    }
 
     zosc_t *oscm = zosc_create("/patternevent", "iiiiics",
                                       state->cur_pattern_table_pos, // song pos
@@ -159,7 +169,17 @@ ModPlayerActor::getPatternEventMsg()
                         HEXCHAR[effect_op],
                         effect_param_hex
                     );
+        // loop detection if we are on the last position
+        if (state->cur_pattern_table_pos == this->modctx.song.length-1 )
+        {
+            // we have a jump to zero position
+            if ( effect_op == 13 && effect_param == 0 )
+            {
+                loop = true;
+            }
+        }
     }
+
     zmsg_t *ret = zmsg_new();
     zframe_t *data = zosc_packx(&oscm);
     zmsg_append(ret, &data);
@@ -377,6 +397,10 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
         sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, duration);
         // we save messages in a circular buffer to provide row delaying
         delayed_msgs[delayed_msgs_idx] = getPatternEventMsg();
+    }
+    // send any delayed messages
+    if ( this->modctx.mod_loaded == 1 )
+    {
         int sendidx = MOD(delayed_msgs_idx - rowdelay, rowdelay+1);
         zmsg_t *ret = delayed_msgs[sendidx];
         delayed_msgs[sendidx] = NULL;
