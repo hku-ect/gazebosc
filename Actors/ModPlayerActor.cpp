@@ -288,7 +288,10 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
     else if ( streq(cmd, "PLAY") )
     {
         if ( this->modctx.mod_loaded == 1)
+        {
             this->playing = true;
+            sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
+        }
     }
     else if ( streq(cmd, "PAUSE") )
         this->playing = false;
@@ -397,6 +400,20 @@ ModPlayerActor::handleTimer(sphactor_event_t *event)
         sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, duration);
         // we save messages in a circular buffer to provide row delaying
         delayed_msgs[delayed_msgs_idx] = getPatternEventMsg();
+    }
+    else if ( !this->playing )
+    {
+        bool empty = true;
+        for(int i=0;i<rowdelay+1;i++)
+        {
+            if (delayed_msgs[i] != NULL )
+            {
+                empty = false;
+                break;
+            }
+        }
+        if (empty)
+            sphactor_actor_set_timeout((sphactor_actor_t *)event->actor, -1); // infinite wait
     }
     // send any delayed messages
     if ( this->modctx.mod_loaded == 1 )
