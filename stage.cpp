@@ -780,11 +780,11 @@ bool Load( const char* configFile ) {
 
     // Clear current stage
     Clear();
-    if (stage == NULL )
-        stage = sph_stage_new("Untitled");
     //TODO: Maybe ask if people want to save first?
 
-    int rc = sph_stage_load(stage, configFile);
+    assert(stage == NULL);
+    stage = sph_stage_load(configFile);
+    assert(stage);
 
     // Create a container for every actor
     const zhash_t *stage_actors = sph_stage_actors(stage);
@@ -825,7 +825,7 @@ bool Load( const char* configFile ) {
         ++it;
     }
 
-    return rc != -1;
+    return stage != NULL;
 }
 
 void Clear() {
@@ -846,7 +846,9 @@ void Clear() {
         it++;
     }
 
-    if ( stage ) sph_stage_clear( stage );
+    if ( stage )
+        sph_stage_destroy(&stage);
+    assert(stage == NULL);
 
     //delete all actors
     for (auto it = actors.begin(); it != actors.end();)
@@ -856,6 +858,7 @@ void Clear() {
         delete actor;
         it = actors.erase(it);
     }
+
 }
 
 ActorContainer* Find( const char* endpoint ) {
