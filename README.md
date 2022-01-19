@@ -2,20 +2,28 @@ OSX/Linux: [![Build Status](https://api.travis-ci.org/hku-ect/gazebosc.png?branc
 
 # GazebOSC
 
-A node-based implementation to author high-level sphactor node actors. A multi-in-single-out (for now) information hub that outputs OSC. May support different protocols in future that OSC does not handle well (eg. streaming video)
+Gazebosc is a high level actor model programming environment. You can visually create actors and author them using a nodal UI. Actors are running concurrently and can be programmed sequentially using C, C++ or Python. Actors communicate using the [OSC](https://en.wikipedia.org/wiki/Open_Sound_Control) serialisation format. 
 
-The UI based on ImGui, but we will eventually also support headless running of pre-created sketches.
+## Prebuilt binaries
 
-## Building
+CI tested binaries with bundled Python are available from:
 
-There is one main dependencies:
+https://pong.hku.nl/~buildbot/gazebosc/
+
+Sort on date to find the latest build. 
+
+## Build from source
+
+Most dependencies are bundled in the repository. There is one main external ZeroMQ dependency you need to have available:
 
  * libzmq
 
 Dependencies for the build process / dependencies are:
 
-   * git, libtool, autoconf, automake, cmake, make, pkg-config, pcre
+ * git, libtool, autoconf, automake, cmake, make, pkg-config, pcre
 
+If you want Python support you'll need to have a recent Python >3.7 installed!
+ 
 ### OSX
 
 #### Building Dependencies
@@ -77,6 +85,16 @@ sudo apt-get install -y \
     uuid-dev libpcre3-dev libsodium-dev 
 ```
 
+#### Clone and build libzmq
+
+```
+git clone https://github.com/zeromq/libzmq.git
+cd libzmq
+./autogen.sh && ./configure --without-documentation
+make
+sudo make install
+```
+
 #### Building Gazebosc
 
 Once the above dependencies are installed, you are ready to build Gazebosc:
@@ -96,13 +114,14 @@ cd bin
 ./gazebosc
 ```
 
-If you want to work on Gazebosc it's easiest to use QtCreator. Just load the CMakeLists.txt as a project in QtCreator and run from there.
+If you want to work on Gazebosc it's easiest to use the QtCreator IDE. Just load the CMakeLists.txt as a project in QtCreator and run from there.
 
 ### Windows
 
 * Install Visual Studio 2019: https://visualstudio.microsoft.com/downloads/ , make sure to include:
 	- CMake
 	- Git
+
 * Clone gazebosc repository
 
 ```
@@ -119,35 +138,17 @@ You are now ready to code/debug as normal!
 
 ## Adding new nodes
 
-*This is deprecated, see libsphactor documentation*
+Easiest method of adding a new node is using Python. You'll need to have a Gazebosc build with Python.
 
-### GNode inheritance, important bits
-
-*(Also see the QtCreator tutorial below)*
-The first step in creating custom nodes is to inherit from GNode. This means including GNode.h, and calling the GNode explicit constructor when your own node class is being constructed. This should look roughly like this when done from within the header file:
+* In Gazebosc create a new Python actor: (right mouse click - Python)
+* Click on the edit icon, a text editor will appear
+* Paste the following text in the texteditor and click save
 
 ```
-struct MyCustomNode : GNode
-{
-    explicit MyCustomNode(const char* uuid) : GNode(   "MyCustomNodeName",              // title
-                                                      { {"OSC", NodeSlotOSC} },         // Input slots
-                                                      { {"OSC", NodeSlotOSC} },         // Output slots
-                                                        uuid )                          // uuid pass-through
-    {
-       
-    }
-};
-```
-### Registering the new node
-In order for the system to find and be able to create your node, you will need to add a line to the **nodes.cpp** *RegisterCPPNodes* function:
-```
-void RegisterCPPNodes() {
-    ...
-    
-    RegisterNode( "MyCustomNodeName", GNode::_actor_handler, [](const char * uuid) -> GNode* { return new MyCustomNode(uuid); });
-    
-    ...
-}
+class MyActor(object):
+    def handleSocket(self, msg, type, name, uuid, *args, **kwargs):
+    	print("received OSC message", msg)
+        return ("/MyActorMsg", [ "hello", "world", 42] )
 ```
 
 ### Node Lifetime
