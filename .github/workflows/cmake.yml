@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-          - os: macos-latest
+          - os: macos-10.15
 
     steps:
     - uses: actions/checkout@v2
@@ -39,12 +39,12 @@ jobs:
         install: libzmq5 libzmq3-dev libglx-dev mesa-common-dev libasound2-dev libglew-dev libunwind-dev
 
     - name: Add brew packages
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-10.15'
       shell: bash
       run: brew install automake autoconf cmake
 
     - name: libZMQ Dep
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-10.15'
       run: |
         git clone https://github.com/zeromq/libzmq.git
         cd libzmq
@@ -54,7 +54,7 @@ jobs:
         sudo make install
 
     - name: Python dep
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-10.15'
       run: |
         ./dist/osx/build_python.sh ${{github.workspace}}/build/python
         PY_ROOT=`${{github.workspace}}/build/python/Python.framework/Versions/Current/bin/python3 -c "import sys;print(sys.base_prefix)"`
@@ -70,7 +70,7 @@ jobs:
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: Pack
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-10.15'
       working-directory: ${{github.workspace}}/build
       run: cpack -V
 
