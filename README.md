@@ -146,8 +146,8 @@ Easiest method of adding a new node is using Python. You'll need to have a Gazeb
 
 ```
 class MyActor(object):
-    def handleSocket(self, msg, type, name, uuid, *args, **kwargs):
-    	print("received OSC message", msg)
+    def handleSocket(self, addr, msg, type, name, uuid, *args, **kwargs):
+    	print("received OSC message {} {}".format(addr, msg))
         return ("/MyActorMsg", [ "hello", "world", 42] )
 ```
 
