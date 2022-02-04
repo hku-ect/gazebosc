@@ -489,10 +489,10 @@ struct ActorContainer {
             {
                 zconfig_t* zvalue = zconfig_locate(data, "value");
                 const char* zvalueStr = zconfig_value(zvalue);
-                zfile_t* f = zfile_new(nullptr, zvalueStr);
-                if (strlen(zvalueStr) && f)
+                if (strlen(zvalueStr) && zsys_file_exists (zvalueStr) )
                 {
-                    OpenTextEditor(f);
+                    zfile_t* f = zfile_new(nullptr, zvalueStr);
+                    OpenTextEditor(f); // could own the f pointer
                 }
                 else
                     zsys_error("no valid file to load: %s", zvalueStr);
