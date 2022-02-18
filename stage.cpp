@@ -309,6 +309,8 @@ void OpenTextEditor(zfile_t* txtfile)
     else {
         zsys_info("FOUND OPEN TEXT FILE!... maybe activate the correct tab?");
         hardswap_editor = found;
+        // cleanup not used txtfile
+        zfile_destroy(&txtfile);
     }
     txteditor_open = true;
 }
