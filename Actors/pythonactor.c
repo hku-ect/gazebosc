@@ -457,7 +457,8 @@ int python_init()
     Py_UnbufferedStdioFlag = 1;
     //  add internal wrapper to available modules
     int rc = PyImport_AppendInittab("sph", PyInit_PyZmsg);
-    // TODO set the python home to our bundled python or system installed
+    assert(rc == 0);
+    // Set the python home to our bundled python or system installed
     // We need to check whether the PYTHONHOME env var is provided,
     //   * if so let python handle it, we do nothing
     //   * else check if we have a bundled python dir and set pythonhome to it
@@ -510,27 +511,29 @@ int python_init()
     //Py_IgnoreEnvironmentFlag = true;
     //Py_NoUserSiteDirectory = true;
     Py_Initialize();
-    assert(rc == 0);
-    //  add some paths for importing python files
+    //  add the working dir for importing python files
     rc = PyRun_SimpleString(
                     "import sys\n"
                     "import os\n"
                     //"print(os.getcwd())\n"
-                    "sys.path.append(os.getcwd())\n"
+                    "sys.path.insert(0, \"\")\n"
+                    //"sys.path.append(os.getcwd())\n"
                     //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
                     "print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n"
                        );
-    //  import the internal wrapper module
+    //  import the internal wrapper module, this is only needed
+    //  if you need access to the libsphactor methods
     PyObject *imp = PyImport_ImportModule("sph");
     assert(imp);
-    //  this is our last Python API call before threads jump in,
-    //  thus we need to release the GIL
-    PyEval_SaveThread();
 
     if ( rc != 0 )
     {
         PyErr_Print();
     }
+
+    //  this is our last Python API call before threads jump in,
+    //  thus we need to release the GIL
+    PyEval_SaveThread();
 
     sphactor_register("Python", &pythonactor_handler, zconfig_str_load(pythonactorcapabilities), &pythonactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
     return rc;
@@ -582,7 +585,7 @@ pythonactor_destroy(pythonactor_t **self_p)
 zmsg_t *
 pythonactor_init(pythonactor_t *self, sphactor_event_t *ev)
 {
-    // if file loaded execute init!
+    // we don't do anything in python
     if ( ev->msg ) zmsg_destroy(&ev->msg);
     return NULL;
 }
