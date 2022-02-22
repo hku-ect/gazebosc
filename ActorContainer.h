@@ -17,8 +17,8 @@ imgui_addons::ImGuiFileBrowser actor_file_dialog;
 static char *
 convert_to_relative_to_wd(const char *path)
 {
-    char wdpath[MAXPATHLEN];
-    getcwd(wdpath, MAXPATHLEN);
+    char wdpath[PATH_MAX];
+    getcwd(wdpath, PATH_MAX);
     const char *ret = strstr(path, wdpath);
     if (ret == NULL)
         return strdup(path);
