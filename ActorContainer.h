@@ -14,6 +14,20 @@
 // actor file browser
 imgui_addons::ImGuiFileBrowser actor_file_dialog;
 
+static char *
+convert_to_relative_to_wd(const char *path)
+{
+    char wdpath[PATH_MAX];
+    getcwd(wdpath, PATH_MAX);
+    const char *ret = strstr(path, wdpath);
+    if (ret == NULL)
+        return strdup(path);
+    // working dir is found in path so only return the relative path
+    assert(ret == path);
+    ssize_t wdpathlen = strlen( wdpath ) + 1;// working dir path + first dir delimiter
+    return strdup( &path[ wdpathlen ]);
+}
+
 // OpenTextEditor forward declare
 void OpenTextEditor(zfile_t* txtfile);
 
@@ -476,9 +490,11 @@ struct ActorContainer {
                                               ImVec2(700, 310),
                                               valid_files) ) // TODO: perhaps add type hint for extensions?
         {
-            zconfig_set_value(zvalue, "%s", actor_file_dialog.selected_path.c_str() );
-            strcpy(buf, actor_file_dialog.selected_path.c_str());
+            char *path = convert_to_relative_to_wd(actor_file_dialog.selected_path.c_str());
+            zconfig_set_value(zvalue, "%s", path );
+            strcpy(buf, path);
             //SendAPI<char*>(zapic, zapiv, zvalue, &(p) );
+            zstr_free(&path);
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
         }
 
