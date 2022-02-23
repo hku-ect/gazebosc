@@ -183,14 +183,14 @@ s_py_set_timeout(pythonactor_t *self, sphactor_event_t *ev)
     {
         // we have a timeout member
         long tm = PyLong_AsLong(pTimeOut);
-        if ((int64_t)tm != sphactor_actor_timeout((const sphactor_actor_t*)ev->actor) )
+        if ((int64_t)tm != sphactor_actor_timeout((sphactor_actor_t*)ev->actor) )
         {
-            sphactor_actor_set_timeout((const sphactor_actor_t*)ev->actor, (int64_t)tm);
+            sphactor_actor_set_timeout((sphactor_actor_t*)ev->actor, (int64_t)tm);
         }
         Py_DECREF(pTimeOut);
     }
     else    // if we do not find a timeout member we revert to infinite wait (-1)
-        sphactor_actor_set_timeout((const sphactor_actor_t*)ev->actor, (int64_t)-1);
+        sphactor_actor_set_timeout((sphactor_actor_t*)ev->actor, (int64_t)-1);
 }
 
 zmsg_t *
@@ -374,7 +374,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
 {
     assert(self);
     assert(oscmsg);
-    char *format = zosc_format(oscmsg);
+    const char *format = zosc_format(oscmsg);
 
     PyObject *rettuple = PyTuple_New((Py_ssize_t) strlen(format) );
 
