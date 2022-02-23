@@ -6,6 +6,7 @@ const char * OSCInput::capabilities =
         "    data\n"
         "        name = \"port\"\n"
         "        type = \"int\"\n"
+        "        help = \"The port number to listen on. Only use unique port numbers, don't use two actors with the same port number\"\n"
         "        value = \"6200\"\n"
         "        min = \"1\"\n"
         "        max = \"10000\"\n"

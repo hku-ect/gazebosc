@@ -157,6 +157,8 @@ static const char *pythonactorcapabilities =
         "        name = \"pyfile\"\n"
         "        type = \"filename\"\n"
         "        valid_files = \".py\"\n"
+        "        options = \"te\"\n"            // t = textfile, e = editable
+        "        help = \"Load a python file as an actor\"\n"
         "        value = \"\"\n"
         "        api_call = \"SET FILE\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send

@@ -205,6 +205,22 @@ struct ActorContainer {
         return str;
     }
 
+#define GZB_TOOLTIP_THRESHOLD 1.0f
+    void RenderTooltip(const char *help)
+    {
+        if ( strlen(help) )
+        {
+            if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > GZB_TOOLTIP_THRESHOLD )
+            {
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
+                ImGui::TextUnformatted(help);
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+        }
+    }
+
     void HandleAPICalls(zconfig_t * data) {
         zconfig_t *zapic = zconfig_locate(data, "api_call");
         if ( zapic ) {
@@ -498,20 +514,37 @@ struct ActorContainer {
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
         }
 
-        // TODO: handle options
-        if (true) //zconfig_locate(data, "options"))
+        zconfig_t *help = zconfig_locate(data, "help");
+        const char *helpv = "Load a file";
+        if (help)
         {
-            if (ImGui::Button(ICON_FA_EDIT))
+            helpv = zconfig_value(help);
+        }
+        RenderTooltip(helpv);
+
+        // handle options
+        zconfig_t *opts = zconfig_locate(data, "options");
+        // check if there are options
+        if (opts)
+        {
+            char *optsv = zconfig_value(opts);
+            // check if is an editable textfile
+            if (optsv && strchr(optsv, 't') != NULL && strchr(optsv, 'e') != NULL)
             {
-                zconfig_t* zvalue = zconfig_locate(data, "value");
-                const char* zvalueStr = zconfig_value(zvalue);
-                if (strlen(zvalueStr) && zsys_file_exists (zvalueStr) )
+                ImGui::SameLine();
+                if (ImGui::Button(ICON_FA_EDIT))
                 {
-                    zfile_t* f = zfile_new(nullptr, zvalueStr);
-                    OpenTextEditor(f); // could own the f pointer
+                    zconfig_t* zvalue = zconfig_locate(data, "value");
+                    const char* zvalueStr = zconfig_value(zvalue);
+                    if (strlen(zvalueStr) && zsys_file_exists (zvalueStr) )
+                    {
+                        zfile_t* f = zfile_new(nullptr, zvalueStr);
+                        OpenTextEditor(f); // could own the f pointer
+                    }
+                    else
+                        zsys_error("no valid file to load: %s", zvalueStr);
                 }
-                else
-                    zsys_error("no valid file to load: %s", zvalueStr);
+                RenderTooltip("Edit file in texteditor");
             }
         }
     }
@@ -536,6 +569,12 @@ struct ActorContainer {
             //SendAPI<char *>(zapic, zapiv, zvalue, &buf);
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf );
             zstr_free(&buf);
+        }
+        zconfig_t *help = zconfig_locate(data, "help");
+        if (help)
+        {
+            char *helpv = zconfig_value(help);
+            RenderTooltip(helpv);
         }
     }
 
@@ -569,6 +608,12 @@ struct ActorContainer {
             zconfig_set_value(zvalue, "%i", value);
             //SendAPI<int>(zapic, zapiv, zvalue, &value);
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), itoa(value) );
+        }
+        zconfig_t *help = zconfig_locate(data, "help");
+        if (help)
+        {
+            char *helpv = zconfig_value(help);
+            RenderTooltip(helpv);
         }
     }
 
@@ -605,6 +650,12 @@ struct ActorContainer {
                 sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), ftoa(value) );
             }
         }
+        zconfig_t *help = zconfig_locate(data, "help");
+        if (help)
+        {
+            char *helpv = zconfig_value(help);
+            RenderTooltip(helpv);
+        }
     }
 
     void RenderString(const char* name, zconfig_t *data) {
@@ -630,6 +681,12 @@ struct ActorContainer {
             //SendAPI<char*>(zapic, zapiv, zvalue, &(p));
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf );
         }
+        zconfig_t *help = zconfig_locate(data, "help");
+        if (help)
+        {
+            char *helpv = zconfig_value(help);
+            RenderTooltip(helpv);
+        }
     }
 
     void RenderTrigger(const char* name, zconfig_t *data) {
@@ -638,6 +695,12 @@ struct ActorContainer {
         ImGui::SetNextItemWidth(200);
         if ( ImGui::Button(name) ) {
             sphactor_ask_api(this->actor, zconfig_value(zapic), "", "" );
+        }
+        zconfig_t *help = zconfig_locate(data, "help");
+        if (help)
+        {
+            char *helpv = zconfig_value(help);
+            RenderTooltip(helpv);
         }
     }
 
