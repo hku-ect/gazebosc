@@ -498,20 +498,43 @@ struct ActorContainer {
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
         }
 
-        // TODO: handle options
-        if (true) //zconfig_locate(data, "options"))
+        if (ImGui::IsItemHovered())
         {
-            if (ImGui::Button(ICON_FA_EDIT))
+            ImGui::BeginTooltip();
+            //ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+            ImGui::TextUnformatted("Load file");
+            //ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+
+        // handle options
+        zconfig_t *opts = zconfig_locate(data, "options");
+        // check if there are options
+        if (opts)
+        {
+            char *optsv = zconfig_value(opts);
+            // check if is an editable textfile
+            if (optsv && strchr(optsv, 't') != NULL && strchr(optsv, 'e') != NULL)
             {
-                zconfig_t* zvalue = zconfig_locate(data, "value");
-                const char* zvalueStr = zconfig_value(zvalue);
-                if (strlen(zvalueStr) && zsys_file_exists (zvalueStr) )
+                ImGui::SameLine();
+                if (ImGui::Button(ICON_FA_EDIT))
                 {
-                    zfile_t* f = zfile_new(nullptr, zvalueStr);
-                    OpenTextEditor(f); // could own the f pointer
+                    zconfig_t* zvalue = zconfig_locate(data, "value");
+                    const char* zvalueStr = zconfig_value(zvalue);
+                    if (strlen(zvalueStr) && zsys_file_exists (zvalueStr) )
+                    {
+                        zfile_t* f = zfile_new(nullptr, zvalueStr);
+                        OpenTextEditor(f); // could own the f pointer
+                    }
+                    else
+                        zsys_error("no valid file to load: %s", zvalueStr);
                 }
-                else
-                    zsys_error("no valid file to load: %s", zvalueStr);
+                if (ImGui::IsItemHovered())
+                {
+                    ImGui::BeginTooltip();
+                    ImGui::TextUnformatted("Edit file in texteditor");
+                    ImGui::EndTooltip();
+                }
             }
         }
     }
