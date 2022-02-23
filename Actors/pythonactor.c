@@ -170,6 +170,24 @@ static const char *pythonactorcapabilities =
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
         "        type = \"OSC\"\n";
 
+void
+s_py_set_timeout(pythonactor_t *self)
+{
+    assert(self);
+    // get the optional timeout member to set the actor's timeout value
+    PyObject *pTimeOut = PyObject_GetAttrString(self->pyinstance, "timeout");
+    if (pTimeOut != NULL)
+    {
+        // we have a timeout member
+        long tm = PyLong_AsLong(pTimeOut);
+        if ((int64_t)tm != sphactor_actor_timeout(self) )
+        {
+            sphactor_actor_set_timeout(self, (int64_t)tm);
+        }
+        Py_DECREF(pTimeOut);
+    }
+}
+
 zmsg_t *
 s_pythonactor_set_file(pythonactor_t *self, const char *filename)
 {
@@ -276,6 +294,10 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
         return NULL;
     }
     zsys_info("Successfully (re)loaded %s", filename);
+
+    // get the optional timeout member to set the actor's timeout value
+    s_py_set_timeout(self);
+
     Py_DECREF(pClass);
     PyGILState_Release(gstate);
     zstr_free(&pyname);
@@ -862,6 +884,9 @@ pythonactor_handle_msg(pythonactor_t *self, sphactor_event_t *ev)
     }
     else
         zsys_error("Unhandled sphactor event: %s", ev->type);
+
+    // try to acquire the timeout member and use it to set the timeout
+    s_py_set_timeout(self);
 
     return NULL;
 }
