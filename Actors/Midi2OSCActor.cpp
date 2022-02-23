@@ -71,8 +71,9 @@ zmsg_t * Midi2OSC::handleInit( sphactor_event_t *ev )
 zmsg_t * Midi2OSC::handleTimer( sphactor_event_t *ev ) {
 
     if ( midiin->isPortOpen() ) {
-        double read = midiin->getMessage(&messageBuffer);
-        if ( read > 0 ) {
+        zmsg_t * retMsg = zmsg_new();
+        while ( midiin->getMessage(&messageBuffer) > 0. )
+        {
             // message values
             int status = 0, channel = 0, pitch = 0, velocity = 0, control = 0, value = 0;
 
@@ -159,10 +160,9 @@ zmsg_t * Midi2OSC::handleTimer( sphactor_event_t *ev ) {
             if ( oscMsg != nullptr ) {
                 zmsg_t * retMsg = zmsg_new();
                 zmsg_add(retMsg, zosc_packx(&oscMsg));
-
-                return retMsg;
             }
         }
+        return retMsg;
     }
 
     zmsg_destroy(&ev->msg);
