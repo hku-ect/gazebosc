@@ -9,6 +9,7 @@ const char * Record::capabilities =
         "    data\n"
         "        name = \"fileName\"\n"
         "        type = \"filename\"\n"
+        "        help = \"The filename to record to\"\n"
         "        value = \"\"\n"
         "        api_call = \"SET FILE\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send

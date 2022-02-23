@@ -9,6 +9,7 @@ const char * Midi2OSC::capabilities =
         "    data\n"
         "        name = \"activePort\"\n"
         "        type = \"int\"\n"
+        "        help = \"The port number of the MIDI receiver\"\n"
         "        value = \"0\"\n"
         "        min = \"0\"\n"
         "        max = \"10\"\n"
@@ -17,6 +18,7 @@ const char * Midi2OSC::capabilities =
         "    data\n"
         "        name = \"timeout\"\n"
         "        type = \"int\"\n"
+        "        help = \"Time to wait before getting new MIDI messages\"\n"
         "        value = \"16\"\n"
         "        min = \"1\"\n"
         "        max = \"10000\"\n"
@@ -25,6 +27,7 @@ const char * Midi2OSC::capabilities =
         "    data\n"
         "        name = \"sendRaw\"\n"
         "        type = \"bool\"\n"
+        "        help = \"Send the raw MIDI data through OSC or convert it to an interpreted OSC message\"\n"
         "        value = \"False\"\n"
         "        api_call = \"SET RAW\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send

@@ -5,6 +5,7 @@ const char *ProcessActor::capabilities =
         "    data\n"
         "        name = \"cmd\"\n"
         "        type = \"string\"\n"
+        "        help = \"The command to run including arguments. Use the full path of a command!\"\n"
         "        value = \"\"\n"
         "        api_call = \"SET PROCESS\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
