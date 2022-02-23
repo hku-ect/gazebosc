@@ -205,11 +205,12 @@ struct ActorContainer {
         return str;
     }
 
+#define GZB_TOOLTIP_THRESHOLD 1.0f
     void RenderTooltip(const char *help)
     {
         if ( strlen(help) )
         {
-            if (ImGui::IsItemHovered())
+            if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > GZB_TOOLTIP_THRESHOLD )
             {
                 ImGui::BeginTooltip();
                 ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
@@ -514,7 +515,7 @@ struct ActorContainer {
         }
 
         zconfig_t *help = zconfig_locate(data, "help");
-        char *helpv = "Load a file";
+        const char *helpv = "Load a file";
         if (help)
         {
             helpv = zconfig_value(help);
@@ -543,12 +544,7 @@ struct ActorContainer {
                     else
                         zsys_error("no valid file to load: %s", zvalueStr);
                 }
-                if (ImGui::IsItemHovered())
-                {
-                    ImGui::BeginTooltip();
-                    ImGui::TextUnformatted("Edit file in texteditor");
-                    ImGui::EndTooltip();
-                }
+                RenderTooltip("Edit file in texteditor");
             }
         }
     }
