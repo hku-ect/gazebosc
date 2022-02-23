@@ -60,7 +60,10 @@ s_handle_inotify_events(pythonactor_t *self, sphactor_actor_t *actorinst, int fd
        if (event->mask & IN_MOVE_SELF)
            printf("IN_MOVE_SELF: ");
         */
+       PyGILState_STATE gstate;
+       gstate = PyGILState_Ensure();
        s_pythonactor_set_file(self, self->main_filename);
+       PyGILState_Release(gstate);
    }
    fflush(stdout);
 }
@@ -170,6 +173,26 @@ static const char *pythonactorcapabilities =
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
         "        type = \"OSC\"\n";
 
+void
+s_py_set_timeout(pythonactor_t *self, sphactor_event_t *ev)
+{
+    assert(self);
+    // get the optional timeout member to set the actor's timeout value
+    PyObject *pTimeOut = PyObject_GetAttrString(self->pyinstance, "timeout");
+    if (pTimeOut != NULL)
+    {
+        // we have a timeout member
+        long tm = PyLong_AsLong(pTimeOut);
+        if ((int64_t)tm != sphactor_actor_timeout((sphactor_actor_t*)ev->actor) )
+        {
+            sphactor_actor_set_timeout((sphactor_actor_t*)ev->actor, (int64_t)tm);
+        }
+        Py_DECREF(pTimeOut);
+    }
+    else    // if we do not find a timeout member we revert to infinite wait (-1)
+        sphactor_actor_set_timeout((sphactor_actor_t*)ev->actor, (int64_t)-1);
+}
+
 zmsg_t *
 s_pythonactor_set_file(pythonactor_t *self, const char *filename)
 {
@@ -178,9 +201,6 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
 
     // Load or reload the module
     // first check if we need to reload
-    //  Acquire the GIL
-    PyGILState_STATE gstate;
-    gstate = PyGILState_Ensure();
     if (self->pymodule && self->main_filename && streq(filename, self->main_filename) )
     {
         PyObject *pyreloaded = PyImport_ReloadModule(self->pymodule);
@@ -189,7 +209,6 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
             if ( PyErr_Occurred() )
                 PyErr_Print();
             zsys_error("Error reloading module %s", filename);
-            PyGILState_Release(gstate);
             zstr_free(&pyname);
             zstr_free(&filebasename);
             return NULL;
@@ -207,7 +226,6 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
             if ( PyErr_Occurred() )
                 PyErr_Print();
             zsys_error("error loading %s", pyname);
-            PyGILState_Release(gstate);
             zstr_free(&pyname);
             zstr_free(&filebasename);
             return NULL;
@@ -222,7 +240,6 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
                 PyErr_Print();
             zsys_error("error importing %s", filename);
             Py_DECREF(pName);
-            PyGILState_Release(gstate);
             zstr_free(&pyname);
             zstr_free(&filebasename);
             return NULL;
@@ -235,7 +252,6 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
             if ( PyErr_Occurred() )
                 PyErr_Print();
             zsys_error("Error reloading module on fresh load %s", filename);
-            PyGILState_Release(gstate);
             zstr_free(&pyname);
             zstr_free(&filebasename);
             return NULL;
@@ -252,7 +268,6 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
             PyErr_Print();
         zsys_error("pClass is NULL");
         Py_CLEAR(self->pymodule);
-        PyGILState_Release(gstate);
         zstr_free(&pyname);
         zstr_free(&filebasename);
         return NULL;
@@ -270,14 +285,13 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
         Py_DECREF(pClass);
         Py_DECREF(self->pymodule);
         self->pymodule = NULL;
-        PyGILState_Release(gstate);
         zstr_free(&pyname);
         zstr_free(&filebasename);
         return NULL;
     }
     zsys_info("Successfully (re)loaded %s", filename);
+
     Py_DECREF(pClass);
-    PyGILState_Release(gstate);
     zstr_free(&pyname);
     zstr_free(&filebasename);
     self->main_filename = strdup(filename);
@@ -360,7 +374,7 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
 {
     assert(self);
     assert(oscmsg);
-    char *format = zosc_format(oscmsg);
+    const char *format = zosc_format(oscmsg);
 
     PyObject *rettuple = PyTuple_New((Py_ssize_t) strlen(format) );
 
@@ -595,6 +609,124 @@ pythonactor_init(pythonactor_t *self, sphactor_event_t *ev)
 zmsg_t *
 pythonactor_timer(pythonactor_t *self, sphactor_event_t *ev)
 {
+    assert(self);
+    assert(self->pyinstance);
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+
+    if (ev->msg)
+    {
+        zmsg_destroy(&ev->msg);
+    }
+    // call member 'handleTimer' with event arguments
+    PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleTimer", "sss", ev->type, ev->name, ev->uuid);
+    if (pReturn == NULL)
+    {
+        PyErr_Print();
+        zsys_error("pythonactor: error calling handleSocket");
+    }
+    else
+    {
+        // try to acquire the timeout member and use it to set the timeout
+        s_py_set_timeout(self, ev);
+
+        if (pReturn != Py_None)
+        {
+            if (PyBytes_Check(pReturn))
+            {
+                // handle python bytes
+                zmsg_t *ret = NULL;
+                Py_ssize_t size = PyBytes_Size(pReturn);
+                if ( size > 0 )
+                {
+                    ret = zmsg_new();
+    #ifdef _MSC_VER
+                    char *buf = (char *)_malloca( size );
+                    memcpy(buf, PyBytes_AsString(pReturn), size);
+                    zmsg_addmem(ret, buf, size);
+                    _freea(buf);
+    #else
+                    char buf[size];// = new char[size];
+                    memcpy(buf, PyBytes_AsString(pReturn), size);
+                    zmsg_addmem(ret, buf, size);
+    #endif
+                }
+                else
+                {
+                    zsys_warning("zsock_resolvePyBytes has zero size");
+                }
+                Py_DECREF(pReturn);  // decrease refcount to trigger destroy
+                // Release the GIL again as we are ready with Python
+                PyGILState_Release(gstate);
+                // already destroyed: zmsg_destroy(&ev->msg);
+                return ret;
+            }
+            else if ( PyTuple_Check(pReturn) ) // we expect a tuple in the format ( address, [data])
+            {
+                zmsg_t *ret = NULL; // our return
+                // convert the tuple to an osc message
+                Py_ssize_t tuple_len = PyTuple_Size(pReturn);
+                assert(tuple_len > 0 );
+                // first item must be the address string
+                PyObject *pAddress = PyTuple_GetItem(pReturn, 0);
+                assert(pAddress);
+                if ( ! PyUnicode_Check(pAddress) )
+                {
+                    zsys_error("first item in the tuple is not a string, first item should be the address string");
+                }
+                else
+                {
+                    PyObject *pData = PyTuple_GetItem(pReturn, 1);
+                    assert(pData);
+                    if ( PyList_Check(pData) )
+                    {
+                        zosc_t *retosc = s_py_zosc(pAddress, pData);
+                        assert(retosc);
+                        ret = zmsg_new();
+                        assert(ret);
+                        zframe_t *data = zosc_packx(&retosc);
+                        assert(data);
+                        zmsg_append(ret, &data);
+                    }
+                }
+                Py_DECREF(pReturn);  // decrease refcount to trigger destroy
+                // Release the GIL again as we are ready with Python
+                PyGILState_Release(gstate);
+                // already destroyed: zmsg_destroy(&ev->msg);
+                return ret;
+            }
+            else // we expect a zmsg type
+            {
+                // check whether we received our own message
+                PyZmsgObject *c = (PyZmsgObject *)pReturn;
+                assert(c->msg);
+                if (c->msg == ev->msg)
+                {
+                    zsys_info("we received our own message");
+                }
+                if ( zmsg_size(c->msg) > 0 )
+                {
+                    //  It would be nicer if we could just return the zmsg in
+                    //  the python object. However how do we then prevent destruction
+                    //  by the garbage controller. For now just duplicate.
+                    zmsg_t *ret = zmsg_dup( c->msg );
+                    Py_DECREF(pReturn);  // decrease refcount to trigger destroy
+                    // Release the GIL again as we are ready with Python
+                    PyGILState_Release(gstate);
+                    zmsg_destroy(&ev->msg);
+                    return ret;
+                }
+            }
+        }
+        else
+        {
+            zsys_error("We don't know what to do with the return value from python");
+        }
+        Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
+    }
+    // Release the GIL again as we are ready with Python
+    PyGILState_Release(gstate); // TODO: didn't we already do this?
+
     return NULL;
 }
 
@@ -621,7 +753,19 @@ pythonactor_api(pythonactor_t *self, sphactor_event_t *ev)
         if ( self->main_filename == NULL || ! streq(filename, self->main_filename) )
             s_init_inotify(self, filename, (sphactor_actor_t *)ev->actor);
 #endif
+        //  Acquire the GIL
+        PyGILState_STATE gstate;
+        gstate = PyGILState_Ensure();
+
         s_pythonactor_set_file(self, filename);
+
+        // get the optional timeout member to set the actor's timeout value
+        if (self->pyinstance)
+            s_py_set_timeout(self, ev);
+
+        // Release the GIL
+        PyGILState_Release(gstate);
+
 
         zstr_free(&filename);
         zstr_free(&cmd);
@@ -670,7 +814,10 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
         PyErr_Print();
         zsys_error("pythonactor: error calling handleSocket");
     }
-    else if (pReturn != Py_None)
+    // try to acquire the timeout member and use it to set the timeout
+    s_py_set_timeout(self, ev);
+
+    if (pReturn != Py_None)
     {
         if (PyBytes_Check(pReturn))
         {
@@ -794,7 +941,7 @@ pythonactor_stop(pythonactor_t *self, sphactor_event_t *ev)
     {
         PyGILState_STATE gstate;
         gstate = PyGILState_Ensure();
-        PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleStop", "Osss", Py_None, ev->type, ev->name, ev->uuid);
+        PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleStop", "sss", ev->type, ev->name, ev->uuid);
         Py_XINCREF(pReturn);  // increase refcount to prevent destroy
         if (!pReturn)
         {
@@ -824,10 +971,11 @@ pythonactor_handle_msg(pythonactor_t *self, sphactor_event_t *ev)
 {
     assert(self);
     assert(ev);
+    zmsg_t *ret = NULL;
     // these calls don't require a python instance
     if (streq(ev->type, "API"))
     {
-        return pythonactor_api(self, ev);
+        ret = pythonactor_api(self, ev);
     }
     else if (streq(ev->type, "DESTROY"))
     {
@@ -836,9 +984,10 @@ pythonactor_handle_msg(pythonactor_t *self, sphactor_event_t *ev)
     }
     else if (streq(ev->type, "INIT"))
     {
-        return pythonactor_init(self, ev);
+        return NULL; //pythonactor_init(self, ev);
     }
-    else if (self->pyinstance == NULL)
+
+    if (self->pyinstance == NULL)
     {
         //TODO this can kill the console zsys_warning("No valid python file has been loaded (yet)");
         return NULL;
@@ -846,23 +995,21 @@ pythonactor_handle_msg(pythonactor_t *self, sphactor_event_t *ev)
     // these calls require a pyinstance! (loaded python file)
     else if ( streq(ev->type, "TIME") )
     {
-        return pythonactor_timer(self, ev);
+        ret = pythonactor_timer(self, ev);
     }
     else if ( streq(ev->type, "SOCK") )
     {
-        return pythonactor_socket(self, ev);
+        ret = pythonactor_socket(self, ev);
     }
     else if ( streq(ev->type, "FDSOCK") )
     {
-        return pythonactor_custom_socket(self, ev);
+        ret = pythonactor_custom_socket(self, ev);
     }
     else if ( streq(ev->type, "STOP") )
     {
         return pythonactor_stop(self, ev);
     }
-    else
-        zsys_error("Unhandled sphactor event: %s", ev->type);
 
-    return NULL;
+    return ret;
 }
 
