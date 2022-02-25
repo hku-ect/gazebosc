@@ -160,7 +160,8 @@ static const char *pythonactorcapabilities =
         "        name = \"pyfile\"\n"
         "        type = \"filename\"\n"
         "        valid_files = \".py\"\n"
-        "        options = \"te\"\n"            // t = textfile, e = editable
+        "        options = \"cte\"\n"            // c = create file,  t = textfile, e = editable
+        "        file_template = \"misc/templates/template.py\"\n"
         "        help = \"Load a python file as an actor\"\n"
         "        value = \"\"\n"
         "        api_call = \"SET FILE\"\n"

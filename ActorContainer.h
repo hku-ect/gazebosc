@@ -546,6 +546,116 @@ struct ActorContainer {
                 }
                 RenderTooltip("Edit file in texteditor");
             }
+            if (optsv && strchr(optsv, 'c') != NULL && strchr(optsv, 't') != NULL) // we can create a new text file
+            {
+                // create new text files
+                ImGui::SameLine();
+                if (ImGui::Button(ICON_FA_FILE))
+                    ImGui::OpenPopup("Create File?");
+
+                RenderTooltip("Create new file");
+                // Always center this window when appearing
+                ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+                ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+                if (ImGui::BeginPopupModal("Create File?", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+                {
+                    ImGui::Text("Enter a filename:");
+                    ImGui::Separator();
+                    static char fnamebuf[PATH_MAX] = "";
+                    bool createFile = false;
+                    if ( ImGui::InputText("filename", fnamebuf, PATH_MAX, ImGuiInputTextFlags_EnterReturnsTrue ) )
+                    {
+                        if ( strlen(fnamebuf) )
+                        {
+                            createFile = true;
+                        }
+                        ImGui::CloseCurrentPopup();
+                    }
+                    char feedback[256] = "Enter a valid filename!";
+                    if (strlen(fnamebuf))
+                    {
+                        // check if this filename conflicts
+                        char path[PATH_MAX];
+                        getcwd(path, PATH_MAX);
+                        char fullpath[PATH_MAX];
+                        sprintf (fullpath, "%s/%s", path, fnamebuf);
+                        zsys_info("filemode %i", zsys_file_mode(fullpath));
+                        int mode = zsys_file_mode(fullpath);
+                        if ( mode != -1 )
+                        {
+                            if ( S_ISDIR(mode) )
+                                sprintf( feedback, "Filename \'%s\' conflicts with an existing directory!", fnamebuf);
+                            else
+                                sprintf( feedback, "File %s exists and will be overwritten if continued", fnamebuf);
+                        }
+                    }
+                    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
+                    ImGui::Text(feedback);
+                    ImGui::PopTextWrapPos();
+
+                    if (ImGui::Button("OK", ImVec2(120, 0)))
+                    {
+                        if ( strlen(fnamebuf) )
+                        {
+                            createFile = true;
+                        }
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::SetItemDefaultFocus();
+                    ImGui::SameLine();
+                    if (ImGui::Button("Cancel", ImVec2(120, 0)))
+                    {
+                        createFile = false;
+                        ImGui::CloseCurrentPopup();
+                    }
+                    ImGui::EndPopup();
+
+                    if (createFile && strlen(fnamebuf))
+                    {
+                        zchunk_t *file_data = NULL;
+                        zconfig_t *tmpl = zconfig_locate(data, "file_template");
+                        if (tmpl)
+                        {
+                            char *tmplpath = zconfig_value(tmpl);
+                            if ( zsys_file_exists(tmplpath) )
+                            {
+                                zfile_t *tmplf = zfile_new(NULL, tmplpath);
+                                assert(tmplf);
+                                int rc = zfile_input(tmplf);
+                                assert(rc == 0);
+                                file_data = zfile_read(tmplf, zsys_file_size (tmplpath), 0);
+                                assert(file_data);
+                                zfile_destroy(&tmplf);
+                            }
+                            else
+                            {
+                                file_data = zchunk_new ("\n", 1);
+                            }
+                        }
+                        else
+                        {
+                            file_data = zchunk_new ("\n", 1);
+                        }
+                        // create the new textfile
+                        char path[PATH_MAX];
+                        getcwd(path, PATH_MAX);
+                        zfile_t *txtfile = zfile_new(path, fnamebuf);
+                        assert(txtfile);
+                        int rc = zfile_output(txtfile);
+                        assert(rc == 0);
+                        rc = zfile_write (txtfile, file_data, 0);
+                        assert (rc == 0);
+                        zchunk_destroy (&file_data);
+                        zfile_close(txtfile);
+                        //zfile_destroy(&txtfile);
+                        zconfig_set_value(zvalue, "%s", fnamebuf);
+                        sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
+
+                        OpenTextEditor(txtfile); // could own the f pointer
+                    }
+                }
+            }
         }
     }
 
