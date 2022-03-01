@@ -127,6 +127,9 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             this->rigidbodiesReady = false;
             this->skeletonsReady = false;
             this->sentRequest = 0;
+
+            // re-send ping as well to force response packet
+            SendPing();
         }
         if ( streq(cmd, "SET HOST") ) {
             char *host_addr = zmsg_popstr(ev->msg);
@@ -134,23 +137,8 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             zsys_info("SET HOST: %s", host_addr);
             zstr_free(&host_addr);
 
-
             if ( CommandSocket != nullptr ) {
-                // Say hello to our new host
-                // send initial ping command
-                sPacket PacketOut;
-                PacketOut.iMessage = NAT_PING;
-                PacketOut.nDataBytes = 0;
-                int nTries = 3;
-                while (nTries--) {
-                    //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-                    std::string url = host + ":" + PORT_COMMAND_STR;
-                    zstr_sendm(CommandSocket, url.c_str());
-                    int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
-                    if (rc != -1) {
-                        zsys_info("Sent ping to %s", url.c_str());
-                    }
-                }
+                SendPing();
             }
         }
         else if ( streq(cmd, "SET INTERFACE") ) {
@@ -186,8 +174,29 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
     return NULL;
 }
 
+void NatNet::SendPing() {
+    // Say hello to our new host
+    // send initial ping command
+    sPacket PacketOut;
+    PacketOut.iMessage = NAT_PING;
+    PacketOut.nDataBytes = 0;
+    int nTries = 3;
+    while (nTries--) {
+        //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
+        std::string url = host + ":" + PORT_COMMAND_STR;
+        zstr_sendm(CommandSocket, url.c_str());
+        int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
+        if (rc != -1) {
+            zsys_info("Sent ping to %s", url.c_str());
+        }
+    }
+}
+
 zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
 {
+    int major = NatNetVersion[0];
+    int minor = NatNetVersion[1];
+    bool validVersion = !(major == 0 && minor == 0 );
     //zsys_info("GOT FDSOCK");
 
     // Get the socket...
@@ -222,7 +231,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
                     zframe_t *zframe = zmsg_pop(zmsg);
                     if ( zframe ) {
                         sPacket *packet = (sPacket*) zframe_data(zframe);
-                        if ( packet->iMessage == 7 ) {
+                        if ( packet->iMessage == 7 && validVersion ) {
                             // zsys_info("Got frame of data");
                             size_t len = zframe_size(zframe);
                             Unpack((char **) &packet);
@@ -295,7 +304,7 @@ zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
 
                     // parse the remaining bytes as mocap data message
                     zframe_t *zframe = zmsg_pop(zmsg);
-                    if (zframe) {
+                    if (zframe && validVersion) {
                         byte *data = zframe_data(zframe);
                         size_t len = zframe_size(zframe);
                         Unpack((char **) &data);
@@ -468,43 +477,42 @@ char* NatNet::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodi
         //TODO: These associated markers are no longer part of the 3.1 SDK example
         //          -> Check if we can/need to remove this...
 
-        // associated marker positions
-        int nRigidMarkers = 0;
-        memcpy(&nRigidMarkers, ptr, 4);
-        ptr += 4;
+        if ( major < 3 ) {
+            // associated marker positions
+            int nRigidMarkers = 0;
+            memcpy(&nRigidMarkers, ptr, 4);
+            ptr += 4;
 
-        int nBytes = nRigidMarkers * 3 * sizeof(float);
-        float* markerData = (float*)malloc(nBytes);
-        memcpy(markerData, ptr, nBytes);
-        ptr += nBytes;
-
-        if (major >= 2)
-        {
-            // associated marker IDs
-            nBytes = nRigidMarkers * sizeof(int);
+            int nBytes = nRigidMarkers * 3 * sizeof(float);
+            float *markerData = (float *) malloc(nBytes);
+            memcpy(markerData, ptr, nBytes);
             ptr += nBytes;
 
-            // associated marker sizes
-            nBytes = nRigidMarkers * sizeof(float);
-            ptr += nBytes;
+            if (major >= 2) {
+                // associated marker IDs
+                nBytes = nRigidMarkers * sizeof(int);
+                ptr += nBytes;
+
+                // associated marker sizes
+                nBytes = nRigidMarkers * sizeof(float);
+                ptr += nBytes;
+            }
+
+            RB.markers.resize(nRigidMarkers);
+
+            for (int k = 0; k < nRigidMarkers; k++) {
+                float x = markerData[k * 3];
+                float y = markerData[k * 3 + 1];
+                float z = markerData[k * 3 + 2];
+
+                glm::vec3 pp(x, y, z);
+                //TODO: Matrix, only used for scale previously
+                //pp = transform.preMult(pp);
+                RB.markers[k] = pp;
+            }
+
+            if (markerData) free(markerData);
         }
-
-        RB.markers.resize(nRigidMarkers);
-
-        for (int k = 0; k < nRigidMarkers; k++)
-        {
-            float x = markerData[k * 3];
-            float y = markerData[k * 3 + 1];
-            float z = markerData[k * 3 + 2];
-
-            glm::vec3 pp(x, y, z);
-            //TODO: Matrix, only used for scale previously
-            //pp = transform.preMult(pp);
-            RB.markers[k] = pp;
-        }
-
-        if (markerData) free(markerData);
-
         // TODO: 3.1 SDK Contains everything after this again
 
         if (major >= 2)
@@ -993,6 +1001,8 @@ void NatNet::Unpack( char ** pData ) {
                     description.joints[i].offset[0] = xoffset;
                     description.joints[i].offset[1] = yoffset;
                     description.joints[i].offset[2] = zoffset;
+
+                    while ( *ptr == '\0' ) ptr ++;
                 }
                 tmp_skeleton_descs.push_back(description);
             }
@@ -1065,7 +1075,9 @@ void NatNet::HandleCommand( sPacket *PacketIn ) {
             skeletonsReady = true;
             break;
         case NAT_FRAMEOFDATA:
-            Unpack((char**)&PacketIn);
+            if ( !( NatNetVersion[0] == 0 && NatNetVersion[1] == 0 ) ) {
+                Unpack((char **) &PacketIn);
+            }
             break;
         case NAT_PINGRESPONSE:
             for(int i=0; i<4; i++)
