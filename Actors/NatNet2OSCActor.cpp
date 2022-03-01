@@ -456,44 +456,42 @@ char* NatNet2OSC::unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigid
 
         //TODO: These associated markers are no longer part of the 3.1 SDK example
        //          -> Check if we can/need to remove this...
+        if ( major < 3 ) {
+            // associated marker positions
+            int nRigidMarkers = 0;
+            memcpy(&nRigidMarkers, ptr, 4);
+            ptr += 4;
 
-        // associated marker positions
-        int nRigidMarkers = 0;
-        memcpy(&nRigidMarkers, ptr, 4);
-        ptr += 4;
-
-        int nBytes = nRigidMarkers * 3 * sizeof(float);
-        float* markerData = (float*)malloc(nBytes);
-        memcpy(markerData, ptr, nBytes);
-        ptr += nBytes;
-
-        if (major >= 2)
-        {
-            // associated marker IDs
-            nBytes = nRigidMarkers * sizeof(int);
+            int nBytes = nRigidMarkers * 3 * sizeof(float);
+            float *markerData = (float *) malloc(nBytes);
+            memcpy(markerData, ptr, nBytes);
             ptr += nBytes;
 
-            // associated marker sizes
-            nBytes = nRigidMarkers * sizeof(float);
-            ptr += nBytes;
+            if (major >= 2) {
+                // associated marker IDs
+                nBytes = nRigidMarkers * sizeof(int);
+                ptr += nBytes;
+
+                // associated marker sizes
+                nBytes = nRigidMarkers * sizeof(float);
+                ptr += nBytes;
+            }
+
+            RB.markers.resize(nRigidMarkers);
+
+            for (int k = 0; k < nRigidMarkers; k++) {
+                float x = markerData[k * 3];
+                float y = markerData[k * 3 + 1];
+                float z = markerData[k * 3 + 2];
+
+                glm::vec3 pp(x, y, z);
+                //TODO: Matrix, only used for scale previously
+                //pp = transform.preMult(pp);
+                RB.markers[k] = pp;
+            }
+
+            if (markerData) free(markerData);
         }
-
-        RB.markers.resize(nRigidMarkers);
-
-        for (int k = 0; k < nRigidMarkers; k++)
-        {
-            float x = markerData[k * 3];
-            float y = markerData[k * 3 + 1];
-            float z = markerData[k * 3 + 2];
-
-            glm::vec3 pp(x, y, z);
-            //TODO: Matrix, only used for scale previously
-            //pp = transform.preMult(pp);
-            RB.markers[k] = pp;
-        }
-
-        if (markerData) free(markerData);
-
         // TODO: 3.1 SDK Contains everything after this again
 
         if (major >= 2)
