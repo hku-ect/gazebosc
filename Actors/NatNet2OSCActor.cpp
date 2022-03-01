@@ -979,6 +979,8 @@ void NatNet2OSC::Unpack( char ** pData ) {
                     //description.joints[i].offset[0] = xoffset;
                     //description.joints[i].offset[0] = yoffset;
                     //description.joints[i].offset[0] = zoffset;
+
+                    while ( *ptr == '\0' ) ptr++;
                 }
                 //tmp_skeleton_descs.push_back(description);
             }
