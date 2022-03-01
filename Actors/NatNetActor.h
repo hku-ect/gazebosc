@@ -65,6 +65,7 @@ public:
     //NatNet parse functions
     int SendCommand(char* szCOmmand);
     void HandleCommand(sPacket *PacketIn);
+    void SendPing();
 
     void Unpack( char ** pData );
     char* unpackRigidBodies(char* ptr, std::vector<RigidBody>& ref_rigidbodies);

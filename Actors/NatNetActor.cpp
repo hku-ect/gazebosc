@@ -127,6 +127,9 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             this->rigidbodiesReady = false;
             this->skeletonsReady = false;
             this->sentRequest = 0;
+
+            // re-send ping as well to force response packet
+            SendPing();
         }
         if ( streq(cmd, "SET HOST") ) {
             char *host_addr = zmsg_popstr(ev->msg);
@@ -134,23 +137,8 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
             zsys_info("SET HOST: %s", host_addr);
             zstr_free(&host_addr);
 
-
             if ( CommandSocket != nullptr ) {
-                // Say hello to our new host
-                // send initial ping command
-                sPacket PacketOut;
-                PacketOut.iMessage = NAT_PING;
-                PacketOut.nDataBytes = 0;
-                int nTries = 3;
-                while (nTries--) {
-                    //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
-                    std::string url = host + ":" + PORT_COMMAND_STR;
-                    zstr_sendm(CommandSocket, url.c_str());
-                    int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
-                    if (rc != -1) {
-                        zsys_info("Sent ping to %s", url.c_str());
-                    }
-                }
+                SendPing();
             }
         }
         else if ( streq(cmd, "SET INTERFACE") ) {
@@ -184,6 +172,24 @@ zmsg_t * NatNet::handleAPI( sphactor_event_t * ev )
     }
 
     return NULL;
+}
+
+void NatNet::SendPing() {
+    // Say hello to our new host
+    // send initial ping command
+    sPacket PacketOut;
+    PacketOut.iMessage = NAT_PING;
+    PacketOut.nDataBytes = 0;
+    int nTries = 3;
+    while (nTries--) {
+        //int iRet = sendto(CommandSocket, (char *)&PacketOut, 4 + PacketOut.nDataBytes, 0, (sockaddr *)&HostAddr, sizeof(HostAddr));
+        std::string url = host + ":" + PORT_COMMAND_STR;
+        zstr_sendm(CommandSocket, url.c_str());
+        int rc = zsock_send(CommandSocket, "b", (char *) &PacketOut, 4 + PacketOut.nDataBytes);
+        if (rc != -1) {
+            zsys_info("Sent ping to %s", url.c_str());
+        }
+    }
 }
 
 zmsg_t * NatNet::handleCustomSocket( sphactor_event_t * ev )
@@ -995,6 +1001,8 @@ void NatNet::Unpack( char ** pData ) {
                     description.joints[i].offset[0] = xoffset;
                     description.joints[i].offset[1] = yoffset;
                     description.joints[i].offset[2] = zoffset;
+                    
+                    while ( *ptr == '\0' ) ptr ++;
                 }
                 tmp_skeleton_descs.push_back(description);
             }
