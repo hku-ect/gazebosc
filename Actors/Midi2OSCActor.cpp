@@ -158,11 +158,11 @@ zmsg_t * Midi2OSC::handleTimer( sphactor_event_t *ev ) {
             }
 
             if ( oscMsg != nullptr ) {
-                zmsg_t * retMsg = zmsg_new();
                 zmsg_add(retMsg, zosc_packx(&oscMsg));
             }
         }
-        return retMsg;
+        if ( zmsg_size(retMsg) )
+            return retMsg;
     }
 
     zmsg_destroy(&ev->msg);
