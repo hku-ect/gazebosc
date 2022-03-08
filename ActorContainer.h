@@ -10,6 +10,7 @@
 #include <time.h>
 #include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
 #include "fontawesome5.h"
+#include "config.h"
 
 // actor file browser
 imgui_addons::ImGuiFileBrowser actor_file_dialog;
@@ -620,7 +621,9 @@ struct ActorContainer {
                             char *tmplpath = zconfig_value(tmpl);
                             if ( zsys_file_exists(tmplpath) )
                             {
-                                zfile_t *tmplf = zfile_new(NULL, tmplpath);
+                                char fullpath[PATH_MAX];
+                                snprintf(fullpath, PATH_MAX-1, "%s/%s", GZB_RESOURCESPATH, tmplpath);
+                                zfile_t *tmplf = zfile_new(NULL, fullpath);
                                 assert(tmplf);
                                 int rc = zfile_input(tmplf);
                                 assert(rc == 0);

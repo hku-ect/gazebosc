@@ -1,2 +1,6 @@
+#ifndef GZB_CONFIG_H
+#define GZB_CONFIG_H
 //const char *GIT_VERSION = "${GIT_REPO_VERSION}";
 #define GIT_VERSION "${GIT_REPO_VERSION}"
+extern char *GZB_RESOURCESPATH;
+#endif
