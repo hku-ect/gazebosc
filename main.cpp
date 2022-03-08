@@ -216,10 +216,10 @@ void set_resources_path()
     wchar_t *s = wcsrchr(exepath, L'\\');
     if (s) *s = 0;
     size_t i;
-    char path[PATH_MAX];
-    wcstombs_s(&i, path, (size_t)PATH_MAX,
+    char winpath[PATH_MAX];
+    wcstombs_s(&i, winpath, (size_t)PATH_MAX,
                    exepath, (size_t)PATH_MAX - 1); // -1 so the appended NULL doesn't fall outside the allocated buffer
-    GZB_RESOURCESPATH = strdup(path);
+    GZB_RESOURCESPATH = strdup(winpath);
     zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
 #elif defined __UTYPE_LINUX
     char exepath[PATH_MAX];
@@ -231,11 +231,11 @@ void set_resources_path()
     GZB_RESOURCESPATH = strdup(exepath);
     zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
 #elif defined __UTYPE_OSX
-    char path[PATH_MAX];
+    char osxpath[PATH_MAX];
     CFURLRef res = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
-    CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)path, PATH_MAX);
+    CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)osxpath, PATH_MAX);
     CFRelease(res);
-    GZB_RESOURCESPATH = strdup(path);
+    GZB_RESOURCESPATH = strdup(osxpath);
     zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
 #endif
 }

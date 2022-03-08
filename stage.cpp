@@ -201,18 +201,25 @@ void ShowConfigWindow(bool * showLog) {
 #define F float
 V2 conv(V2 v, F z, V2 sz, V2 o){return V2((v.x/z)*sz.x*5.f+sz.x*0.5f,(v.y/z)*sz.y*5.f+sz.y*0.5f)+o;}
 V2 R(V2 v, F ng){ng*=0.1f;return V2(v.x*cosf(ng)-v.y*sinf(ng),v.x*sinf(ng)+v.y*cosf(ng));}
-void FX(ImDrawList* d, V2 o, V2 b, V2 sz, ImVec4, F t){d->AddRectFilled(o,b,0xFF000000,0);t*=4;
-for (int i = 0; i < 20; i++){
-F z=21.-i-(t-floorf(t))*2.,ng=-t*2.1+z,ot0=-t+z*0.2,ot1=-t+(z+1.)*0.2,os=0.3;
-V2 s[]={V2(cosf((t+z)*0.1)*0.2+1.,sinf((t+z)*0.1)*0.2+1.),V2(cosf((t+z+1.)*0.1)*0.2+1.,sinf((t+z+1.)*0.1)*0.2+1.)};
-V2 of[]={V2(cosf(ot0)*os,sinf(ot0)*os),V2(cosf(ot1)*os,sinf(ot1)*os)};
-V2 p[]={V2(-1,-1),V2(1,-1),V2(1,1),V2(-1,1)};
-ImVec2 pts[8];int j;
-for (j=0;j<8;j++){int n = (j/4);pts[j]=conv(R(p[j%4]*s[n]+of[n],ng+n),(z+n)*2.,sz,o);}
-for (j=0;j<4;j++){V2 q[4]={pts[j],pts[(j+1)%4],pts[((j+1)%4)+4],pts[j+4]};
-F it=(((i&1)?0.5:0.6)+j*0.05)*((21.-z)/21.);
-d->AddConvexPolyFilled(q,4,ImColor::HSV(0.6+sinf(t*0.03)*0.5,1,sqrtf(it)));
-}}}
+void FX(ImDrawList* d, V2 o, V2 b, V2 sz, ImVec4, F t) {
+    d->AddRectFilled(o,b,0xFF000000,0);
+    t*=4;
+    for (int i = 0; i < 20; i++) {
+        F z=21.-i-(t-floorf(t))*2.,ng=-t*2.1+z,ot0=-t+z*0.2,ot1=-t+(z+1.)*0.2,os=0.3;
+        V2 s[]={V2(cosf((t+z)*0.1)*0.2+1.,sinf((t+z)*0.1)*0.2+1.),V2(cosf((t+z+1.)*0.1)*0.2+1.,sinf((t+z+1.)*0.1)*0.2+1.)};
+        V2 of[]={V2(cosf(ot0)*os,sinf(ot0)*os),V2(cosf(ot1)*os,sinf(ot1)*os)};
+        V2 p[]={V2(-1,-1),V2(1,-1),V2(1,1),V2(-1,1)};
+        ImVec2 pts[8];int j;
+        for (j=0;j<8;j++) {
+            int n = (j/4);pts[j]=conv(R(p[j%4]*s[n]+of[n],ng+n),(z+n)*2.,sz,o);
+        }
+        for (j=0;j<4;j++){
+            V2 q[4]={pts[j],pts[(j+1)%4],pts[((j+1)%4)+4],pts[j+4]};
+            F it=(((i&1)?0.5:0.6)+j*0.05)*((21.-z)/21.);
+            d->AddConvexPolyFilled(q,4,ImColor::HSV(0.6+sinf(t*0.03)*0.5,1,sqrtf(it)));
+        }
+    }
+}
 
 void ShowAboutWindow(bool *open)
 {
