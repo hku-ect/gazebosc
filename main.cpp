@@ -78,6 +78,7 @@ SDL_GLContext gl_context;
 ImGuiIO io;
 const char* glsl_version;
 static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+char *GZB_RESOURCESPATH;
 
 // Logging
 bool logWindow = false;
@@ -199,6 +200,46 @@ void print_backtrace(int sig)
 void print_backtrace (int sig) {}
 #endif
 
+// This sets the GZB_RESOURCESPATH var to the path of the executable or the GZB_RESOURCES environment value
+void set_resources_path()
+{
+    char *path = getenv("GZB_RESOURCES");
+    if (path)
+    {
+        GZB_RESOURCESPATH = path;
+        return;
+    }
+#ifdef  __WINDOWS__
+    wchar_t exepath[PATH_MAX];
+    GetModuleFileNameW(NULL, exepath, PATH_MAX);
+    // remove program name by finding the last delimiter
+    wchar_t *s = wcsrchr(exepath, L'\\');
+    if (s) *s = 0;
+    size_t i;
+    char path[PATH_MAX];
+    wcstombs_s(&i, path, (size_t)PATH_MAX,
+                   exepath, (size_t)PATH_MAX - 1); // -1 so the appended NULL doesn't fall outside the allocated buffer
+    GZB_RESOURCESPATH = strdup(path);
+    zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
+#elif defined __UTYPE_LINUX
+    char exepath[PATH_MAX];
+    memset(exepath, 0, PATH_MAX);
+    readlink("/proc/self/exe", exepath, PATH_MAX);
+    char *lastdelim = strrchr(exepath, '/');
+    assert(lastdelim);
+    exepath[lastdelim-exepath] = 0;
+    GZB_RESOURCESPATH = strdup(exepath);
+    zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
+#elif defined __UTYPE_OSX
+    char path[PATH_MAX];
+    CFURLRef res = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
+    CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)path, PATH_MAX);
+    CFRelease(res);
+    GZB_RESOURCESPATH = strdup(path);
+    zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
+#endif
+}
+
 // Main code
 int main(int argc, char** argv)
 {
@@ -224,6 +265,7 @@ int main(int argc, char** argv)
 #endif
 
     //
+    set_resources_path();
     RegisterActors();
 
     // Argument capture
@@ -299,6 +341,7 @@ int main(int argc, char** argv)
     Clear();
     sphactor_dispose();
 
+    zstr_free(&GZB_RESOURCESPATH);
     zargs_destroy(&args);
 
     fflush(stdout);
@@ -378,14 +421,17 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     font_cfg.SizePixels = 13.0f * 1.0f;
     font_cfg.EllipsisChar = (ImWchar)0x0085;
     font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / 13.0f);  // Add +1 offset per 13 units
-    io.Fonts->AddFontFromFileTTF("misc/fonts/ProggyCleanSZ.ttf", 13.0f, &font_cfg);
+    char fontpath[PATH_MAX];
+    snprintf(fontpath, PATH_MAX, "%s/%s", GZB_RESOURCESPATH, "misc/fonts/ProggyCleanSZ.ttf");
+    io.Fonts->AddFontFromFileTTF(fontpath, 13.0f, &font_cfg);
 
     // Add character ranges and merge into main font
     ImFontConfig config;
     config.MergeMode = true;
     config.GlyphMinAdvanceX = 13.0f; // Use if you want to make the icon monospaced
     config.GlyphOffset.y = 1.0f;     // slightly lower than the main font
-    io.Fonts->AddFontFromFileTTF("misc/fonts/fa-solid-900.ttf", 13.0f, &config, ranges);
+    snprintf(fontpath, PATH_MAX, "%s/%s", GZB_RESOURCESPATH, "misc/fonts/fa-solid-900.ttf");
+    io.Fonts->AddFontFromFileTTF(fontpath, 13.0f, &config, ranges);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
