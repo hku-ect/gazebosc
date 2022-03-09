@@ -283,7 +283,7 @@ void set_global_temp()
 #elif defined __UTYPE_OSX
     char tmppath[PATH_MAX];
     size_t n = confstr(_CS_DARWIN_USER_TEMP_DIR, tmppath, sizeof(tmppath));
-    if ((n <= 0) || (n >= sizeof(tmpdir)))
+    if ((n <= 0) || (n >= sizeof(tmppath)))
         strlcpy(tmppath, getenv("TMPDIR"), sizeof(tmppath));
     GZB_GLOBAL.TMPPATH = strdup(tmppath);
 
