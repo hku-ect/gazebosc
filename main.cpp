@@ -267,7 +267,7 @@ void set_global_temp()
     wcstombs_s(&i, winpath, (size_t)PATH_MAX,
                    exepath, (size_t)PATH_MAX - 1); // -1 so the appended NULL doesn't fall outside the allocated buffer
     GZB_GLOBAL.RESOURCESPATH = strdup(winpath);
-    zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
+    zsys_info("Resources dir is %s", GZB_GLOBAL.RESOURCESPATH);
 #elif defined __UTYPE_LINUX
     char *tmppath = getenv("TMPDIR");
     if (tmppath)
