@@ -850,7 +850,6 @@ void NatNet::Unpack( char ** pData ) {
             //zsys_info("Dataset %d\n", i);
 
             int type = 0; memcpy(&type, ptr, 4); ptr += 4;
-            //zsys_info("Type : %d\n", i, type);
 
             if(type == 0)   // markerset
             {
@@ -1002,12 +1001,152 @@ void NatNet::Unpack( char ** pData ) {
                     description.joints[i].offset[1] = yoffset;
                     description.joints[i].offset[2] = zoffset;
 
-                    // TODO: Figure out how to recognize if this is extra padding, or a type 0 markerset
                     if ( major >= 3 ) {
-                        while (*ptr == '\0') ptr++;
+                        // Extra # of markers attached to each rigidbody (always 0 for skeletons, but still 4 bytes)
+                        ptr += 4;
                     }
                 }
                 tmp_skeleton_descs.push_back(description);
+            }
+            else if ( major >= 3 ) {
+                // Force Plate
+                if ( type == 3 ) {
+                    int ID = 0; memcpy(&ID, ptr, 4); ptr += 4;
+                    // printf("ID : %d\n", ID);
+
+                    // Serial Number
+                    char strSerialNo[128];
+                    strcpy(strSerialNo, ptr);
+                    ptr += strlen(ptr) + 1;
+                    // printf("Serial Number : %s\n", strSerialNo);
+
+                    // Dimensions
+                    float fWidth = 0; memcpy(&fWidth, ptr, 4); ptr += 4;
+                    // printf("Width : %3.2f\n", fWidth);
+
+                    float fLength = 0; memcpy(&fLength, ptr, 4); ptr += 4;
+                    // printf("Length : %3.2f\n", fLength);
+
+                    // Origin
+                    float fOriginX = 0; memcpy(&fOriginX, ptr, 4); ptr += 4;
+                    float fOriginY = 0; memcpy(&fOriginY, ptr, 4); ptr += 4;
+                    float fOriginZ = 0; memcpy(&fOriginZ, ptr, 4); ptr += 4;
+                    // printf("Origin : %3.2f,  %3.2f,  %3.2f\n", fOriginX, fOriginY, fOriginZ);
+
+                    // Calibration Matrix
+                    const int kCalMatX = 12;
+                    const int kCalMatY = 12;
+                    float fCalMat[kCalMatX][kCalMatY];
+                    // printf("Cal Matrix\n");
+                    for (int calMatX = 0; calMatX < kCalMatX; ++calMatX)
+                    {
+                        printf("  ");
+                        for (int calMatY = 0; calMatY < kCalMatY; ++calMatY)
+                        {
+                            memcpy(&fCalMat[calMatX][calMatY], ptr, 4); ptr += 4;
+                            printf("%3.3e ", fCalMat[calMatX][calMatY]);
+                        }
+                        printf("\n");
+                    }
+
+                    // Corners
+                    const int kCornerX = 4;
+                    const int kCornerY = 3;
+                    float fCorners[kCornerX][kCornerY] = { {0,0,0}, {0,0,0}, {0,0,0}, {0,0,0} };
+                    // printf("Corners\n");
+                    for (int cornerX = 0; cornerX < kCornerX; ++cornerX)
+                    {
+                        printf("  ");
+                        for (int cornerY = 0; cornerY < kCornerY; ++cornerY)
+                        {
+                            memcpy(&fCorners[cornerX][cornerY], ptr, 4); ptr += 4;
+                            // printf("%3.3e ", fCorners[cornerX][cornerY]);
+                        }
+                        printf("\n");
+                    }
+
+                    // Plate Type
+                    int iPlateType = 0; memcpy(&iPlateType, ptr, 4); ptr += 4;
+                    // printf("Plate Type : %d\n", iPlateType);
+
+                    // Channel Data Type
+                    int iChannelDataType = 0; memcpy(&iChannelDataType, ptr, 4); ptr += 4;
+                    // printf("Channel Data Type : %d\n", iChannelDataType);
+
+                    // Number of Channels
+                    int nChannels = 0; memcpy(&nChannels, ptr, 4); ptr += 4;
+                    // printf("  Number of Channels : %d\n", nChannels);
+
+                    for (int chNum = 0; chNum < nChannels; ++chNum)
+                    {
+                        char szName[MAX_NAMELENGTH];
+                        strcpy(szName, ptr);
+                        int nDataBytes = (int)strlen(szName) + 1;
+                        ptr += nDataBytes;
+                        // printf("    Channel Name %d: %s\n",chNum,  szName);
+                    }
+                }
+                // Device
+                else if ( type == 4 ) {
+                    int ID = 0; memcpy(&ID, ptr, 4); ptr += 4;
+                    //printf("ID : %d\n", ID);
+
+                    // Name
+                    char strName[128];
+                    strcpy(strName, ptr);
+                    ptr += strlen(ptr) + 1;
+                    //printf("Device Name :       %s\n", strName);
+
+                    // Serial Number
+                    char strSerialNo[128];
+                    strcpy(strSerialNo, ptr);
+                    ptr += strlen(ptr) + 1;
+                    //printf("Serial Number :     %s\n", strSerialNo);
+
+                    int iDeviceType = 0; memcpy(&iDeviceType, ptr, 4); ptr += 4;
+                    //printf("Device Type :        %d\n", iDeviceType);
+
+                    int iChannelDataType = 0; memcpy(&iChannelDataType, ptr, 4); ptr += 4;
+                    //printf("Channel Data Type : %d\n", iChannelDataType);
+
+                    int nChannels = 0; memcpy(&nChannels, ptr, 4); ptr += 4;
+                    printf("Number of Channels : %d\n", nChannels);
+                    char szChannelName[MAX_NAMELENGTH];
+
+                    for (int chNum = 0; chNum < nChannels; ++chNum) {
+                        strcpy(szChannelName, ptr);
+                        ptr += strlen(ptr) + 1;
+                        printf("  Channel Name %d:     %s\n", chNum, szChannelName);
+                    }
+                }
+                // Camera
+                if (type == 5) {
+                    // Name
+                    char szName[MAX_NAMELENGTH];
+                    strcpy(szName, ptr);
+                    ptr += strlen(ptr) + 1;
+                    //MakeAlnum(szName, MAX_NAMELENGTH);
+                    //printf("Camera Name  : %s\n", szName);
+
+                    // Pos
+                    float cameraPosition[3];
+                    memcpy(cameraPosition+0, ptr, 4); ptr += 4;
+                    memcpy(cameraPosition+1, ptr, 4); ptr += 4;
+                    memcpy(cameraPosition+2, ptr, 4); ptr += 4;
+                    //printf("  Position   : %3.2f, %3.2f, %3.2f\n",
+                    //       cameraPosition[0], cameraPosition[1],
+                    //       cameraPosition[2]);
+
+                    // Ori
+                    float cameraOriQuat[4]; // x, y, z, w
+                    memcpy(cameraOriQuat + 0, ptr, 4); ptr += 4;
+                    memcpy(cameraOriQuat + 1, ptr, 4); ptr += 4;
+                    memcpy(cameraOriQuat + 2, ptr, 4); ptr += 4;
+                    memcpy(cameraOriQuat + 3, ptr, 4); ptr += 4;
+                    //printf("  Orientation: %3.2f, %3.2f, %3.2f, %3.2f\n",
+                    //       cameraOriQuat[0], cameraOriQuat[1],
+                    //       cameraOriQuat[2], cameraOriQuat[3] );
+                }
             }
 
         }   // next dataset
