@@ -248,26 +248,26 @@ void set_global_temp()
     if (path)
     {
         GZB_GLOBAL.TMPPATH = strdup(path);
+        zsys_info("Tmp dir set from gazebosc env var: %s", GZB_GLOBAL.TMPPATH);
         return;
     }
 #ifdef  __WINDOWS__
-    char *winpath = getenv("TEMP");
-    if (winpath)
+    char *envpath = getenv("TEMP");
+    if (envpath)
+        GZB_GLOBAL.TMPPATH = strdup(envpath);
+    else
     {
-        GZB_GLOBAL.TMPPATH = strdup(winpath);
-        return;
+        wchar_t exepath[PATH_MAX];
+        GetModuleFileNameW(NULL, exepath, PATH_MAX);
+        // remove program name by finding the last delimiter
+        wchar_t *s = wcsrchr(exepath, L'\\');
+        if (s) *s = 0;
+        size_t i;
+        char winpath[PATH_MAX];
+        wcstombs_s(&i, winpath, (size_t)PATH_MAX,
+                       exepath, (size_t)PATH_MAX - 1); // -1 so the appended NULL doesn't fall outside the allocated buffer
+        GZB_GLOBAL.RESOURCESPATH = strdup(winpath);
     }
-    wchar_t exepath[PATH_MAX];
-    GetModuleFileNameW(NULL, exepath, PATH_MAX);
-    // remove program name by finding the last delimiter
-    wchar_t *s = wcsrchr(exepath, L'\\');
-    if (s) *s = 0;
-    size_t i;
-    char winpath[PATH_MAX];
-    wcstombs_s(&i, winpath, (size_t)PATH_MAX,
-                   exepath, (size_t)PATH_MAX - 1); // -1 so the appended NULL doesn't fall outside the allocated buffer
-    GZB_GLOBAL.RESOURCESPATH = strdup(winpath);
-    zsys_info("Resources dir is %s", GZB_GLOBAL.RESOURCESPATH);
 #elif defined __UTYPE_LINUX
     char *tmppath = getenv("TMPDIR");
     if (tmppath)
