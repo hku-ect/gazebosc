@@ -581,7 +581,7 @@ struct ActorContainer {
                         getcwd(path, PATH_MAX);
                         char fullpath[PATH_MAX];
                         sprintf (fullpath, "%s/%s", path, fnamebuf);
-                        zsys_info("filemode %i", zsys_file_mode(fullpath));
+                        //zsys_info("filemode %i", zsys_file_mode(fullpath));
                         int mode = zsys_file_mode(fullpath);
                         if ( mode != -1 )
                         {
@@ -619,10 +619,10 @@ struct ActorContainer {
                         if (tmpl)
                         {
                             char *tmplpath = zconfig_value(tmpl);
-                            if ( zsys_file_exists(tmplpath) )
+                            char fullpath[PATH_MAX];
+                            snprintf(fullpath, PATH_MAX-1, "%s/%s", GZB_GLOBAL.RESOURCESPATH, tmplpath);
+                            if ( zsys_file_exists(fullpath) )
                             {
-                                char fullpath[PATH_MAX];
-                                snprintf(fullpath, PATH_MAX-1, "%s/%s", GZB_GLOBAL.RESOURCESPATH, tmplpath);
                                 zfile_t *tmplf = zfile_new(NULL, fullpath);
                                 assert(tmplf);
                                 int rc = zfile_input(tmplf);

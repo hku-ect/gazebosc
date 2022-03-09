@@ -388,6 +388,8 @@ int main(int argc, char** argv)
                 zsys_error("Failed loading %s", stage_file);
             }
         }
+        else
+            Clear(); // start with an empty stage
 
         // Blocking UI loop
         UILoop(window, io);
