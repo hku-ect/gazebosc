@@ -345,11 +345,19 @@ endif()
 
 # This is just for running the binary from an ide
 if (WITH_DEV)
-    add_custom_command(
-        TARGET gazebosc POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
+    if (APPLE)
+        add_custom_command(
+            TARGET gazebosc POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    ${CMAKE_SOURCE_DIR}/misc
+                    $<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/misc)
+    else()
+        add_custom_command(
+                TARGET gazebosc POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
                 ${CMAKE_SOURCE_DIR}/misc
                 $<TARGET_FILE_DIR:${PROJECT_NAME}>/misc)
+    endif()
 endif(WITH_DEV)
 
 install(TARGETS gazebosc
