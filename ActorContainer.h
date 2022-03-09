@@ -622,7 +622,7 @@ struct ActorContainer {
                             if ( zsys_file_exists(tmplpath) )
                             {
                                 char fullpath[PATH_MAX];
-                                snprintf(fullpath, PATH_MAX-1, "%s/%s", GZB_RESOURCESPATH, tmplpath);
+                                snprintf(fullpath, PATH_MAX-1, "%s/%s", GZB_GLOBAL.RESOURCESPATH, tmplpath);
                                 zfile_t *tmplf = zfile_new(NULL, fullpath);
                                 assert(tmplf);
                                 int rc = zfile_input(tmplf);

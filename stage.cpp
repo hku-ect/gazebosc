@@ -867,7 +867,24 @@ void Clear() {
         delete actor;
         it = actors.erase(it);
     }
-
+    // set a temporary random working dir for our stage
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    char tmpdir[12] = "_gzs_xxxxxx";
+    for (int i=5;i<12;i++)
+    {
+        int key = rand() % (int)(sizeof(charset)-1);
+        tmpdir[i] = charset[key];
+    }
+    tmpdir[11] = 0; // null termination
+    zsys_dir_create("%s/%s", GZB_GLOBAL.TMPPATH, tmpdir);
+    char dir_path[PATH_MAX];
+    snprintf(dir_path, PATH_MAX, "%s/%s", GZB_GLOBAL.TMPPATH, tmpdir );
+#ifdef __WINDOWS__
+    _chdir(dir_path);
+#else
+    chdir(dir_path);
+#endif
+    zsys_info("Temporary stage dir is now at %s", dir_path);
 }
 
 ActorContainer* Find( const char* endpoint ) {
