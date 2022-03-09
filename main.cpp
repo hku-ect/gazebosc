@@ -281,10 +281,18 @@ void set_global_temp()
     else
         GZB_GLOBAL.TMPPATH = strdup("/tmp");
 #elif defined __UTYPE_OSX
-    NSString *tempDir = NSTemporaryDirectory();
-    if (tempDir == nil)
-        tempDir = @"/tmp";
-    GZB_GLOBAL.TMPPATH = strdup( (char *)[tempDir UTF8String]);
+    char tmppath[PATH_MAX];
+    size_t n = confstr(_CS_DARWIN_USER_TEMP_DIR, tmppath, sizeof(tmppath));
+    if ((n <= 0) || (n >= sizeof(tmpdir)))
+        strlcpy(tmppath, getenv("TMPDIR"), sizeof(tmppath));
+    GZB_GLOBAL.TMPPATH = strdup(tmppath);
+
+    //CFURLRef tmp = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (UInt8 *)tmpdir, strlen(tmpdir), true);
+
+    //NSString *tempDir = NSTemporaryDirectory();
+    //if (tempDir == nil)
+    //    tempDir = @"/tmp";
+    //GZB_GLOBAL.TMPPATH = strdup( (char *)[tempDir UTF8String]);
 #endif
     zsys_info("Tmp dir is %s", GZB_GLOBAL.TMPPATH);
 }
