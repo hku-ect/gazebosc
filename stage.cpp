@@ -973,10 +973,12 @@ void Clear() {
     // remove working dir if it's a temporary path
     std::error_code ec; // no exception
     fs::path cwd = fs::current_path(ec);
+    // temporary change the working dir otherwise we cannot delete it on windows, Load or Init will reset it
+    fs::current_path(GZB_GLOBAL.TMPPATH);
 
-    char tmppath[PATH_MAX];
-    snprintf(tmppath, PATH_MAX, "%s/%s", GZB_GLOBAL.TMPPATH, "_gzs_");
-    if ( cwd.string().rfind(tmppath, 0) == 0 )
+    fs::path tmppath(GZB_GLOBAL.TMPPATH);
+    tmppath.append("_gzs_");
+    if ( cwd.string().rfind(tmppath.string(), 0) == 0 )
     {
         try
         {
