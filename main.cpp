@@ -254,6 +254,9 @@ void set_global_temp()
         zsys_info("Tmp dir set from gazebosc env var: %s", GZB_GLOBAL.TMPPATH);
         return;
     }
+    fs::path tmppath = fs::canonical(fs::temp_directory_path());
+    GZB_GLOBAL.TMPPATH = strdup(tmppath.c_str());
+    /*
 #ifdef  __WINDOWS__
     char *envpath = getenv("TEMP");
     if (envpath)
@@ -297,6 +300,7 @@ void set_global_temp()
     //    tempDir = @"/tmp";
     //GZB_GLOBAL.TMPPATH = strdup( (char *)[tempDir UTF8String]);
 #endif
+    */
     zsys_info("Tmp dir is %s", GZB_GLOBAL.TMPPATH);
 }
 
