@@ -255,7 +255,7 @@ void set_global_temp()
         return;
     }
     fs::path tmppath = fs::canonical(fs::temp_directory_path());
-    GZB_GLOBAL.TMPPATH = strdup(tmppath.c_str());
+    GZB_GLOBAL.TMPPATH = strdup(tmppath.string().c_str());
     /*
 #ifdef  __WINDOWS__
     char *envpath = getenv("TEMP");
