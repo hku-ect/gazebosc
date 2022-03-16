@@ -511,14 +511,12 @@ int RenderMenuBar( bool * showLog ) {
 
     if ( ImGui::IsItemHovered() )
     {
-        if (GImGui->HoveredIdTimer > GZB_TOOLTIP_THRESHOLD )
-        {
-            ImGui::BeginTooltip();
-            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
-            ImGui::TextUnformatted("Current working directory, double click to open");
-            ImGui::PopTextWrapPos();
-            ImGui::EndTooltip();
-        }
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
+        ImGui::TextUnformatted("Current working directory, double click to open");
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+
         if ( ImGui::IsMouseDoubleClicked(0) )
         {
             char cmd[PATH_MAX];
