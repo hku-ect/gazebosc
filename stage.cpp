@@ -64,6 +64,7 @@ std::string editingPath = "";
 bool Save( const char* configFile );
 bool Load( const char* configFile );
 void Clear();
+void Init();
 ActorContainer* Find( const char* endpoint );
 
 // TODO: move this to something includable
@@ -187,6 +188,7 @@ void ShowConfigWindow(bool * showLog) {
     ImGui::SameLine();
     if (ImGui::Button("Clear")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
         Clear();
+        Init();
     }
 
     ImGui::Checkbox("Show Log Window", showLog);
@@ -501,10 +503,46 @@ int RenderMenuBar( bool * showLog ) {
 
     //TODO: Display stage status (new, loaded, changed)
     ImGui::Separator();
+    char path[PATH_MAX];
+    getcwd(path, PATH_MAX);
+
+    ImGui::Separator();
+    ImGui::TextColored( ImVec4(.3,.5,.3,1), ICON_FA_FOLDER ": %s", path);
+
+    if ( ImGui::IsItemHovered() )
+    {
+        if (GImGui->HoveredIdTimer > GZB_TOOLTIP_THRESHOLD )
+        {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
+            ImGui::TextUnformatted("Current working directory, double click to open");
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+        }
+        if ( ImGui::IsMouseDoubleClicked(0) )
+        {
+            char cmd[PATH_MAX];
+#ifdef __WINDOWS__
+            snprintf(cmd, PATH_MAX, "start explorer %s", path);
+            //snprintf(cmd, PATH_MAX, "explorer.exe %s", path);
+            //STARTUPINFO startupInfo = {0};
+            //startupInfo.cb = sizeof(startupInfo);
+            //PROCESS_INFORMATION processInformation;
+            //CreateProcess(NULL, cmd, NULL, NULL, false, 0, NULL, NULL, &startupInfo, &processInformation);
+#elif defined __UTYPE_LINUX
+            snprintf(cmd, PATH_MAX, "xdg-open %s &", path);
+#else
+            snprintf(cmd, PATH_MAX, "open %s", path);
+#endif
+            system(cmd);
+        }
+    }
+
     ImGui::Separator();
 
+
     if ( streq( editingFile.c_str(), "" ) ) {
-        ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": New Stage");
+        ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": *Unsaved Stage*");
     }
     else {
         ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": %s", editingFile.c_str());
@@ -531,6 +569,7 @@ int RenderMenuBar( bool * showLog ) {
     }
     else if ( action == MenuAction_Clear ) {
         Clear();
+        Init();
     }
     else if ( action == MenuAction_Exit ) {
         return -1;
@@ -887,46 +926,10 @@ bool Load( const char* configFile ) {
     return stage != NULL;
 }
 
-void Clear() {
-
-    //delete all connections
-    for (auto it = actors.begin(); it != actors.end();)
-    {
-        ActorContainer* gActor = *it;
-
-        for (auto& connection : gActor->connections)
-        {
-            //delete them once
-            if (connection.output_node == gActor) {
-                ((ActorContainer*) connection.input_node)->DeleteConnection(connection);
-            }
-        }
-        gActor->connections.clear();
-        it++;
-    }
-
-    if ( stage )
-    {
-        sph_stage_destroy(&stage);
-        // remove working dir if it's a temporary path
-        fs::path cwd = fs::current_path();
-        char tmppath[PATH_MAX];
-        snprintf(tmppath, PATH_MAX, "%s/%s", GZB_GLOBAL.TMPPATH, "_gzs_");
-        if ( cwd.string().rfind(tmppath, 0) == 0 )
-        {
-            fs::remove_all(cwd);
-        }
-    }
+void Init() {
+    // initialise an empty stage with tmp working dir
     assert(stage == NULL);
 
-    //delete all actors
-    for (auto it = actors.begin(); it != actors.end();)
-    {
-        ActorContainer* actor = *it;
-        // sphactor is already destroyed by stage
-        delete actor;
-        it = actors.erase(it);
-    }
     // set a temporary random working dir for our stage
     const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     char tmpdir[12] = "_gzs_xxxxxx";
@@ -945,6 +948,57 @@ void Clear() {
     chdir(dir_path);
 #endif
     zsys_info("Temporary stage dir is now at %s", dir_path);
+    // clear active file and set new path
+    editingFile = "";
+    editingPath = "";
+}
+
+void Clear() {
+
+    //delete all connections
+    for (auto it = actors.begin(); it != actors.end();)
+    {
+        ActorContainer* gActor = *it;
+
+        for (auto& connection : gActor->connections)
+        {
+            //delete them once
+            if (connection.output_node == gActor) {
+                ((ActorContainer*) connection.input_node)->DeleteConnection(connection);
+            }
+        }
+        gActor->connections.clear();
+        it++;
+    }
+
+    sph_stage_destroy(&stage);
+    // remove working dir if it's a temporary path
+    std::error_code ec; // no exception
+    fs::path cwd = fs::current_path(ec);
+
+    char tmppath[PATH_MAX];
+    snprintf(tmppath, PATH_MAX, "%s/%s", GZB_GLOBAL.TMPPATH, "_gzs_");
+    if ( cwd.string().rfind(tmppath, 0) == 0 )
+    {
+        try
+        {
+            fs::remove_all(cwd);
+        }
+        catch (std::exception& e)
+        {
+            zsys_error("failed to remove working dir: %s", e.what());
+        }
+    }
+    assert(stage == NULL);
+
+    //delete all actors
+    for (auto it = actors.begin(); it != actors.end();)
+    {
+        ActorContainer* actor = *it;
+        // sphactor is already destroyed by stage
+        delete actor;
+        it = actors.erase(it);
+    }
     // clear active file and set new path
     editingFile = "";
     editingPath = "";

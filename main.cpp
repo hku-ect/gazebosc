@@ -50,6 +50,8 @@
 #include <streambuf>
 #include <iostream>
 #include <sstream>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 #include "config.h"
 
@@ -64,6 +66,7 @@ void ShowLogWindow(ImGuiTextBuffer&);
 int UpdateActors(float deltaTime, bool * showLog);
 bool Load(const char* fileName);
 void Clear();
+void Init();
 
 void RegisterActors();
 
@@ -389,7 +392,7 @@ int main(int argc, char** argv)
             }
         }
         else
-            Clear(); // start with an empty stage
+            Init(); // start with an empty stage
 
         // Blocking UI loop
         UILoop(window, io);
