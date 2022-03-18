@@ -8,6 +8,7 @@
 #include "ImNodesEz.h"
 #include <czmq.h>
 #include <time.h>
+#include "imgui_internal.h"
 #include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
 #include "fontawesome5.h"
 #include "config.h"
@@ -108,13 +109,13 @@ struct ActorContainer {
 
                 char* typeStr = zconfig_value(type);
                 if ( streq(typeStr, "OSC")) {
-                    input_slots.push_back({ "OSC", ActorSlotOSC, false });
+                    input_slots.push_back({ "OSC", ActorSlotOSC });
                 }
                 else if ( streq(typeStr, "NatNet")) {
-                    input_slots.push_back({ "NatNet", ActorSlotNatNet, false });
+                    input_slots.push_back({ "NatNet", ActorSlotNatNet });
                 }
                 else if ( streq(typeStr, "Any")) {
-                    input_slots.push_back({ "Any", ActorSlotAny, true });
+                    input_slots.push_back({ "Any", ActorSlotAny });
                 }
                 else {
                     zsys_error("Unsupported input type: %s", typeStr);
@@ -130,13 +131,13 @@ struct ActorContainer {
 
                 char* typeStr = zconfig_value(type);
                 if ( streq(typeStr, "OSC")) {
-                    output_slots.push_back({ "OSC", ActorSlotOSC, false });
+                    output_slots.push_back({ "OSC", ActorSlotOSC });
                 }
                 else if ( streq(typeStr, "NatNet")) {
-                    output_slots.push_back({ "NatNet", ActorSlotNatNet, false });
+                    output_slots.push_back({ "NatNet", ActorSlotNatNet });
                 }
                 else if ( streq(typeStr, "Any")) {
-                    output_slots.push_back({ "Any", ActorSlotAny, true });
+                    output_slots.push_back({ "Any", ActorSlotAny });
                 }
                 else {
                     zsys_error("Unsupported output type: %s", typeStr);
@@ -396,10 +397,10 @@ struct ActorContainer {
                                 ImDrawList* draw_list = ImGui::GetWindowDrawList();
                                 ImNodes::CanvasState* canvas = ImNodes::GetCurrentCanvas();
                                 if (diff < 100) {
-                                    draw_list->AddCircleFilled(canvas->offset + pos * canvas->zoom + ImVec2(5,5) * canvas->zoom, 5 * canvas->zoom , ImColor(0, 255, 0), 4);
+                                    draw_list->AddCircleFilled(canvas->Offset + pos * canvas->Zoom + ImVec2(5,5) * canvas->Zoom, 5 * canvas->Zoom , ImColor(0, 255, 0), 4);
                                 }
                                 else {
-                                    draw_list->AddCircleFilled(canvas->offset + pos * canvas->zoom + ImVec2(5, 5) * canvas->zoom, 5 * canvas->zoom, ImColor(127, 127, 127), 4);
+                                    draw_list->AddCircleFilled(canvas->Offset + pos * canvas->Zoom + ImVec2(5, 5) * canvas->Zoom, 5 * canvas->Zoom, ImColor(127, 127, 127), 4);
                                 }
                             }
                             else {
