@@ -26,6 +26,8 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <filesystem>
+namespace fs = std::filesystem;
 #include <imgui.h>
 #include "ImNodesEz.h"
 #include "libsphactor.h"
@@ -62,6 +64,7 @@ std::string editingPath = "";
 bool Save( const char* configFile );
 bool Load( const char* configFile );
 void Clear();
+void Init();
 ActorContainer* Find( const char* endpoint );
 
 // TODO: move this to something includable
@@ -185,6 +188,7 @@ void ShowConfigWindow(bool * showLog) {
     ImGui::SameLine();
     if (ImGui::Button("Clear")) {                           // Buttons return true when clicked (most widgets return true when edited/activated)
         Clear();
+        Init();
     }
 
     ImGui::Checkbox("Show Log Window", showLog);
@@ -499,10 +503,44 @@ int RenderMenuBar( bool * showLog ) {
 
     //TODO: Display stage status (new, loaded, changed)
     ImGui::Separator();
+    char path[PATH_MAX];
+    getcwd(path, PATH_MAX);
+
+    ImGui::Separator();
+    ImGui::TextColored( ImVec4(.3,.5,.3,1), ICON_FA_FOLDER ": %s", path);
+
+    if ( ImGui::IsItemHovered() )
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
+        ImGui::TextUnformatted("Current working directory, double click to open");
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+
+        if ( ImGui::IsMouseDoubleClicked(0) )
+        {
+            char cmd[PATH_MAX];
+#ifdef __WINDOWS__
+            snprintf(cmd, PATH_MAX, "start explorer %s", path);
+            //snprintf(cmd, PATH_MAX, "explorer.exe %s", path);
+            //STARTUPINFO startupInfo = {0};
+            //startupInfo.cb = sizeof(startupInfo);
+            //PROCESS_INFORMATION processInformation;
+            //CreateProcess(NULL, cmd, NULL, NULL, false, 0, NULL, NULL, &startupInfo, &processInformation);
+#elif defined __UTYPE_LINUX
+            snprintf(cmd, PATH_MAX, "xdg-open %s &", path);
+#else
+            snprintf(cmd, PATH_MAX, "open %s", path);
+#endif
+            system(cmd);
+        }
+    }
+
     ImGui::Separator();
 
+
     if ( streq( editingFile.c_str(), "" ) ) {
-        ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": New Stage");
+        ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": *Unsaved Stage*");
     }
     else {
         ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": %s", editingFile.c_str());
@@ -529,8 +567,7 @@ int RenderMenuBar( bool * showLog ) {
     }
     else if ( action == MenuAction_Clear ) {
         Clear();
-        editingFile = "";
-        editingPath = "";
+        Init();
     }
     else if ( action == MenuAction_Exit ) {
         return -1;
@@ -548,10 +585,60 @@ int RenderMenuBar( bool * showLog ) {
         if ( !Save(file_dialog.selected_path.c_str()) ) {
             editingFile = "";
             editingPath = "";
+            zsys_error("Saving file failed!");
         }
         else {
             editingFile = file_dialog.selected_fn;
             editingPath = file_dialog.selected_path;
+
+            // check if we are still in the working dir or if we should move to the new dir
+            char cwd[PATH_MAX];
+            getcwd(cwd, PATH_MAX);
+            // editingPath not starting with cwd means we need to move to the new wd
+            if (editingPath.rfind(cwd, 0) != 0) {
+                // we're not in the current working dir! move files to editingPath
+                // moving if cwd was tmp dir (name contains _gzs_)
+                std::string cwds = std::string(cwd);
+                std::filesystem::path newcwds = std::filesystem::path(editingPath);
+                fs::path tmppath(GZB_GLOBAL.TMPPATH);
+                tmppath.append("_gzs_");
+                if (cwds.rfind(tmppath.string(), 0) == 0)
+                {
+                    // cwd is a tmp dir so we need to move files
+                    // copy and delete for now
+                    try
+                    {
+                        fs::copy(cwds, newcwds.parent_path(), fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+                    }
+                    catch (std::exception& e)
+                    {
+                        zsys_error("Copy files to new working dir failed: %s", e.what());
+                    }
+                    try
+                    {
+                        fs::remove_all(cwds);
+                    }
+                    catch (std::exception& e)
+                    {
+                        zsys_error("Removing old tmpdir failed: %s", e.what());
+                    }
+                }
+                else
+                {
+                    // we copy recursively
+                    // Recursively copies all files and folders from src to target and overwrites existing files in target.
+                    try
+                    {
+                        fs::copy(cwds, newcwds.parent_path(), fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+                    }
+                    catch (std::exception& e)
+                    {
+                        zsys_error("Copy files to new working dir failed: %s", e.what());
+                    }
+                }
+                fs::current_path(newcwds.parent_path());
+                zsys_info("Working dir set to %s", newcwds.parent_path().c_str());
+            }
         }
     }
 
@@ -837,6 +924,37 @@ bool Load( const char* configFile ) {
     return stage != NULL;
 }
 
+void Init() {
+    // initialise an empty stage with tmp working dir
+    assert(stage == NULL);
+
+    // set a temporary random working dir for our stage
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    char tmpdir[12] = "_gzs_xxxxxx";
+    for (int i=5;i<12;i++)
+    {
+        int key = rand() % (int)(sizeof(charset)-1);
+        tmpdir[i] = charset[key];
+    }
+    tmpdir[11] = 0; // null termination
+    fs::path tmppath(GZB_GLOBAL.TMPPATH);
+    tmppath.append(tmpdir);
+    std::error_code ec;
+    if ( ! fs::create_directory(tmppath, ec) )
+    {
+        // TODO: what to do if creating the dir fails?
+        zsys_error("Creating tmp dir %s failed, this might mean trouble!!!", tmppath.string().c_str() );
+    }
+    else
+    {
+        fs::current_path(tmppath);
+        zsys_info("Temporary stage dir is now at %s", tmppath.string().c_str());
+    }
+    // clear active file as it needs saving to become a file first
+    editingFile = "";
+    editingPath = "";
+}
+
 void Clear() {
 
     //delete all connections
@@ -855,8 +973,26 @@ void Clear() {
         it++;
     }
 
-    if ( stage )
-        sph_stage_destroy(&stage);
+    sph_stage_destroy(&stage);
+    // remove working dir if it's a temporary path
+    std::error_code ec; // no exception
+    fs::path cwd = fs::current_path(ec);
+    // temporary change the working dir otherwise we cannot delete it on windows, Load or Init will reset it
+    fs::current_path(GZB_GLOBAL.TMPPATH);
+
+    fs::path tmppath(GZB_GLOBAL.TMPPATH);
+    tmppath.append("_gzs_");
+    if ( cwd.string().rfind(tmppath.string(), 0) == 0 )
+    {
+        try
+        {
+            fs::remove_all(cwd);
+        }
+        catch (std::exception& e)
+        {
+            zsys_error("failed to remove working dir: %s", e.what());
+        }
+    }
     assert(stage == NULL);
 
     //delete all actors
@@ -867,7 +1003,9 @@ void Clear() {
         delete actor;
         it = actors.erase(it);
     }
-
+    // clear active file and set new path
+    editingFile = "";
+    editingPath = "";
 }
 
 ActorContainer* Find( const char* endpoint ) {

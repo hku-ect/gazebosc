@@ -24,8 +24,8 @@ if(NOT ARCH)
 endif()
 message(STATUS "Compilation set for ${ARCH}bits architectures.")
 
-set(CMAKE_CXX_STANDARD 14)
-set(DEP_IMGUI_VERSION "1.85" CACHE STRING "ImGui version to use")
+set(CMAKE_CXX_STANDARD 17)
+set(DEP_IMGUI_VERSION "1.86" CACHE STRING "ImGui version to use")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/dist/cmake")
 

@@ -50,6 +50,8 @@
 #include <streambuf>
 #include <iostream>
 #include <sstream>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 #include "config.h"
 
@@ -64,6 +66,7 @@ void ShowLogWindow(ImGuiTextBuffer&);
 int UpdateActors(float deltaTime, bool * showLog);
 bool Load(const char* fileName);
 void Clear();
+void Init();
 
 void RegisterActors();
 
@@ -78,7 +81,8 @@ SDL_GLContext gl_context;
 ImGuiIO io;
 const char* glsl_version;
 static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-char *GZB_RESOURCESPATH;
+
+GZB_GLOBALS_t GZB_GLOBAL;
 
 // Logging
 bool logWindow = false;
@@ -200,13 +204,13 @@ void print_backtrace(int sig)
 void print_backtrace (int sig) {}
 #endif
 
-// This sets the GZB_RESOURCESPATH var to the path of the executable or the GZB_RESOURCES environment value
-void set_resources_path()
+// This sets the global RESOURCESPATH var to the path of the executable or the GZB_RESOURCES environment value
+void set_global_resources()
 {
     char *path = getenv("GZB_RESOURCES");
     if (path)
     {
-        GZB_RESOURCESPATH = path;
+        GZB_GLOBAL.RESOURCESPATH = path;
         return;
     }
 #ifdef  __WINDOWS__
@@ -219,8 +223,8 @@ void set_resources_path()
     char winpath[PATH_MAX];
     wcstombs_s(&i, winpath, (size_t)PATH_MAX,
                    exepath, (size_t)PATH_MAX - 1); // -1 so the appended NULL doesn't fall outside the allocated buffer
-    GZB_RESOURCESPATH = strdup(winpath);
-    zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
+    GZB_GLOBAL.RESOURCESPATH = strdup(winpath);
+    zsys_info("Resources dir is %s", GZB_GLOBAL.RESOURCESPATH);
 #elif defined __UTYPE_LINUX
     char exepath[PATH_MAX];
     memset(exepath, 0, PATH_MAX);
@@ -228,16 +232,76 @@ void set_resources_path()
     char *lastdelim = strrchr(exepath, '/');
     assert(lastdelim);
     exepath[lastdelim-exepath] = 0;
-    GZB_RESOURCESPATH = strdup(exepath);
-    zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
+    GZB_GLOBAL.RESOURCESPATH = strdup(exepath);
+    zsys_info("Resources dir is %s", GZB_GLOBAL.RESOURCESPATH);
 #elif defined __UTYPE_OSX
     char osxpath[PATH_MAX];
     CFURLRef res = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
     CFURLGetFileSystemRepresentation(res, TRUE, (UInt8 *)osxpath, PATH_MAX);
     CFRelease(res);
-    GZB_RESOURCESPATH = strdup(osxpath);
-    zsys_info("Resources dir is %s", GZB_RESOURCESPATH);
+    GZB_GLOBAL.RESOURCESPATH = strdup(osxpath);
+    zsys_info("Resources dir is %s", GZB_GLOBAL.RESOURCESPATH);
 #endif
+}
+
+// This sets the global RESOURCESPATH var to the path of the executable or the GZB_RESOURCES environment value
+void set_global_temp()
+{
+    char *path = getenv("GZB_TMP");
+    if (path)
+    {
+        GZB_GLOBAL.TMPPATH = strdup(path);
+        zsys_info("Tmp dir set from gazebosc env var: %s", GZB_GLOBAL.TMPPATH);
+        return;
+    }
+    fs::path tmppath = fs::canonical(fs::temp_directory_path());
+    GZB_GLOBAL.TMPPATH = strdup(tmppath.string().c_str());
+    /*
+#ifdef  __WINDOWS__
+    char *envpath = getenv("TEMP");
+    if (envpath)
+        GZB_GLOBAL.TMPPATH = strdup(envpath);
+    else
+    {
+        wchar_t exepath[PATH_MAX];
+        GetModuleFileNameW(NULL, exepath, PATH_MAX);
+        // remove program name by finding the last delimiter
+        wchar_t *s = wcsrchr(exepath, L'\\');
+        if (s) *s = 0;
+        size_t i;
+        char winpath[PATH_MAX];
+        wcstombs_s(&i, winpath, (size_t)PATH_MAX,
+                       exepath, (size_t)PATH_MAX - 1); // -1 so the appended NULL doesn't fall outside the allocated buffer
+        GZB_GLOBAL.RESOURCESPATH = strdup(winpath);
+    }
+#elif defined __UTYPE_LINUX
+    char *tmppath = getenv("TMPDIR");
+    if (tmppath)
+    {
+        GZB_GLOBAL.TMPPATH = strdup(tmppath);
+    }
+    else if ( zsys_file_exists("/var/tmp") )
+    {
+        GZB_GLOBAL.TMPPATH = strdup("/var/tmp");
+    }
+    else
+        GZB_GLOBAL.TMPPATH = strdup("/tmp");
+#elif defined __UTYPE_OSX
+    char tmppath[PATH_MAX];
+    size_t n = confstr(_CS_DARWIN_USER_TEMP_DIR, tmppath, sizeof(tmppath));
+    if ((n <= 0) || (n >= sizeof(tmppath)))
+        strlcpy(tmppath, getenv("TMPDIR"), sizeof(tmppath));
+    GZB_GLOBAL.TMPPATH = strdup(tmppath);
+
+    //CFURLRef tmp = CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (UInt8 *)tmpdir, strlen(tmpdir), true);
+
+    //NSString *tempDir = NSTemporaryDirectory();
+    //if (tempDir == nil)
+    //    tempDir = @"/tmp";
+    //GZB_GLOBAL.TMPPATH = strdup( (char *)[tempDir UTF8String]);
+#endif
+    */
+    zsys_info("Tmp dir is %s", GZB_GLOBAL.TMPPATH);
 }
 
 // Main code
@@ -265,7 +329,8 @@ int main(int argc, char** argv)
 #endif
 
     //
-    set_resources_path();
+    set_global_resources();
+    set_global_temp();
     RegisterActors();
 
     // Argument capture
@@ -330,6 +395,8 @@ int main(int argc, char** argv)
                 zsys_error("Failed loading %s", stage_file);
             }
         }
+        else
+            Init(); // start with an empty stage
 
         // Blocking UI loop
         UILoop(window, io);
@@ -341,7 +408,8 @@ int main(int argc, char** argv)
     Clear();
     sphactor_dispose();
 
-    zstr_free(&GZB_RESOURCESPATH);
+    zstr_free(&GZB_GLOBAL.RESOURCESPATH);
+    zstr_free(&GZB_GLOBAL.TMPPATH);
     zargs_destroy(&args);
 
     fflush(stdout);
@@ -422,7 +490,7 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     font_cfg.EllipsisChar = (ImWchar)0x0085;
     font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / 13.0f);  // Add +1 offset per 13 units
     char fontpath[PATH_MAX];
-    snprintf(fontpath, PATH_MAX, "%s/%s", GZB_RESOURCESPATH, "misc/fonts/ProggyCleanSZ.ttf");
+    snprintf(fontpath, PATH_MAX, "%s/%s", GZB_GLOBAL.RESOURCESPATH, "misc/fonts/ProggyCleanSZ.ttf");
     io.Fonts->AddFontFromFileTTF(fontpath, 13.0f, &font_cfg);
 
     // Add character ranges and merge into main font
@@ -430,7 +498,7 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     config.MergeMode = true;
     config.GlyphMinAdvanceX = 13.0f; // Use if you want to make the icon monospaced
     config.GlyphOffset.y = 1.0f;     // slightly lower than the main font
-    snprintf(fontpath, PATH_MAX, "%s/%s", GZB_RESOURCESPATH, "misc/fonts/fa-solid-900.ttf");
+    snprintf(fontpath, PATH_MAX, "%s/%s", GZB_GLOBAL.RESOURCESPATH, "misc/fonts/fa-solid-900.ttf");
     io.Fonts->AddFontFromFileTTF(fontpath, 13.0f, &config, ranges);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
