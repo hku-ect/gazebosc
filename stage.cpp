@@ -594,15 +594,15 @@ int RenderMenuBar( bool * showLog ) {
             // check if we are still in the working dir or if we should move to the new dir
             char cwd[PATH_MAX];
             getcwd(cwd, PATH_MAX);
-            // editingPath not starting with cwd means move files
+            // editingPath not starting with cwd means we need to move to the new wd
             if (editingPath.rfind(cwd, 0) != 0) {
                 // we're not in the current working dir! move files to editingPath
                 // moving if cwd was tmp dir (name contains _gzs_)
                 std::string cwds = std::string(cwd);
                 std::filesystem::path newcwds = std::filesystem::path(editingPath);
-                char tmppath[PATH_MAX];
-                snprintf(tmppath, PATH_MAX, "%s/%s", GZB_GLOBAL.TMPPATH, "_gzs_");
-                if (cwds.rfind(tmppath, 0) == 0)
+                fs::path tmppath(GZB_GLOBAL.TMPPATH);
+                tmppath.append("_gzs_");
+                if (cwds.rfind(tmppath.string(), 0) == 0)
                 {
                     // cwd is a tmp dir so we need to move files
                     // copy and delete for now
@@ -937,16 +937,20 @@ void Init() {
         tmpdir[i] = charset[key];
     }
     tmpdir[11] = 0; // null termination
-    zsys_dir_create("%s/%s", GZB_GLOBAL.TMPPATH, tmpdir);
-    char dir_path[PATH_MAX];
-    snprintf(dir_path, PATH_MAX, "%s/%s", GZB_GLOBAL.TMPPATH, tmpdir );
-#ifdef __WINDOWS__
-    _chdir(dir_path);
-#else
-    chdir(dir_path);
-#endif
-    zsys_info("Temporary stage dir is now at %s", dir_path);
-    // clear active file and set new path
+    fs::path tmppath(GZB_GLOBAL.TMPPATH);
+    tmppath.append(tmpdir);
+    std::error_code ec;
+    if ( ! fs::create_directory(tmppath, ec) );
+    {
+        // TODO: what to do if creating the dir fails?
+        zsys_error("Creating tmp dir %s failed, this might mean trouble!!!", tmppath.string.c_str() );
+    }
+    else
+    {
+        fs::current_path(tmppath);
+        zsys_info("Temporary stage dir is now at %s", tmppath.string.c_str());
+    }
+    // clear active file as it needs saving to become a file first
     editingFile = "";
     editingPath = "";
 }
