@@ -940,15 +940,15 @@ void Init() {
     fs::path tmppath(GZB_GLOBAL.TMPPATH);
     tmppath.append(tmpdir);
     std::error_code ec;
-    if ( ! fs::create_directory(tmppath, ec) );
+    if ( ! fs::create_directory(tmppath, ec) )
     {
         // TODO: what to do if creating the dir fails?
-        zsys_error("Creating tmp dir %s failed, this might mean trouble!!!", tmppath.string.c_str() );
+        zsys_error("Creating tmp dir %s failed, this might mean trouble!!!", tmppath.string().c_str() );
     }
     else
     {
         fs::current_path(tmppath);
-        zsys_info("Temporary stage dir is now at %s", tmppath.string.c_str());
+        zsys_info("Temporary stage dir is now at %s", tmppath.string().c_str());
     }
     // clear active file as it needs saving to become a file first
     editingFile = "";
