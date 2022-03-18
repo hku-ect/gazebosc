@@ -588,8 +588,8 @@ inline ImU32 LerpImU32( ImU32 c1, ImU32 c2, int index, int total, float offset, 
 int UpdateActors(float deltaTime, bool * showLog)
 {
     int rc = 0;
-    // Canvas must be created after ImGui initializes, because constructor accesses ImGui style to configure default colors.
-    static ImNodes::CanvasState canvas{};
+    static ImNodes::Ez::Context* context = ImNodes::Ez::CreateContext();
+    IM_UNUSED(context);
 
     //const ImGuiStyle& style = ImGui::GetStyle();
 
@@ -600,7 +600,7 @@ int UpdateActors(float deltaTime, bool * showLog)
         rc = RenderMenuBar(showLog);
 
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
-        ImNodes::BeginCanvas(&canvas);
+        ImNodes::Ez::BeginCanvas();
 
         for (auto it = actors.begin(); it != actors.end();)
         {
@@ -662,6 +662,7 @@ int UpdateActors(float deltaTime, bool * showLog)
                     {
                         // Animate the bezier vertex colors for recently active connections
                         int64_t diff = zclock_mono() - ((ActorContainer*) connection.output_node)->lastActive;
+                        ImNodes::CanvasState *canvas = ImNodes::GetCurrentCanvas();
                         if ( diff < 500 ) {
                             float offset = ( diff % 500 - 250 ) * .004f;
                             int newId = draw_list->_VtxCurrentIdx;
@@ -675,7 +676,7 @@ int UpdateActors(float deltaTime, bool * showLog)
                                     int index = (totalCount - left) * .5f;
                                     // TODO: Determine what colors we want to render...
                                     ImU32 col = LerpImU32(ImColor(0, 255, 0),
-                                                          canvas.colors[ImNodes::ColConnection], index,
+                                                          canvas->Colors[ImNodes::ColConnection], index,
                                                           totalCount / 2, offset, false);
 
                                     p->col = col;
@@ -747,14 +748,14 @@ int UpdateActors(float deltaTime, bool * showLog)
 
             ImGui::Separator();
             if (ImGui::MenuItem("Reset Zoom"))
-                canvas.zoom = 1;
+                ImNodes::GetCurrentCanvas()->Zoom = 1;
 
             if (ImGui::IsAnyMouseDown() && !ImGui::IsWindowHovered())
                 ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
 
-        ImNodes::EndCanvas();
+        ImNodes::Ez::EndCanvas();
     }
     ImGui::End();
 
