@@ -3,6 +3,7 @@
 
 #include "Actors/HTTPLaunchpod.h"
 #include "Actors/OSCOutputActor.h"
+#include "Actors/OscMultiOut.h"
 #include "Actors/Midi2OSCActor.h"
 #include "Actors/NatNetActor.h"
 #include "Actors/NatNet2OSCActor.h"
