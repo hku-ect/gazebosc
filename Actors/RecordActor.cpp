@@ -160,7 +160,15 @@ Record::handleAPI(sphactor_event_t *ev )
             // if file does not exist
             if ( file == nullptr ) {
                 if ( !zfile_exists(fileName) || overwrite ) {
-                    file = zfile_new(NULL, fileName);
+                    //TODO: Check if fileName is relative path or not
+                    if ( fileName[0] == '/') {
+                        file = zfile_new(NULL, fileName);
+                    }
+                    else {
+                        char path[PATH_MAX];
+                        getcwd(path, PATH_MAX);
+                        file = zfile_new(path, fileName);
+                    }
                     int rc = zfile_output(file);
                     if (rc == 0) {
                         write_offset = 0;
@@ -198,7 +206,14 @@ Record::handleAPI(sphactor_event_t *ev )
         else if ( streq(cmd, "PLAY_RECORDING") ) {
             if ( file == nullptr && !playing ) {
                 if ( zfile_exists(fileName) ) {
-                    file = zfile_new(NULL, fileName);
+                    if ( fileName[0] == '/') {
+                        file = zfile_new(NULL, fileName);
+                    }
+                    else {
+                        char path[PATH_MAX];
+                        getcwd(path, PATH_MAX);
+                        file = zfile_new(path, fileName);
+                    }
                     zfile_input(file);
                     playing = true;
                     startTimeCode = zclock_mono();
