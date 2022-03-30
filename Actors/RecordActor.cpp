@@ -46,10 +46,10 @@ const char * Record::capabilities =
         "        api_value = \"s\"\n"
         "inputs\n"
         "    input\n"
-        "        type = \"Any\"\n"
+        "        type = \"OSC\"\n"
         "outputs\n"
         "    output\n"
-        "        type = \"Any\"\n";
+        "        type = \"OSC\"\n";
 
 
 void Record::handleEOF(sphactor_actor_t* actor) {
@@ -93,7 +93,7 @@ Record::handleTimer(sphactor_event_t *ev ) {
 
     // Read data from current message
     zchunk_t * dataChunk = zfile_read(file, current_tc->bytes, read_offset);
-    read_offset += current_tc->bytes;
+    read_offset += current_tc->bytes + 1; // one byte for endline character
 
     // Create return message, add data (we assume it's there)
     zmsg_t * retMsg = zmsg_new();
@@ -118,7 +118,7 @@ Record::handleTimer(sphactor_event_t *ev ) {
         while( next_timeout <= 0 ) {
             // read bytes from current message
             zchunk_t * dataChunk = zfile_read(file, current_tc->bytes, read_offset);
-            read_offset += current_tc->bytes;
+            read_offset += current_tc->bytes + 1; //one byte for endline char
 
             // append to msg as frame
             zframe_t * frame = zchunk_packx(&dataChunk);
@@ -269,6 +269,8 @@ Record::handleSocket(sphactor_event_t *ev )
             write_offset += zchunk_size(headerChunk);
             rc = zfile_write(file, chunk, write_offset);
             write_offset += zchunk_size(chunk);
+            rc = zfile_write(file, endLineChunk, write_offset);
+            write_offset += zchunk_size(endLineChunk);
 
             if ( rc != 0 ) {
                 zsys_info("error writing");
