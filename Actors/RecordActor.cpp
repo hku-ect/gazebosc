@@ -46,10 +46,10 @@ const char * Record::capabilities =
         "        api_value = \"s\"\n"
         "inputs\n"
         "    input\n"
-        "        type = \"Any\"\n"
+        "        type = \"OSC\"\n"
         "outputs\n"
         "    output\n"
-        "        type = \"Any\"\n";
+        "        type = \"OSC\"\n";
 
 
 void Record::handleEOF(sphactor_actor_t* actor) {
@@ -93,7 +93,7 @@ Record::handleTimer(sphactor_event_t *ev ) {
 
     // Read data from current message
     zchunk_t * dataChunk = zfile_read(file, current_tc->bytes, read_offset);
-    read_offset += current_tc->bytes;
+    read_offset += current_tc->bytes + 1; // one byte for endline character
 
     // Create return message, add data (we assume it's there)
     zmsg_t * retMsg = zmsg_new();
@@ -118,7 +118,7 @@ Record::handleTimer(sphactor_event_t *ev ) {
         while( next_timeout <= 0 ) {
             // read bytes from current message
             zchunk_t * dataChunk = zfile_read(file, current_tc->bytes, read_offset);
-            read_offset += current_tc->bytes;
+            read_offset += current_tc->bytes + 1; //one byte for endline char
 
             // append to msg as frame
             zframe_t * frame = zchunk_packx(&dataChunk);
@@ -160,7 +160,15 @@ Record::handleAPI(sphactor_event_t *ev )
             // if file does not exist
             if ( file == nullptr ) {
                 if ( !zfile_exists(fileName) || overwrite ) {
-                    file = zfile_new(NULL, fileName);
+                    //TODO: Check if fileName is relative path or not
+                    if ( fileName[0] == '/') {
+                        file = zfile_new(NULL, fileName);
+                    }
+                    else {
+                        char path[PATH_MAX];
+                        getcwd(path, PATH_MAX);
+                        file = zfile_new(path, fileName);
+                    }
                     int rc = zfile_output(file);
                     if (rc == 0) {
                         write_offset = 0;
@@ -198,7 +206,14 @@ Record::handleAPI(sphactor_event_t *ev )
         else if ( streq(cmd, "PLAY_RECORDING") ) {
             if ( file == nullptr && !playing ) {
                 if ( zfile_exists(fileName) ) {
-                    file = zfile_new(NULL, fileName);
+                    if ( fileName[0] == '/') {
+                        file = zfile_new(NULL, fileName);
+                    }
+                    else {
+                        char path[PATH_MAX];
+                        getcwd(path, PATH_MAX);
+                        file = zfile_new(path, fileName);
+                    }
                     zfile_input(file);
                     playing = true;
                     startTimeCode = zclock_mono();
@@ -269,6 +284,8 @@ Record::handleSocket(sphactor_event_t *ev )
             write_offset += zchunk_size(headerChunk);
             rc = zfile_write(file, chunk, write_offset);
             write_offset += zchunk_size(chunk);
+            rc = zfile_write(file, endLineChunk, write_offset);
+            write_offset += zchunk_size(endLineChunk);
 
             if ( rc != 0 ) {
                 zsys_info("error writing");
