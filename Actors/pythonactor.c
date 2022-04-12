@@ -813,8 +813,7 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
             PyErr_Print();
             zsys_error("pythonactor: error calling handleSocket");
         }
-
-        if (pReturn != Py_None)
+        else if (pReturn != Py_None)
         {
             if (PyBytes_Check(pReturn))
             {
