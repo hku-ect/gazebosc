@@ -793,124 +793,114 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
 
     // create a python tuple from the osc message
     zframe_t *oscf = zmsg_pop(ev->msg);
-    assert(oscf);
-    zosc_t *oscm = zosc_fromframe(oscf);
-    assert(oscm);
-    const char *oscaddress = zosc_address(oscm);
-    assert(oscaddress);
-    PyObject *py_osctuple = s_py_zosc_tuple(self, oscm);
-    assert(py_osctuple);
+    zmsg_t *retmsg = zmsg_new();
+    while (oscf)
+    {
+        assert(oscf);
+        zosc_t *oscm = zosc_fromframe(oscf);
+        assert(oscm);
+        const char *oscaddress = zosc_address(oscm);
+        assert(oscaddress);
+        PyObject *py_osctuple = s_py_zosc_tuple(self, oscm);
+        assert(py_osctuple);
 
-    // dispose the event message as we already copied it to a python object
-    if (ev->msg)
-    {
-        zmsg_destroy(&ev->msg);
+        // call member 'handleMsg' with event arguments
+        PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "sOsss", oscaddress, py_osctuple, ev->type, ev->name, ev->uuid);
+        // destroy the osc message
+        zosc_destroy(&oscm);
+        if (pReturn == NULL)
+        {
+            PyErr_Print();
+            zsys_error("pythonactor: error calling handleSocket");
+        }
+
+        if (pReturn != Py_None)
+        {
+            if (PyBytes_Check(pReturn))
+            {
+                // handle python bytes
+                zmsg_t *ret = NULL;
+                Py_ssize_t size = PyBytes_Size(pReturn);
+                if ( size > 0 )
+                {
+    #ifdef _MSC_VER
+                    char *buf = (char *)_malloca( size );
+                    memcpy(buf, PyBytes_AsString(pReturn), size);
+                    zmsg_addmem(retmsg, buf, size);
+                    _freea(buf);
+    #else
+                    char buf[size];// = new char[size];
+                    memcpy(buf, PyBytes_AsString(pReturn), size);
+                    zmsg_addmem(retmsg, buf, size);
+    #endif
+                }
+                else
+                {
+                    zsys_warning("zsock_resolvePyBytes has zero size");
+                }
+                Py_DECREF(pReturn);  // decrease refcount to trigger destroy
+            }
+            else if ( PyTuple_Check(pReturn) ) // we expect a tuple in the format ( address, [data])
+            {
+                // convert the tuple to an osc message
+                Py_ssize_t tuple_len = PyTuple_Size(pReturn);
+                assert(tuple_len > 0 );
+                // first item must be the address string
+                PyObject *pAddress = PyTuple_GetItem(pReturn, 0);
+                assert(pAddress);
+                if ( ! PyUnicode_Check(pAddress) )
+                {
+                    zsys_error("first item in the tuple is not a string, first item should be the address string");
+                }
+                else
+                {
+                    PyObject *pData = PyTuple_GetItem(pReturn, 1);
+                    assert(pData);
+                    if ( PyList_Check(pData) )
+                    {
+                        zosc_t *retosc = s_py_zosc(pAddress, pData);
+                        assert(retosc);
+                        zframe_t *data = zosc_packx(&retosc);
+                        assert(data);
+                        zmsg_append(retmsg, &data);
+                    }
+                }
+                Py_DECREF(pReturn);  // decrease refcount to trigger destroy
+            }
+            else // we expect a zmsg type
+            {
+                // check whether we received our own message
+                PyZmsgObject *c = (PyZmsgObject *)pReturn;
+                assert(c->msg);
+                if (c->msg == ev->msg)
+                {
+                    zsys_info("we received our own message");
+                }
+                if ( zmsg_size(c->msg) > 0 )
+                {
+                    //  It would be nicer if we could just return the zmsg in
+                    //  the python object. However how do we then prevent destruction
+                    //  by the garbage controller. For now just duplicate.
+                    zframe_t *f = zmsg_pop(c->msg);
+                    while (f)
+                    {
+                        zmsg_append(retmsg, &f);
+                        f = zmsg_pop(c->msg);
+                    }
+                    Py_DECREF(pReturn);  // decrease refcount to trigger destroy
+                }
+            }
+        }
+        oscf = zmsg_pop(ev->msg);
     }
-    // call member 'handleMsg' with event arguments
-    PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "sOsss", oscaddress, py_osctuple, ev->type, ev->name, ev->uuid);
-    // destroy the osc message
-    zosc_destroy(&oscm);
-    if (pReturn == NULL)
-    {
-        PyErr_Print();
-        zsys_error("pythonactor: error calling handleSocket");
-    }
+
     // try to acquire the timeout member and use it to set the timeout
     s_py_set_timeout(self, ev);
 
-    if (pReturn != Py_None)
-    {
-        if (PyBytes_Check(pReturn))
-        {
-            // handle python bytes
-            zmsg_t *ret = NULL;
-            Py_ssize_t size = PyBytes_Size(pReturn);
-            if ( size > 0 )
-            {
-                ret = zmsg_new();
-#ifdef _MSC_VER
-                char *buf = (char *)_malloca( size );
-                memcpy(buf, PyBytes_AsString(pReturn), size);
-                zmsg_addmem(ret, buf, size);
-                _freea(buf);
-#else
-                char buf[size];// = new char[size];
-                memcpy(buf, PyBytes_AsString(pReturn), size);
-                zmsg_addmem(ret, buf, size);
-#endif
-            }
-            else
-            {
-                zsys_warning("zsock_resolvePyBytes has zero size");
-            }
-            Py_DECREF(pReturn);  // decrease refcount to trigger destroy
-            // Release the GIL again as we are ready with Python
-            PyGILState_Release(gstate);
-            // already destroyed: zmsg_destroy(&ev->msg);
-            return ret;
-        }
-        else if ( PyTuple_Check(pReturn) ) // we expect a tuple in the format ( address, [data])
-        {
-            zmsg_t *ret = NULL; // our return
-            // convert the tuple to an osc message
-            Py_ssize_t tuple_len = PyTuple_Size(pReturn);
-            assert(tuple_len > 0 );
-            // first item must be the address string
-            PyObject *pAddress = PyTuple_GetItem(pReturn, 0);
-            assert(pAddress);
-            if ( ! PyUnicode_Check(pAddress) )
-            {
-                zsys_error("first item in the tuple is not a string, first item should be the address string");
-            }
-            else
-            {
-                PyObject *pData = PyTuple_GetItem(pReturn, 1);
-                assert(pData);
-                if ( PyList_Check(pData) )
-                {
-                    zosc_t *retosc = s_py_zosc(pAddress, pData);
-                    assert(retosc);
-                    ret = zmsg_new();
-                    assert(ret);
-                    zframe_t *data = zosc_packx(&retosc);
-                    assert(data);
-                    zmsg_append(ret, &data);
-                }
-            }
-            Py_DECREF(pReturn);  // decrease refcount to trigger destroy
-            // Release the GIL again as we are ready with Python
-            PyGILState_Release(gstate);
-            // already destroyed: zmsg_destroy(&ev->msg);
-            return ret;
-        }
-        else // we expect a zmsg type
-        {
-            // check whether we received our own message
-            PyZmsgObject *c = (PyZmsgObject *)pReturn;
-            assert(c->msg);
-            if (c->msg == ev->msg)
-            {
-                zsys_info("we received our own message");
-            }
-            if ( zmsg_size(c->msg) > 0 )
-            {
-                //  It would be nicer if we could just return the zmsg in
-                //  the python object. However how do we then prevent destruction
-                //  by the garbage controller. For now just duplicate.
-                zmsg_t *ret = zmsg_dup( c->msg );
-                Py_DECREF(pReturn);  // decrease refcount to trigger destroy
-                // Release the GIL again as we are ready with Python
-                PyGILState_Release(gstate);
-                zmsg_destroy(&ev->msg);
-                return ret;
-            }
-        }
-    }
-    Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
     // Release the GIL again as we are ready with Python
     PyGILState_Release(gstate); // TODO: didn't we already do this?
 
-    return NULL;
+    return retmsg;
 }
 
 zmsg_t *
