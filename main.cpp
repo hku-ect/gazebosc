@@ -317,13 +317,13 @@ int main(int argc, char** argv)
     zsys_init();          //  when calling exit() a warning will be issued about dangling sockets, this
     atexit(handle_exit);  //  is a false positive as our exit handler will clean them up as well afterwards
     signal(SIGINT, sig_hand);
-    signal(SIGQUIT, sig_hand);
-    signal(SIGHUP, sig_hand);
     signal(SIGSEGV, print_backtrace); // Invalid memory reference
     signal(SIGABRT, print_backtrace); // Abort signal from abort(3)
     signal(SIGFPE,  print_backtrace); // Floating-point exception
 
 #if defined(__UNIX__)
+    signal(SIGQUIT, sig_hand);
+    signal(SIGHUP, sig_hand);
     signal(SIGILL, print_backtrace); // Illegal Instruction
     signal(SIGBUS, print_backtrace); // Bus error (bad memory access)
     signal(SIGSYS,  print_backtrace); // Bad system call (SVr4);
