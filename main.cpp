@@ -70,10 +70,17 @@ void Init();
 
 void RegisterActors();
 
+// exit handlers et al
 volatile sig_atomic_t stop;
-void inthand(int signum) {
+void sig_hand(int signum) {
     stop = 1;
 }
+
+void handle_exit(void)
+{
+    stop = 1;
+}
+
 
 // Window variables
 SDL_Window* window;
@@ -307,6 +314,11 @@ void set_global_temp()
 // Main code
 int main(int argc, char** argv)
 {
+    zsys_init();          //  when calling exit() a warning will be issued about dangling sockets, this
+    atexit(handle_exit);  //  is a false positive as our exit handler will clean them up as well afterwards
+    signal(SIGINT, sig_hand);
+    signal(SIGQUIT, sig_hand);
+    signal(SIGHUP, sig_hand);
     signal(SIGSEGV, print_backtrace); // Invalid memory reference
     signal(SIGABRT, print_backtrace); // Abort signal from abort(3)
     signal(SIGFPE,  print_backtrace); // Floating-point exception
@@ -344,6 +356,7 @@ int main(int argc, char** argv)
     bool headless = zargs_hasx (args, "--background", "-b", NULL);
     const char *stage_file = zargs_first(args);
 
+    stop = 0;
     int loops = -1;
     int loopCount = 0;
     /*
@@ -367,7 +380,6 @@ int main(int argc, char** argv)
 
     //TODO: Implement an argument to allow opening a window during a headless run
     if ( headless ) {
-        signal(SIGINT, inthand);
 
         while (!stop) {
             if ( loops != -1 ) {
@@ -513,9 +525,8 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
-    bool done = false;
     unsigned int deltaTime = 0, oldTime = 0;
-    while (!done)
+    while (!stop)
     {
         static int w, h;
         // Poll and handle events (inputs, window resize, etc.)
@@ -528,9 +539,9 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         {
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT)
-                done = true;
+                stop = 1;
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-                done = true;
+                stop = 1;
         }
 
         // Start the Dear ImGui frame
@@ -556,9 +567,8 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         int rc = UpdateActors( ((float)deltaTime) / 1000, &logWindow);
 
         if ( rc == -1 ) {
-            done = true;
+            stop = 1;
         }
-
         // Save/load window
         //size = ImVec2(350,135);
         //ImVec2 pos = ImVec2(w - 400, 50);
