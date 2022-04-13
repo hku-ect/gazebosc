@@ -872,16 +872,18 @@ bool Save( const char* configFile ) {
     return rc == 0;
 }
 
-bool Load( const char* configFile ) {
-
+bool Load( const char* configFile )
+{
+    sph_stage_t *new_stage = sph_stage_load(configFile);
+    if ( new_stage == NULL )
+        return false;
 
     // Clear current stage
     Clear();
-    //TODO: Maybe ask if people want to save first?
+    // TODO: Maybe ask if people want to save first?
 
     assert(stage == NULL);
-    stage = sph_stage_load(configFile);
-    assert(stage);
+    stage = new_stage;
 
     // Create a container for every actor
     const zhash_t *stage_actors = sph_stage_actors(stage);
