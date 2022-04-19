@@ -457,64 +457,128 @@ zmsg_t *
 DmxActor::handleSocket(sphactor_event_t *ev)
 {
     zframe_t *oscf = zmsg_pop(ev->msg);
-    assert(oscf);
-    zosc_t *oscm = zosc_fromframe(oscf);
-    assert(oscm);
-    //const char *oscaddress = zosc_address(oscm);
-    //assert(oscaddress);
-    // we just forward the two ints we receive
-    if ( zosc_format(oscm)[0] == 'i' &&  zosc_format(oscm)[1] == 'i' )
+    while (oscf)
     {
-        uint32_t channel = 0;
-        uint32_t val = 0;
-        zosc_retr( oscm, "ii", &channel, &val);
-        if (channel > 512) channel = 512;
-        if (channel < 0) channel = 0;
-        if (val > 255) val = 255;
-        if (val < 0) val = 0;
-        dmxdata[channel+4] = (unsigned char)val;
-        dmxdata[2] = channels & 0xFF;
-        dmxdata[3] = channels >> 8;
-        dmxdata[channels + 4 ] = 0xe7; // end value
-#ifdef __WINDOWS__
-        DWORD written;
-        if( !WriteFile(this->hComm, this->dmxdata, channels+5, &written, 0) )
+        zosc_t *oscm = zosc_fromframe(oscf); // becomes owner of frame and destroys it
+        assert(oscm);
+
+        char type = '0';
+        const void *data = zosc_first(oscm, &type);
+        while ( data )
         {
-               zsys_error("DMX actor: couldn't write to port");
-        }
-#else
-        size_t written = 0;
-        fd_set wfds;
-        struct timeval tv;
-        size_t length = channels + 5; // header 4 bytes + end byte
-        while (written < length)
-        {
-            auto n = write(this->fd, this->dmxdata + written, length - written);
-            if (n < 0 && (errno == EAGAIN || errno == EINTR))
-                n = 0;
-            //printf("Write, n = %d\n", n);
-            if (n < 0)
-                zsys_error("Error writing bytes to serial port");
-            if (n > 0)
+            //if (verbose)
+            //    zsys_info("type tag is %c", type);
+
+            switch (type)
             {
-                written += n;
-            }
-            else
+            case('i'):
             {
-                tv.tv_sec = 10;
-                tv.tv_usec = 0;
-                FD_ZERO(&wfds);
-                FD_SET(fd, &wfds);
-                n = select(fd+1, NULL, &wfds, NULL, &tv);
-                if (n < 0 && errno == EINTR)
-                    n = 1;
-                if (n <= 0)
-                    zsys_error("Error waiting for serial port write availability");
+                int32_t channel = 0;
+                int rc = zosc_pop_int32(oscm, &channel);
+                if ( rc != 0 )
+                {
+                    zsys_error("DMX Actor: Error retrieving 32bit integer, skipping message");
+                    zosc_destroy(&oscm);
+                    return NULL;
+                }
+
+                int32_t value = 0;
+                zosc_next(oscm, &type);
+                rc = zosc_pop_int32(oscm, &value);
+                if ( rc != 0 )
+                {
+                    zsys_error("DMX Actor: Error retrieving 32bit integer, skipping message");
+                    zosc_destroy(&oscm);
+                    return NULL;
+                }
+
+                if (channel > 512) channel = 512;
+                if (channel < 0) channel = 0;
+                if (value > 255) value = 255;
+                if (value < 0) value = 0;
+                dmxdata[channel+4] = (unsigned char)value;
+                dmxdata[2] = channels & 0xFF;
+                dmxdata[3] = channels >> 8;
+                dmxdata[channels + 4 ] = 0xe7; // end value
+                break;
             }
+            case('h'):
+            {
+                int64_t channel = 0;
+                int rc = zosc_pop_int64(oscm, &channel);
+                if ( rc != 0 )
+                {
+                    zsys_error("DMX Actor: Error retrieving 64bit integer, skipping message");
+                    zosc_destroy(&oscm);
+                    return NULL;
+                }
+
+                int64_t value = 0;
+                zosc_next(oscm, &type);
+                rc = zosc_pop_int64(oscm, &value);
+                if ( rc != 0 )
+                {
+                    zsys_error("DMX Actor: Error retrieving 64bit integer, skipping message");
+                    zosc_destroy(&oscm);
+                    return NULL;
+                }
+
+                if (channel > 512) channel = 512;
+                if (channel < 0) channel = 0;
+                if (value > 255) value = 255;
+                if (value < 0) value = 0;
+                dmxdata[channel+4] = (unsigned char)value;
+                dmxdata[2] = channels & 0xFF;
+                dmxdata[3] = channels >> 8;
+                dmxdata[channels + 4 ] = 0xe7; // end value
+                break;
+            }
+            default:
+                zsys_error("The DMXActor only supports 32bit or 64bit integers");
+            }
+            data = zosc_next(oscm, &type);
         }
-        assert(written == length);
-#endif
+        zosc_destroy(&oscm);
+        oscf = zmsg_pop(ev->msg);
     }
+#ifdef __WINDOWS__
+    DWORD written;
+    if( !WriteFile(this->hComm, this->dmxdata, channels+5, &written, 0) )
+    {
+           zsys_error("DMX actor: couldn't write to port");
+    }
+#else
+    size_t written = 0;
+    fd_set wfds;
+    struct timeval tv;
+    size_t length = channels + 5; // header 4 bytes + end byte
+    while (written < length)
+    {
+        auto n = write(this->fd, this->dmxdata + written, length - written);
+        if (n < 0 && (errno == EAGAIN || errno == EINTR))
+            n = 0;
+        //printf("Write, n = %d\n", n);
+        if (n < 0)
+            zsys_error("Error writing bytes to serial port");
+        if (n > 0)
+        {
+            written += n;
+        }
+        else
+        {
+            tv.tv_sec = 10;
+            tv.tv_usec = 0;
+            FD_ZERO(&wfds);
+            FD_SET(fd, &wfds);
+            n = select(fd+1, NULL, &wfds, NULL, &tv);
+            if (n < 0 && errno == EINTR)
+                n = 1;
+            if (n <= 0)
+                zsys_error("Error waiting for serial port write availability");
+        }
+    }
+    assert(written == length);
+#endif
     return NULL;
 }
 
@@ -530,6 +594,7 @@ DmxActor::handleStop(sphactor_event_t *ev)
     close_serialport();
     if (this->available_ports)
         zlist_destroy(&this->available_ports);
+    zstr_free(&this->portname);
     return NULL;
 }
 #endif
