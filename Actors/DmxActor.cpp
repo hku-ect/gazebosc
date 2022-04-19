@@ -464,7 +464,7 @@ DmxActor::handleSocket(sphactor_event_t *ev)
 
         // check if address string is a number to use as channel
         const char *adr = zosc_address(oscm);
-        if(strspn(adr+1, "0123456789") == strlen(adr+1))
+        if( strspn(adr+1, "0123456789") == strlen(adr+1) )
         {
             // the address string contains a number use it as the channel nr
             int channel = atoi(adr+1);
@@ -493,6 +493,34 @@ DmxActor::handleSocket(sphactor_event_t *ev)
                 dmxdata[2] = channels & 0xFF;
                 dmxdata[3] = channels >> 8;
                 dmxdata[channels + 4 ] = 0xe7; // end value
+            }
+            else if ( zosc_format(oscm)[0] == 'f' )
+            {
+                float fvalue = 0;
+                int rc = zosc_retr(oscm, "f", &fvalue);
+                int value = int(fvalue);
+                if (value > 255) value = 255;
+                if (value < 0) value = 0;
+                dmxdata[channel+4] = (unsigned char)value;
+                dmxdata[2] = channels & 0xFF;
+                dmxdata[3] = channels >> 8;
+                dmxdata[channels + 4 ] = 0xe7; // end value
+            }
+            else if ( zosc_format(oscm)[0] == 'd' )
+            {
+                double fvalue = 0;
+                int rc = zosc_retr(oscm, "d", &fvalue);
+                int value = int(fvalue);
+                if (value > 255) value = 255;
+                if (value < 0) value = 0;
+                dmxdata[channel+4] = (unsigned char)value;
+                dmxdata[2] = channels & 0xFF;
+                dmxdata[3] = channels >> 8;
+                dmxdata[channels + 4 ] = 0xe7; // end value
+            }
+            else
+            {
+                zsys_error("DMXActor OSC message doesn't contain an integer value");
             }
         }
         else
