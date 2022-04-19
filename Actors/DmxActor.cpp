@@ -462,81 +462,117 @@ DmxActor::handleSocket(sphactor_event_t *ev)
         zosc_t *oscm = zosc_fromframe(oscf); // becomes owner of frame and destroys it
         assert(oscm);
 
-        char type = '0';
-        const void *data = zosc_first(oscm, &type);
-        while ( data )
+        // check if address string is a number to use as channel
+        const char *adr = zosc_address(oscm);
+        if(strspn(adr+1, "0123456789") == strlen(adr+1))
         {
-            //if (verbose)
-            //    zsys_info("type tag is %c", type);
+            // the address string contains a number use it as the channel nr
+            int channel = atoi(adr+1);
+            if (channel > 512) channel = 512;
+            if (channel < 0) channel = 0;
 
-            switch (type)
+            // we now expect the osc message to contain a number
+            if ( zosc_format(oscm)[0] == 'i' )
             {
-            case('i'):
-            {
-                int32_t channel = 0;
-                int rc = zosc_pop_int32(oscm, &channel);
-                if ( rc != 0 )
-                {
-                    zsys_error("DMX Actor: Error retrieving 32bit integer, skipping message");
-                    zosc_destroy(&oscm);
-                    return NULL;
-                }
-
                 int32_t value = 0;
-                zosc_next(oscm, &type);
-                rc = zosc_pop_int32(oscm, &value);
-                if ( rc != 0 )
-                {
-                    zsys_error("DMX Actor: Error retrieving 32bit integer, skipping message");
-                    zosc_destroy(&oscm);
-                    return NULL;
-                }
-
-                if (channel > 512) channel = 512;
-                if (channel < 0) channel = 0;
+                int rc = zosc_retr(oscm, "i", &value);
                 if (value > 255) value = 255;
                 if (value < 0) value = 0;
                 dmxdata[channel+4] = (unsigned char)value;
                 dmxdata[2] = channels & 0xFF;
                 dmxdata[3] = channels >> 8;
                 dmxdata[channels + 4 ] = 0xe7; // end value
-                break;
             }
-            case('h'):
+            else if ( zosc_format(oscm)[0] == 'h' )
             {
-                int64_t channel = 0;
-                int rc = zosc_pop_int64(oscm, &channel);
-                if ( rc != 0 )
-                {
-                    zsys_error("DMX Actor: Error retrieving 64bit integer, skipping message");
-                    zosc_destroy(&oscm);
-                    return NULL;
-                }
-
                 int64_t value = 0;
-                zosc_next(oscm, &type);
-                rc = zosc_pop_int64(oscm, &value);
-                if ( rc != 0 )
-                {
-                    zsys_error("DMX Actor: Error retrieving 64bit integer, skipping message");
-                    zosc_destroy(&oscm);
-                    return NULL;
-                }
-
-                if (channel > 512) channel = 512;
-                if (channel < 0) channel = 0;
+                int rc = zosc_retr(oscm, "h", &value);
                 if (value > 255) value = 255;
                 if (value < 0) value = 0;
                 dmxdata[channel+4] = (unsigned char)value;
                 dmxdata[2] = channels & 0xFF;
                 dmxdata[3] = channels >> 8;
                 dmxdata[channels + 4 ] = 0xe7; // end value
-                break;
             }
-            default:
-                zsys_error("The DMXActor only supports 32bit or 64bit integers");
+        }
+        else
+        {
+            char type = '0';
+            const void *data = zosc_first(oscm, &type);
+            while ( data )
+            {
+                //if (verbose)
+                //    zsys_info("type tag is %c", type);
+
+                switch (type)
+                {
+                case('i'):
+                {
+                    int32_t channel = 0;
+                    int rc = zosc_pop_int32(oscm, &channel);
+                    if ( rc != 0 )
+                    {
+                        zsys_error("DMX Actor: Error retrieving 32bit integer, skipping message");
+                        zosc_destroy(&oscm);
+                        return NULL;
+                    }
+
+                    int32_t value = 0;
+                    zosc_next(oscm, &type);
+                    rc = zosc_pop_int32(oscm, &value);
+                    if ( rc != 0 )
+                    {
+                        zsys_error("DMX Actor: Error retrieving 32bit integer, skipping message");
+                        zosc_destroy(&oscm);
+                        return NULL;
+                    }
+
+                    if (channel > 512) channel = 512;
+                    if (channel < 0) channel = 0;
+                    if (value > 255) value = 255;
+                    if (value < 0) value = 0;
+                    dmxdata[channel+4] = (unsigned char)value;
+                    dmxdata[2] = channels & 0xFF;
+                    dmxdata[3] = channels >> 8;
+                    dmxdata[channels + 4 ] = 0xe7; // end value
+                    break;
+                }
+                case('h'):
+                {
+                    int64_t channel = 0;
+                    int rc = zosc_pop_int64(oscm, &channel);
+                    if ( rc != 0 )
+                    {
+                        zsys_error("DMX Actor: Error retrieving 64bit integer, skipping message");
+                        zosc_destroy(&oscm);
+                        return NULL;
+                    }
+
+                    int64_t value = 0;
+                    zosc_next(oscm, &type);
+                    rc = zosc_pop_int64(oscm, &value);
+                    if ( rc != 0 )
+                    {
+                        zsys_error("DMX Actor: Error retrieving 64bit integer, skipping message");
+                        zosc_destroy(&oscm);
+                        return NULL;
+                    }
+
+                    if (channel > 512) channel = 512;
+                    if (channel < 0) channel = 0;
+                    if (value > 255) value = 255;
+                    if (value < 0) value = 0;
+                    dmxdata[channel+4] = (unsigned char)value;
+                    dmxdata[2] = channels & 0xFF;
+                    dmxdata[3] = channels >> 8;
+                    dmxdata[channels + 4 ] = 0xe7; // end value
+                    break;
+                }
+                default:
+                    zsys_error("The DMXActor only supports 32bit or 64bit integers");
+                }
+                data = zosc_next(oscm, &type);
             }
-            data = zosc_next(oscm, &type);
         }
         zosc_destroy(&oscm);
         oscf = zmsg_pop(ev->msg);
