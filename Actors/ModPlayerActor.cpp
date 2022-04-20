@@ -51,6 +51,13 @@ const char * ModPlayerActor::capabilities =
         "        value = \"True\"\n"
         "        api_call = \"SET LOOPPLAY\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"autoplay\"\n"
+        "        type = \"bool\"\n"
+        "        help = \"Play the file when it gets loaded\"\n"
+        "        value = \"False\"\n"
+        "        api_call = \"SET AUTOPLAY\"\n"
+        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
         "outputs\n"
         "    output\n"
         //TODO: Perhaps add NatNet output type so we can filter the data multiple times...
@@ -279,6 +286,11 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
                         zsys_error("Cannot open Audio: %s\n", SDL_GetError());
                     }
                 }
+                if ( this->autoplay )
+                {
+                    this->playing = true;
+                    sphactor_actor_set_timeout( (sphactor_actor_t*)event->actor, (2500/this->modctx.bpm)*this->modctx.song.speed);
+                }
             }
             else
             {
@@ -361,6 +373,13 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
     {
         char *value = zmsg_popstr(event->msg);
         this->loopplay = streq( value, "True");
+        zstr_free(&value);
+    }
+    else if ( streq(cmd, "SET AUTOPLAY") )
+    {
+        char *value = zmsg_popstr(event->msg);
+        this->autoplay = streq( value, "True");
+        this->playing = true;
         zstr_free(&value);
     }
 
