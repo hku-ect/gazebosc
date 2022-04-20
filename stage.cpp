@@ -885,6 +885,7 @@ bool Load( const char* configFile )
 
     // clear active file as it needs saving to become a file first
     editingFile = std::string(configFile);
+    editingPath = std::filesystem::path( std::filesystem::current_path() /= std::string(configFile)).string();
 
     // Create a container for every actor
     const zhash_t *stage_actors = sph_stage_actors(stage);
