@@ -40,6 +40,7 @@ struct ModPlayerActor : Sphactor
     int end_pos = INT_MAX;
     int rowdelay;
     bool loopplay = false;
+    bool autoplay = false;
     int prev_row = 0;
     zmsg_t *delayed_msgs[64] = { NULL };
     int delayed_msgs_idx = 0;

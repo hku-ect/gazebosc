@@ -456,6 +456,13 @@ DmxActor::handleAPI(sphactor_event_t *ev)
 zmsg_t *
 DmxActor::handleSocket(sphactor_event_t *ev)
 {
+#ifdef __WINDOWS__
+    if (hComm == INVALID_HANDLE_VALUE)
+        return NULL;
+#else
+    if (this->fd == -1)
+        return NULL;
+#endif
     zframe_t *oscf = zmsg_pop(ev->msg);
     while (oscf)
     {
