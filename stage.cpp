@@ -874,16 +874,17 @@ bool Save( const char* configFile ) {
 
 bool Load( const char* configFile )
 {
-    sph_stage_t *new_stage = sph_stage_load(configFile);
-    if ( new_stage == NULL )
+    // Clear current stage
+    // TODO: Maybe ask if people want to save first?
+    if (stage)
+        Clear();
+
+    stage = sph_stage_load(configFile);
+    if ( stage == NULL )
         return false;
 
-    // Clear current stage
-    Clear();
-    // TODO: Maybe ask if people want to save first?
-
-    assert(stage == NULL);
-    stage = new_stage;
+    // clear active file as it needs saving to become a file first
+    editingFile = std::string(configFile);
 
     // Create a container for every actor
     const zhash_t *stage_actors = sph_stage_actors(stage);
