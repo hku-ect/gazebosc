@@ -459,10 +459,12 @@ ModPlayerActor::handleStop(sphactor_event_t *event)
         free( this->modfile ); // free modfile
 
     hxcmod_unload(&this->modctx);
-    if (audiodev != -1 )
+    if (this->audiodev != -1 )
+    {
         free( trackbuf_state1.track_state_buf ); // free tracker state buf
-
-    SDL_CloseAudio();
+        SDL_CloseAudioDevice(this->audiodev);
+        this->audiodev = -1;
+    }
     if ( event->msg ) zmsg_destroy(&event->msg);
     return NULL;
 }
