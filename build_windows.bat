@@ -19,5 +19,6 @@ cmake .. -DCMAKE_PREFIX_PATH="%cd%/tmp/ci_build" -DCMAKE_INSTALL_PREFIX="%INSTAL
 cmake --build . --config Debug --target install
 
 copy "%LIBZMQ_BUILDDIR%\bin\Debug\*.dll" "%GZB_BUILDDIR%\bin\Debug\*.dll"
+copy "%PROJECT_ROOT%\tmp\ci_build\*.dll" "%GZB_BUILDDIR%\bin\Debug\*.dll"
 
 cd %PROJECT_ROOT%
