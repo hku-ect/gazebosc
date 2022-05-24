@@ -3,6 +3,7 @@
 //
 
 #include "RecordActor.h"
+#include <algorithm>
 
 const char * Record::capabilities =
         "capabilities\n"
@@ -160,8 +161,13 @@ Record::handleAPI(sphactor_event_t *ev )
             // if file does not exist
             if ( file == nullptr ) {
                 if ( !zfile_exists(fileName) || overwrite ) {
+                    if (zfile_exists(fileName)) {
+                        // delete the contents of the file
+                        zfile_delete(fileName);
+                    }
+
                     //TODO: Check if fileName is relative path or not
-                    if ( fileName[0] == '/') {
+                    if (isAbsolutePath(fileName)) {
                         file = zfile_new(NULL, fileName);
                     }
                     else {
@@ -206,7 +212,7 @@ Record::handleAPI(sphactor_event_t *ev )
         else if ( streq(cmd, "PLAY_RECORDING") ) {
             if ( file == nullptr && !playing ) {
                 if ( zfile_exists(fileName) ) {
-                    if ( fileName[0] == '/') {
+                    if (isAbsolutePath(fileName)) {
                         file = zfile_new(NULL, fileName);
                     }
                     else {
