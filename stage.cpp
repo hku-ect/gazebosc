@@ -78,6 +78,57 @@ s_basename(char const* path)
         return strdup(s + 1);
 }
 
+void moveCwdIfNeeded() {
+    // check if we are still in the working dir or if we should move to the new dir
+    char cwd[PATH_MAX];
+    getcwd(cwd, PATH_MAX);
+    // editingPath not starting with cwd means we need to move to the new wd
+    if (editingPath.rfind(cwd, 0) != 0) {
+        // we're not in the current working dir! move files to editingPath
+        // moving if cwd was tmp dir (name contains _gzs_)
+        std::string cwds = std::string(cwd);
+        std::filesystem::path newcwds = std::filesystem::path(editingPath);
+        fs::path tmppath(GZB_GLOBAL.TMPPATH);
+        tmppath.append("_gzs_");
+        if (cwds.rfind(tmppath.string(), 0) == 0)
+        {
+            // cwd is a tmp dir so we need to move files
+            // copy and delete for now
+            try
+            {
+                fs::copy(cwds, newcwds.parent_path(), fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+            }
+            catch (std::exception& e)
+            {
+                zsys_error("Copy files to new working dir failed: %s", e.what());
+            }
+            try
+            {
+                fs::remove_all(cwds);
+            }
+            catch (std::exception& e)
+            {
+                zsys_error("Removing old tmpdir failed: %s", e.what());
+            }
+        }
+        else
+        {
+            // we copy recursively
+            // Recursively copies all files and folders from src to target and overwrites existing files in target.
+            try
+            {
+                fs::copy(cwds, newcwds.parent_path(), fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+            }
+            catch (std::exception& e)
+            {
+                zsys_error("Copy files to new working dir failed: %s", e.what());
+            }
+        }
+        fs::current_path(newcwds.parent_path());
+        zsys_info("Working dir set to %s", newcwds.parent_path().c_str());
+    }
+}
+
 // Ability to load multiple text files
 struct textfile {
     zfile_t* file;
@@ -575,9 +626,12 @@ int RenderMenuBar( bool * showLog ) {
 
     if(file_dialog.showFileDialog("MenuAction_Load", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), ".gzs"))
     {
-        Load(file_dialog.selected_path.c_str());
-        editingFile = file_dialog.selected_fn;
-        editingPath = file_dialog.selected_path;
+        if (Load(file_dialog.selected_path.c_str())) {
+            editingFile = file_dialog.selected_fn;
+            editingPath = file_dialog.selected_path;
+
+            moveCwdIfNeeded();
+        }
     }
 
     if(file_dialog.showFileDialog("MenuAction_Save", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), ".gzs"))
@@ -591,54 +645,7 @@ int RenderMenuBar( bool * showLog ) {
             editingFile = file_dialog.selected_fn;
             editingPath = file_dialog.selected_path;
 
-            // check if we are still in the working dir or if we should move to the new dir
-            char cwd[PATH_MAX];
-            getcwd(cwd, PATH_MAX);
-            // editingPath not starting with cwd means we need to move to the new wd
-            if (editingPath.rfind(cwd, 0) != 0) {
-                // we're not in the current working dir! move files to editingPath
-                // moving if cwd was tmp dir (name contains _gzs_)
-                std::string cwds = std::string(cwd);
-                std::filesystem::path newcwds = std::filesystem::path(editingPath);
-                fs::path tmppath(GZB_GLOBAL.TMPPATH);
-                tmppath.append("_gzs_");
-                if (cwds.rfind(tmppath.string(), 0) == 0)
-                {
-                    // cwd is a tmp dir so we need to move files
-                    // copy and delete for now
-                    try
-                    {
-                        fs::copy(cwds, newcwds.parent_path(), fs::copy_options::overwrite_existing | fs::copy_options::recursive);
-                    }
-                    catch (std::exception& e)
-                    {
-                        zsys_error("Copy files to new working dir failed: %s", e.what());
-                    }
-                    try
-                    {
-                        fs::remove_all(cwds);
-                    }
-                    catch (std::exception& e)
-                    {
-                        zsys_error("Removing old tmpdir failed: %s", e.what());
-                    }
-                }
-                else
-                {
-                    // we copy recursively
-                    // Recursively copies all files and folders from src to target and overwrites existing files in target.
-                    try
-                    {
-                        fs::copy(cwds, newcwds.parent_path(), fs::copy_options::overwrite_existing | fs::copy_options::recursive);
-                    }
-                    catch (std::exception& e)
-                    {
-                        zsys_error("Copy files to new working dir failed: %s", e.what());
-                    }
-                }
-                fs::current_path(newcwds.parent_path());
-                zsys_info("Working dir set to %s", newcwds.parent_path().c_str());
-            }
+            moveCwdIfNeeded();
         }
     }
 
