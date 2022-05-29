@@ -39,6 +39,14 @@ public:
 
     }
 
+    bool isAbsolutePath(const char* path) {
+#if WIN32
+        return (path[1] == ':' && ( path[2] == '\\' || path[2] == '/' ));
+#else
+        return path[0] == '/';
+#endif
+    }
+
     void handleEOF( sphactor_actor_t * actor );
     void setReport( sphactor_actor_t * actor );
 
