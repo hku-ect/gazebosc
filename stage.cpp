@@ -126,6 +126,8 @@ void RegisterActors() {
     sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
 #ifdef HAVE_OPENVR
     sphactor_register<DmxActor>( "DmxOut", DmxActor::capabilities );
+    sphactor_register<IntSlider>( "IntSlider", IntSlider::capabilities );
+    sphactor_register<FloatSlider>( "FloatSlider", FloatSlider::capabilities );
 #endif
 #ifdef PYTHON3_FOUND
     int rc = python_init();
