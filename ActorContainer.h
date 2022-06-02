@@ -314,6 +314,9 @@ struct ActorContainer {
             if ( streq(typeStr, "int")) {
                 RenderInt( nameStr, data );
             }
+            else if ( streq(typeStr, "slider")) {
+                RenderSlider( nameStr, data );
+            }
             else if ( streq(typeStr, "float")) {
                 RenderFloat( nameStr, data );
             }
@@ -718,6 +721,7 @@ struct ActorContainer {
         ReadInt( &step, zstep);
 
         ImGui::SetNextItemWidth(100);
+
         if ( ImGui::InputInt( name, &value, step, 100,ImGuiInputTextFlags_EnterReturnsTrue ) ) {
             if ( zmin ) {
                 if (value < min) value = min;
@@ -730,6 +734,83 @@ struct ActorContainer {
             //SendAPI<int>(zapic, zapiv, zvalue, &value);
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), itoa(value) );
         }
+        zconfig_t *help = zconfig_locate(data, "help");
+        if (help)
+        {
+            char *helpv = zconfig_value(help);
+            RenderTooltip(helpv);
+        }
+    }
+
+    void RenderSlider(const char* name, zconfig_t *data) {
+
+        zconfig_t * zvalue = zconfig_locate(data, "value");
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+        zconfig_t * zapiv = zconfig_locate(data, "api_value");
+        assert(zvalue);
+
+        zconfig_t * zmin = zconfig_locate(data, "min");
+        zconfig_t * zmax = zconfig_locate(data, "max");
+        zconfig_t * zstep = zconfig_locate(data, "step");
+
+        ImGui::SetNextItemWidth(250);
+        ImGui::BeginGroup();
+        ImGui::SetNextItemWidth(200);
+
+        if ( streq(zconfig_value(zapiv), "f") )
+        {
+            float value;
+            float min = 0., max = 0., step = 0.;
+            ReadFloat( &value, zvalue);
+            ReadFloat( &min, zmin);
+            ReadFloat( &max, zmax);
+            ReadFloat( &step, zstep);
+
+            if ( ImGui::SliderFloat("", &value, min, max) ) {
+                zconfig_set_value(zvalue, "%f", value);
+                sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), itoa(value) );
+            }
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(35);
+            if ( ImGui::InputFloat("##min", &min, step, 0.f, "%.2f", ImGuiInputTextFlags_EnterReturnsTrue ) )
+            {
+                zconfig_set_value(zmin, "%f", min);
+            }
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(35);
+            if ( ImGui::InputFloat( "##max", &max, step, 0.f, "%.2f", ImGuiInputTextFlags_EnterReturnsTrue ) )
+            {
+                zconfig_set_value(zmax, "%f", max);
+            }
+        }
+        else
+        {
+            int value;
+            int min = 0, max = 0, step = 0;
+            ReadInt( &value, zvalue);
+            ReadInt( &min, zmin);
+            ReadInt( &max, zmax);
+            ReadInt( &step, zstep);
+
+            if ( ImGui::SliderInt( "", &value, min, max) ) {
+                zconfig_set_value(zvalue, "%i", value);
+                sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), itoa(value) );
+            }
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(30);
+            if ( ImGui::InputInt( "##min", &min, 0, 0,ImGuiInputTextFlags_EnterReturnsTrue ) )
+            {
+                zconfig_set_value(zmin, "%i", min);
+            }
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(30);
+            if ( ImGui::InputInt( "##max", &max, 0, 0,ImGuiInputTextFlags_EnterReturnsTrue ) )
+            {
+                zconfig_set_value(zmax, "%i", max);
+            }
+        }
+
+        ImGui::EndGroup();
         zconfig_t *help = zconfig_locate(data, "help");
         if (help)
         {
