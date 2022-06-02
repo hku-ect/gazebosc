@@ -36,7 +36,8 @@ IntSlider::handleAPI(sphactor_event_t *ev)
         assert(retosc);
         zmsg_t *ret = zmsg_new();
         zmsg_add(ret, (zosc_packx(&retosc)));
-        sphactor_actor_send((sphactor_actor_t *)ev->actor, ret);
+        int rc = sphactor_actor_send((sphactor_actor_t *)ev->actor, ret);
+        assert(rc == 0);
     }
     return NULL;
 }
@@ -79,7 +80,8 @@ FloatSlider::handleAPI(sphactor_event_t *ev)
         assert(retosc);
         zmsg_t *ret = zmsg_new();
         zmsg_add(ret, (zosc_packx(&retosc)));
-        sphactor_actor_send((sphactor_actor_t *)ev->actor, ret);
+        int rc = sphactor_actor_send((sphactor_actor_t *)ev->actor, ret);
+        assert(rc == 0);
     }
     return NULL;
 }
