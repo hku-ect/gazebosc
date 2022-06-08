@@ -200,6 +200,11 @@ struct ActorContainer {
         }
     }
 
+    void SetCapabilities(const char* capabilities ) {
+        this->capabilities = zconfig_str_load(capabilities);
+        InitializeCapabilities();
+    }
+
     char *itoa(int i)
     {
         char *str = (char *)malloc(10);
@@ -267,7 +272,7 @@ struct ActorContainer {
                     } break;
                 }
             }
-            else {
+            else if (zvalue) {
                 //assume string
                 //int ival;
                 //ReadInt(&ival, zvalue);
@@ -722,7 +727,7 @@ struct ActorContainer {
 
         ImGui::SetNextItemWidth(100);
 
-        if ( ImGui::InputInt( name, &value, step, 100,ImGuiInputTextFlags_EnterReturnsTrue ) ) {
+        if ( ImGui::InputInt( name, &value, step, 100) ) {
             if ( zmin ) {
                 if (value < min) value = min;
             }
@@ -878,11 +883,11 @@ struct ActorContainer {
         char *p = &buf[0];
 
         ImGui::SetNextItemWidth(200);
-        if ( ImGui::InputText(name, buf, max, ImGuiInputTextFlags_EnterReturnsTrue ) ) {
+        if ( ImGui::InputText(name, buf, max) ) {
             zconfig_set_value(zvalue, "%s", buf);
-            //SendAPI<char*>(zapic, zapiv, zvalue, &(p));
-            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf );
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf);
         }
+
         zconfig_t *help = zconfig_locate(data, "help");
         if (help)
         {

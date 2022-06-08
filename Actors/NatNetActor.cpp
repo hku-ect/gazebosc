@@ -33,6 +33,7 @@ const char * NatNet::capabilities =
                                 "        value = \"60\"\n"
                                 "        api_call = \"SET TIMEOUT\"\n"
                                 "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+                                "        min = 1\n"
                                 "    data\n"
                                 "        name = \"Reset\"\n"
                                 "        type = \"trigger\"\n"
