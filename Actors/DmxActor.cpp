@@ -189,6 +189,8 @@ s_get_serialports()
 
     zlist_destroy(&dirlist);
     zdir_destroy(&serdir);
+
+    return names;
 #elif defined __WINDOWS__
     zlist_t *dirlist = list_winserialports();
     char *item = (char *)zlist_first(dirlist);
