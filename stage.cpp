@@ -683,13 +683,66 @@ inline ImU32 LerpImU32( ImU32 c1, ImU32 c2, int index, int total, float offset, 
 
 int UpdateActors(float deltaTime, bool * showLog)
 {
+    static ActorContainer * selectedActor = nullptr;
+    static char * actorClipboardType = nullptr;
+    static char * actorClipboardCapabilities = nullptr;
+
     int rc = 0;
     static ImNodes::Ez::Context* context = ImNodes::Ez::CreateContext();
     IM_UNUSED(context);
 
-    //const ImGuiStyle& style = ImGui::GetStyle();
-
     ImGui::SetNextWindowPos(ImVec2(0,0));
+
+    ImGuiIO &io = ImGui::GetIO();
+    bool copy = ImGui::IsKeyPressedMap(ImGuiKey_C) && (io.KeySuper || io.KeyCtrl);
+    bool paste = ImGui::IsKeyPressedMap(ImGuiKey_V) && (io.KeySuper || io.KeyCtrl);
+    bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || (io.KeySuper && ImGui::IsKeyPressedMap(ImGuiKey_Backspace));
+
+    if ( selectedActor != nullptr && copy )
+    {
+        // copy actor data to clipboard char *'s
+        zsys_info("COPY" );
+
+        if ( actorClipboardType != nullptr ) {
+            free(actorClipboardType);
+            free(actorClipboardCapabilities);
+            actorClipboardType = nullptr;
+            actorClipboardCapabilities = nullptr;
+        }
+
+        actorClipboardCapabilities = zconfig_str_save(selectedActor->capabilities);
+
+        int length = strlen(selectedActor->title);
+        actorClipboardType = new char[length+1];
+        strncpy(actorClipboardType, selectedActor->title, length);
+        actorClipboardType[length] = '\0';
+    }
+    if ( actorClipboardType != nullptr ){
+        if (paste) {
+            // create actor from clipboard
+            // clear clipboard
+            zsys_info("PASTE: %s", actorClipboardType);
+
+            int max = -1;
+            if ( max_actors_by_type.find(actorClipboardType) != max_actors_by_type.end() )
+                max = max_actors_by_type.at(actorClipboardType);
+
+            if ( CountActorsOfType(actorClipboardType) < max || max == -1) {
+                ActorContainer *actor = CreateFromType(actorClipboardType, nullptr);
+                actor->SetCapabilities(actorClipboardCapabilities);
+                actor->pos = io.MousePos;
+                actors.push_back(actor);
+            }
+
+            // TODO: figure out when we need to clear this (if ever)
+            /*
+            free(actorClipboardType);
+            free(actorClipboardCapabilities);
+            actorClipboardType = nullptr;
+            actorClipboardCapabilities = nullptr;
+             */
+        }
+    }
 
     if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar ))
     {
@@ -789,25 +842,29 @@ int UpdateActors(float deltaTime, bool * showLog)
             // Node rendering is done. This call will render node background based on size of content inside node.
             ImNodes::Ez::EndNode();
 
-            bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || ( ImGui::IsKeyPressedMap(ImGuiKey_Backspace) && ImGui::GetActiveID() == 0 );
-            if (actor->selected && del && ImGui::IsWindowFocused() )
-            {
-                // Loop and delete connections of actors connected to us
-                for (auto& connection : actor->connections)
-                {
-                    if (connection.output_node == actor) {
-                        ((ActorContainer*) connection.input_node)->DeleteConnection(connection);
-                    }
-                    else {
-                        ((ActorContainer*) connection.output_node)->DeleteConnection(connection);
-                    }
-                }
-                // Delete all our connections separately
-                actor->connections.clear();
-                sph_stage_remove_actor(stage, zuuid_str(sphactor_ask_uuid(actor->actor)));
+            if ( actor->selected) {
+                if (del) {
+                    zsys_info("DEL?");
 
-                delete actor;
-                it = actors.erase(it);
+                    // Loop and delete connections of actors connected to us
+                    for (auto &connection : actor->connections) {
+                        if (connection.output_node == actor) {
+                            ((ActorContainer *) connection.input_node)->DeleteConnection(connection);
+                        } else {
+                            ((ActorContainer *) connection.output_node)->DeleteConnection(connection);
+                        }
+                    }
+                    // Delete all our connections separately
+                    selectedActor->connections.clear();
+                    sph_stage_remove_actor(stage, zuuid_str(sphactor_ask_uuid(actor->actor)));
+
+                    delete actor;
+                    actors.erase(it);
+                }
+                else {
+                    selectedActor = actor;
+                    ++it;
+                }
             }
             else
                 ++it;
@@ -817,6 +874,9 @@ int UpdateActors(float deltaTime, bool * showLog)
         {
             ImGui::FocusWindow(ImGui::GetCurrentWindow());
             ImGui::OpenPopup("NodesContextMenu");
+        }
+        else if ( ImGui::IsMouseReleased(0) && !ImGui::IsAnyItemHovered() && !ImGui::IsMouseDragging(0)) {
+            selectedActor = nullptr;
         }
 
         if (ImGui::BeginPopup("NodesContextMenu"))

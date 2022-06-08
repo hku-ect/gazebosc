@@ -479,6 +479,7 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
