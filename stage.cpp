@@ -699,7 +699,7 @@ int UpdateActors(float deltaTime, bool * showLog)
     bool paste = ImGui::IsKeyPressedMap(ImGuiKey_V) && (io.KeySuper || io.KeyCtrl);
     bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || (io.KeySuper && ImGui::IsKeyPressedMap(ImGuiKey_Backspace));
 
-    if ( selectedActors.size() > 0 && copy )
+    if ( selectedActors.size() > 0 && copy && !ImGui::IsAnyItemActive() )
     {
         // copy actor data to clipboard char *'s
         // zsys_info("COPY" );
@@ -725,7 +725,7 @@ int UpdateActors(float deltaTime, bool * showLog)
         }
     }
     if ( actorClipboardType.size() > 0 ) {
-        if (paste) {
+        if (paste && !ImGui::IsAnyItemActive() ) {
             // create actor from clipboard
             // clear clipboard
             for( int i = 0; i < actorClipboardType.size(); ++i ) {
