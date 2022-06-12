@@ -26,6 +26,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <stack>
 #include <filesystem>
 namespace fs = std::filesystem;
 #include <imgui.h>
