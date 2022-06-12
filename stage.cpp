@@ -47,6 +47,44 @@ enum MenuAction
     MenuAction_None
 };
 
+//enum for undo stack
+enum UndoAction
+{
+    UndoAction_Create = 0,
+    UndoAction_Delete,
+    UndoAction_Disconnect,
+    UndoAction_Connect,
+    UndoAction_Invalid
+};
+
+struct UndoData {
+    UndoAction type = UndoAction_Invalid;
+    const char * title = nullptr;
+    const char * uuid = nullptr;
+    const char * endpoint = nullptr;
+    const char * input_slot = nullptr;
+    const char * output_slot = nullptr;
+    zconfig_t * sphactor_config;
+    ImVec2 position;
+
+    /*
+    UndoData( UndoData * from ) {
+        type = from->type;
+        title = strdup(from->title);
+        uuid = strdup(from->uuid);
+        endpoint = strdup(from->endpoint);
+        input_slot = strdup(from->input_slot);
+        output_slot = strdup(from->output_slot);
+        sphactor_config = zconfig_dup(from->sphactor_config);
+        position = from->position;
+    }
+    UndoData() {}
+    */
+};
+
+std::stack<UndoData> undoStack;
+std::stack<UndoData> redoStack;
+
 // List of actor types and constructors
 //  Currently these are all internal dependencies, but we will need to create
 //   a "generic node" class for types defined outside of this codebase.
@@ -66,6 +104,14 @@ bool Load( const char* configFile );
 void Clear();
 void Init();
 ActorContainer* Find( const char* endpoint );
+
+// undo stuff
+void performUndo(UndoData undo);
+void RegisterCreateAction( ActorContainer * actor );
+void RegisterDeleteAction( ActorContainer * actor );
+void RegisterConnectAction(ActorContainer * in, ActorContainer * out, const char * input_slot, const char * output_slot);
+void RegisterDisconnectAction(ActorContainer * in, ActorContainer * out, const char * input_slot, const char * output_slot);
+void swapUndoType(UndoData * undo);
 
 // TODO: move this to something includable
 static char*
@@ -697,7 +743,31 @@ int UpdateActors(float deltaTime, bool * showLog)
     ImGuiIO &io = ImGui::GetIO();
     bool copy = ImGui::IsKeyPressedMap(ImGuiKey_C) && (io.KeySuper || io.KeyCtrl);
     bool paste = ImGui::IsKeyPressedMap(ImGuiKey_V) && (io.KeySuper || io.KeyCtrl);
+    bool undo = ImGui::IsKeyPressedMap(ImGuiKey_Z) && (io.KeySuper || io.KeyCtrl);
+    //bool redo = ImGui::IsKeyPressedMap(ImGuiKey_Y) && (io.KeySuper || io.KeyCtrl);
     bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || (io.KeySuper && ImGui::IsKeyPressedMap(ImGuiKey_Backspace));
+
+    if ( undo ) {
+        if ( undoStack.size() > 0 ) {
+            UndoData top = undoStack.top();
+            performUndo( top );
+            //swapUndoType(&top);
+            //redoStack.push(UndoData(&top));
+            undoStack.pop();
+        }
+    }
+    /*
+    else if ( redo ) {
+        if ( redoStack.size() > 0 ) {
+            UndoData top = redoStack.top();
+            performUndo( top );
+            swapUndoType(&top);
+            undoStack.push(UndoData(&top));
+            redoStack.pop();
+        }
+    }
+     */
+
 
     if ( selectedActors.size() > 0 && copy && !ImGui::IsAnyItemActive() )
     {
@@ -743,6 +813,8 @@ int UpdateActors(float deltaTime, bool * showLog)
                     actor->SetCapabilities(capabilities);
                     actor->pos = io.MousePos + actorClipboardPositions.at(i);
                     actors.push_back(actor);
+
+                    RegisterCreateAction(actor);
                 }
             }
 
@@ -796,6 +868,8 @@ int UpdateActors(float deltaTime, bool * showLog)
                     ((ActorContainer*) new_connection.output_node)->connections.push_back(new_connection);
                     sphactor_ask_connect( ((ActorContainer*) new_connection.input_node)->actor,
                                       sphactor_ask_endpoint( ((ActorContainer*) new_connection.output_node)->actor ) );
+
+                    RegisterConnectAction((ActorContainer*)new_connection.input_node, (ActorContainer*)new_connection.output_node, new_connection.input_slot, new_connection.output_slot);
                 }
 
                 // Render output connections of this actor
@@ -820,6 +894,8 @@ int UpdateActors(float deltaTime, bool * showLog)
                         // Remove deleted connections
                         ((ActorContainer*) connection.input_node)->DeleteConnection(connection);
                         ((ActorContainer*) connection.output_node)->DeleteConnection(connection);
+
+                        RegisterDisconnectAction((ActorContainer*)connection.input_node, (ActorContainer*)connection.output_node, connection.input_slot, connection.output_slot);
                     }
                     else
                     {
@@ -859,7 +935,6 @@ int UpdateActors(float deltaTime, bool * showLog)
             if ( actor->selected) {
                 if (del) {
                     // zsys_info("DEL");
-
                     // Loop and delete connections of actors connected to us
                     for (auto &connection : actor->connections) {
                         if (connection.output_node == actor) {
@@ -867,7 +942,11 @@ int UpdateActors(float deltaTime, bool * showLog)
                         } else {
                             ((ActorContainer *) connection.output_node)->DeleteConnection(connection);
                         }
+                        RegisterDisconnectAction((ActorContainer *) connection.input_node, (ActorContainer *) connection.output_node, connection.input_slot, connection.output_slot);
                     }
+
+                    RegisterDeleteAction(actor);
+
                     // Delete all our connections separately
                     actor->connections.clear();
                     sph_stage_remove_actor(stage, zuuid_str(sphactor_ask_uuid(actor->actor)));
@@ -903,12 +982,14 @@ int UpdateActors(float deltaTime, bool * showLog)
                             ActorContainer *actor = CreateFromType(desc, nullptr);
                             actors.push_back(actor);
                             ImNodes::AutoPositionNode(actors.back());
+                            RegisterCreateAction(actor);
                         }
                     }
                     else {
                         ActorContainer *actor = CreateFromType(desc, nullptr);
                         actors.push_back(actor);
                         ImNodes::AutoPositionNode(actors.back());
+                        RegisterCreateAction(actor);
                     }
                 }
             }
@@ -954,6 +1035,9 @@ bool Save( const char* configFile ) {
 
 bool Load( const char* configFile )
 {
+    undoStack = std::stack<UndoData>();
+    redoStack = std::stack<UndoData>();
+
     // Clear current stage
     // TODO: Maybe ask if people want to save first?
     if (stage)
@@ -1041,6 +1125,8 @@ void Init() {
 }
 
 void Clear() {
+    undoStack = std::stack<UndoData>();
+    redoStack = std::stack<UndoData>();
 
     //delete all connections
     for (auto it = actors.begin(); it != actors.end();)
@@ -1105,4 +1191,188 @@ ActorContainer* Find( const char* endpoint ) {
     }
 
     return nullptr;
+}
+
+void performUndo(UndoData undo) {
+    switch( undo.type) {
+        case UndoAction_Delete: {
+            zsys_info("UNDO DELETE");
+            sphactor_t * sphactor_actor = sphactor_load(undo.sphactor_config);
+            ActorContainer *actor = new ActorContainer( sphactor_actor );
+            zsys_info("UUID: %s", zuuid_str(sphactor_ask_uuid(sphactor_actor)));
+            actor->pos = undo.position;
+            actors.push_back(actor);
+            break;
+        }
+        case UndoAction_Create: {
+            zsys_info("UNDO CREATE");
+            for( auto it = actors.begin(); it != actors.end(); it++) {
+                ActorContainer* actor = *it;
+                if ( streq( zuuid_str(sphactor_ask_uuid(actor->actor)), undo.uuid)) {
+                    sph_stage_remove_actor(stage, zuuid_str(sphactor_ask_uuid(actor->actor)));
+                    actors.erase(it);
+                    delete actor;
+                    break;
+                }
+            }
+            break;
+        }
+        case UndoAction_Connect: {
+            zsys_info("UNDO CONNECT");
+            ActorContainer *out = nullptr, *in = nullptr;
+            for( auto it = actors.begin(); it != actors.end(); it++) {
+                ActorContainer* actor = *it;
+                if ( streq( zuuid_str(sphactor_ask_uuid(actor->actor)), undo.uuid)) {
+                    in = *it;
+                }
+                else if ( streq( sphactor_ask_endpoint(actor->actor), undo.endpoint)) {
+                    out = *it;
+                }
+                if (out && in) break;
+            }
+
+            if ( !out || !in ) {
+                zsys_info("COULD NOT FIND ONE OF THE NODES");
+                break;
+            }
+
+            // find and delete connections
+            for( auto it = in->connections.begin(); it != in->connections.end(); it++ ) {
+                ActorContainer *actor = (ActorContainer*)(*it).output_node;
+                if ( (*it).output_node == out) {
+                    in->connections.erase(it);
+                    break;
+                }
+            }
+            for( auto it = out->connections.begin(); it != out->connections.end(); it++ ) {
+                ActorContainer *actor = (ActorContainer*)(*it).input_node;
+                if ( (*it).input_node == in) {
+                    out->connections.erase(it);
+                    break;
+                }
+            }
+
+            // disconnect
+            sphactor_ask_disconnect(in->actor, undo.endpoint);
+
+            break;
+        }
+        case UndoAction_Disconnect: {
+            zsys_info("UNDO DISCONNECT");
+            ActorContainer *out = nullptr, *in = nullptr;
+            for( auto it = actors.begin(); it != actors.end(); it++) {
+                ActorContainer* actor = *it;
+                if ( streq( zuuid_str(sphactor_ask_uuid(actor->actor)), undo.uuid)) {
+                    in = *it;
+                }
+                else if ( streq( sphactor_ask_endpoint(actor->actor), undo.endpoint)) {
+                    out = *it;
+                }
+                if (out && in) break;
+            }
+
+            if ( !out || !in ) {
+                zsys_info("COULD NOT FIND ONE OF THE NODES");
+                break;
+            }
+
+            //rebuild connection
+            Connection new_connection;
+            new_connection.input_slot = undo.input_slot;
+            new_connection.output_slot = undo.output_slot;
+            new_connection.input_node = in;
+            new_connection.output_node = out;
+
+            in->connections.push_back(new_connection);
+            out->connections.push_back(new_connection);
+
+            //connect
+            sphactor_ask_connect(in->actor, undo.endpoint);
+
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+}
+
+void swapUndoType(UndoData * undo) {
+    switch(undo->type) {
+        case UndoAction_Connect: {
+            undo->type = UndoAction_Disconnect;
+            break;
+        }
+        case UndoAction_Disconnect: {
+            undo->type = UndoAction_Connect;
+            break;
+        }
+        case UndoAction_Create: {
+            undo->type = UndoAction_Delete;
+            break;
+        }
+        case UndoAction_Delete: {
+            undo->type = UndoAction_Create;
+            break;
+        }
+    }
+}
+
+void RegisterCreateAction( ActorContainer * actor ) {
+    if ( redoStack.size() > 0 ) {
+        redoStack = std::stack<UndoData>();
+    }
+
+    UndoData undo;
+    undo.type = UndoAction_Create;
+    undo.title = actor->title;
+    undo.sphactor_config = sphactor_save(actor->actor, nullptr);
+    undo.uuid = strdup(zuuid_str(sphactor_ask_uuid(actor->actor)));
+    zsys_info("UUID: %s", undo.uuid);
+    ImGuiIO& io = ImGui::GetIO();
+    undo.position = ImVec2(io.MousePos.x, io.MousePos.y);
+    undoStack.push(undo);
+}
+
+void RegisterDeleteAction( ActorContainer * actor ) {
+    if ( redoStack.size() > 0 ) {
+        redoStack = std::stack<UndoData>();
+    }
+
+    UndoData undo;
+    undo.type = UndoAction_Delete;
+    undo.title = actor->title;
+    undo.sphactor_config = sphactor_save(actor->actor, nullptr);
+    undo.uuid = strdup(zuuid_str(sphactor_ask_uuid(actor->actor)));
+    zsys_info("UUID: %s", undo.uuid);
+    undo.position = actor->pos;
+    undoStack.push(undo);
+}
+
+void RegisterConnectAction(ActorContainer * in, ActorContainer * out, const char * input_slot, const char * output_slot) {
+    if ( redoStack.size() > 0 ) {
+        redoStack = std::stack<UndoData>();
+    }
+
+    UndoData undo;
+    undo.type = UndoAction_Connect;
+    undo.uuid = strdup(zuuid_str(sphactor_ask_uuid(in->actor)));
+    undo.endpoint = strdup(sphactor_ask_endpoint(out->actor));
+    undo.input_slot = strdup(input_slot);
+    undo.output_slot = strdup(output_slot);
+    undoStack.push(undo);
+}
+
+void RegisterDisconnectAction(ActorContainer * in, ActorContainer * out, const char * input_slot, const char * output_slot) {
+    if ( redoStack.size() > 0 ) {
+        redoStack = std::stack<UndoData>();
+    }
+
+    UndoData undo;
+    undo.type = UndoAction_Disconnect;
+    undo.uuid = strdup(zuuid_str(sphactor_ask_uuid(in->actor)));
+    undo.endpoint = strdup(sphactor_ask_endpoint(out->actor));
+    undo.input_slot = strdup(input_slot);
+    undo.output_slot = strdup(output_slot);
+    undoStack.push(undo);
 }
