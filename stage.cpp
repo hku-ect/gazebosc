@@ -65,7 +65,7 @@ struct UndoData {
     const char * endpoint = nullptr;
     const char * input_slot = nullptr;
     const char * output_slot = nullptr;
-    zconfig_t * sphactor_config;
+    zconfig_t * sphactor_config = nullptr;
     ImVec2 position;
 
     UndoData( UndoData * from ) {
@@ -75,7 +75,8 @@ struct UndoData {
         endpoint = strdup(from->endpoint);
         input_slot = strdup(from->input_slot);
         output_slot = strdup(from->output_slot);
-        sphactor_config = zconfig_dup(from->sphactor_config);
+        if (from->sphactor_config != nullptr)
+            sphactor_config = zconfig_dup(from->sphactor_config);
         position = from->position;
     }
     UndoData() {}
@@ -864,7 +865,7 @@ int UpdateActors(float deltaTime, bool * showLog)
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
         ImNodes::Ez::BeginCanvas();
 
-        for (auto it = std::begin(actors); it != std::end(actors);)
+        for (auto it = std::begin(actors); it != std::end(actors); it++)
         {
             ActorContainer* actor = *it;
 
@@ -960,11 +961,7 @@ int UpdateActors(float deltaTime, bool * showLog)
             ImNodes::Ez::EndNode();
 
             if ( actor->selected) {
-                selectedActors.push_back(actor);
-                it++;
-            }
-            else {
-                it++;
+                selectedActors.push_back(actor); 
             }
         }
 
@@ -1338,7 +1335,13 @@ void RegisterCreateAction( ActorContainer * actor ) {
     undo.uuid = strdup(zuuid_str(sphactor_ask_uuid(actor->actor)));
     zsys_info("UUID: %s", undo.uuid);
     ImGuiIO& io = ImGui::GetIO();
-    undo.position = ImVec2(io.MousePos.x, io.MousePos.y);
+    if (actor->pos.x == 0 && actor->pos.y == 0) {
+        undo.position = ImVec2(io.MousePos.x, io.MousePos.y);
+    }
+    else {
+        undo.position = actor->pos;
+    }
+    
     undoStack.push(undo);
 }
 
