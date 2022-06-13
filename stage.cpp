@@ -1196,6 +1196,8 @@ void performUndo(UndoData &undo) {
         case UndoAction_Delete: {
             zsys_info("UNDO DELETE");
             sphactor_t * sphactor_actor = sphactor_load(undo.sphactor_config);
+            sph_stage_add_actor(stage, sphactor_actor);
+
             ActorContainer *actor = new ActorContainer( sphactor_actor );
             zsys_info("UUID: %s", zuuid_str(sphactor_ask_uuid(sphactor_actor)));
             actor->pos = undo.position;
