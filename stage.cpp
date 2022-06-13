@@ -772,12 +772,8 @@ int UpdateActors(float deltaTime, bool * showLog)
         {
             ActorContainer* actor = *it;
             for (auto& connection : actor->connections) {
-                if (connection.output_node == actor) {
-                    ((ActorContainer*)connection.input_node)->DeleteConnection(connection);
-                }
-                else {
-                    ((ActorContainer*)connection.output_node)->DeleteConnection(connection);
-                }
+                ((ActorContainer*)connection.input_node)->DeleteConnection(connection);
+                ((ActorContainer*)connection.output_node)->DeleteConnection(connection);
                 RegisterDisconnectAction((ActorContainer*)connection.input_node, (ActorContainer*)connection.output_node, connection.input_slot, connection.output_slot);
             }
 
@@ -795,9 +791,7 @@ int UpdateActors(float deltaTime, bool * showLog)
             delete actor;
         }
     }
-
-
-    if ( selectedActors.size() > 0 && copy && !ImGui::IsAnyItemActive() )
+    else if ( selectedActors.size() > 0 && copy && !ImGui::IsAnyItemActive() )
     {
         // copy actor data to clipboard char *'s
         // zsys_info("COPY" );
@@ -822,38 +816,36 @@ int UpdateActors(float deltaTime, bool * showLog)
             actorClipboardPositions.push_back(ImVec2(selectedActor->pos - io.MousePos));
         }
     }
-    if ( actorClipboardType.size() > 0 ) {
-        if (paste && !ImGui::IsAnyItemActive() ) {
-            // create actor from clipboard
-            // clear clipboard
-            for( int i = 0; i < actorClipboardType.size(); ++i ) {
-                char * type = actorClipboardType.at(i);
-                char * capabilities = actorClipboardCapabilities.at(i);
+    else if ( actorClipboardType.size() > 0 && paste && !ImGui::IsAnyItemActive() ) {
+        // create actor(s) from clipboard
+        // clear clipboard
+        for( int i = 0; i < actorClipboardType.size(); ++i ) {
+            char * type = actorClipboardType.at(i);
+            char * capabilities = actorClipboardCapabilities.at(i);
 
-                // zsys_info("PASTE: %s", type);
+            // zsys_info("PASTE: %s", type);
 
-                int max = -1;
-                if ( max_actors_by_type.find(type) != max_actors_by_type.end() )
-                    max = max_actors_by_type.at(type);
+            int max = -1;
+            if ( max_actors_by_type.find(type) != max_actors_by_type.end() )
+                max = max_actors_by_type.at(type);
 
-                if ( CountActorsOfType(type) < max || max == -1) {
-                    ActorContainer *actor = CreateFromType(type, nullptr);
-                    actor->SetCapabilities(capabilities);
-                    actor->pos = io.MousePos + actorClipboardPositions.at(i);
-                    actors.push_back(actor);
+            if ( CountActorsOfType(type) < max || max == -1) {
+                ActorContainer *actor = CreateFromType(type, nullptr);
+                actor->SetCapabilities(capabilities);
+                actor->pos = io.MousePos + actorClipboardPositions.at(i);
+                actors.push_back(actor);
 
-                    RegisterCreateAction(actor);
-                }
+                RegisterCreateAction(actor);
             }
-
-            // TODO: figure out when we need to clear this (if ever)
-            /*
-            free(actorClipboardType);
-            free(actorClipboardCapabilities);
-            actorClipboardType = nullptr;
-            actorClipboardCapabilities = nullptr;
-             */
         }
+
+        // TODO: figure out when we need to clear this (if ever)
+        /*
+        free(actorClipboardType);
+        free(actorClipboardCapabilities);
+        actorClipboardType = nullptr;
+        actorClipboardCapabilities = nullptr;
+        */
     }
 
 
