@@ -772,8 +772,12 @@ int UpdateActors(float deltaTime, bool * showLog)
         {
             ActorContainer* actor = *it;
             for (auto& connection : actor->connections) {
-                ((ActorContainer*)connection.input_node)->DeleteConnection(connection);
-                ((ActorContainer*)connection.output_node)->DeleteConnection(connection);
+                if (connection.output_node == actor) {
+                    ((ActorContainer*)connection.input_node)->DeleteConnection(connection);
+                }
+                else {
+                    ((ActorContainer*)connection.output_node)->DeleteConnection(connection);
+                }
                 RegisterDisconnectAction((ActorContainer*)connection.input_node, (ActorContainer*)connection.output_node, connection.input_slot, connection.output_slot);
             }
 
