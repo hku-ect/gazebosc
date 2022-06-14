@@ -70,11 +70,11 @@ struct UndoData {
 
     UndoData( UndoData * from ) {
         type = from->type;
-        title = strdup(from->title);
-        uuid = strdup(from->uuid);
-        endpoint = strdup(from->endpoint);
-        input_slot = strdup(from->input_slot);
-        output_slot = strdup(from->output_slot);
+        title = from->title ? strdup(from->title) : nullptr;
+        uuid = from->uuid ? strdup(from->uuid) : nullptr;
+        endpoint = from->endpoint ? strdup(from->endpoint) : nullptr;
+        input_slot = from->input_slot ? strdup(from->input_slot) : nullptr;
+        output_slot = from->output_slot ? strdup(from->output_slot) : nullptr;
         if (from->sphactor_config != nullptr)
             sphactor_config = zconfig_dup(from->sphactor_config);
         position = from->position;
