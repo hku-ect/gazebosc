@@ -15,7 +15,7 @@ Client::capabilities =          "capabilities\n"
                                 "        name = \"ip\"\n"
                                 "        type = \"string\"\n"
                                 "        help = \"The ipaddress of the host to send to\"\n"
-                                "        value = \"192.168.0.1\"\n"
+                                "        value = \"127.0.0.1\"\n"
                                 "        api_call = \"SET HOST\"\n"
                                 "        api_value = \"s\"\n"           // optional picture format used in zsock_send
                                 "    data\n"
