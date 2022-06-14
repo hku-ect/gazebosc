@@ -1,10 +1,10 @@
-#ifndef CLIENTACTOR_H
-#define CLIENTACTOR_H
+#ifndef OSCOUTPUTACTOR_H
+#define OSCOUTPUTACTOR_H
 
 #include "libsphactor.hpp"
 #include <string>
 
-class Client : public Sphactor {
+class OSCOutput : public Sphactor {
 public:
     static const char *capabilities;
     zsock_t* dgrams = NULL;
@@ -21,12 +21,12 @@ public:
 
     zmsg_t *handleStop(sphactor_event_t *ev);
 
-    Client() : Sphactor() {
+    OSCOutput() : Sphactor() {
 
     }
 
     /* This is never called */
-    ~Client() {
+    ~OSCOutput() {
         if ( this->dgrams != NULL ) {
             zsys_info("Destroying dgrams");
             zsock_destroy(&this->dgrams);
@@ -35,4 +35,4 @@ public:
     }
 };
 
-#endif // CLIENTACTOR_H
+#endif // OSCOUTPUTACTOR_H

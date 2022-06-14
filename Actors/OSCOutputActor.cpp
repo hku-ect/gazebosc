@@ -1,9 +1,9 @@
-#include "ClientActor.h"
+#include "OSCOutputActor.h"
 #include <string>
 #include <time.h>
 
 const char *
-Client::capabilities =          "capabilities\n"
+OSCOutput::capabilities =          "capabilities\n"
                                 "    data\n"
                                 "        name = \"name\"\n"
                                 "        type = \"string\"\n"
@@ -31,12 +31,12 @@ Client::capabilities =          "capabilities\n"
                                 "    input\n"
                                 "        type = \"OSC\"\n";
 
-zmsg_t* Client::handleInit( sphactor_event_t * ev ) {
+zmsg_t* OSCOutput::handleInit( sphactor_event_t * ev ) {
     this->dgrams = zsock_new_dgram("udp://*:*");
     return Sphactor::handleInit(ev);
 }
 
-zmsg_t* Client::handleStop( sphactor_event_t * ev ) {
+zmsg_t* OSCOutput::handleStop( sphactor_event_t * ev ) {
     if ( this->dgrams != NULL ) {
         zsock_destroy(&this->dgrams);
         this->dgrams = NULL;
@@ -45,7 +45,7 @@ zmsg_t* Client::handleStop( sphactor_event_t * ev ) {
     return Sphactor::handleStop(ev);
 }
 
-zmsg_t* Client::handleSocket( sphactor_event_t * ev ) {
+zmsg_t* OSCOutput::handleSocket( sphactor_event_t * ev ) {
     if ( ev->msg == NULL ) return NULL;
     if ( this->dgrams == NULL ) return ev->msg;
 
@@ -70,7 +70,7 @@ zmsg_t* Client::handleSocket( sphactor_event_t * ev ) {
     return Sphactor::handleSocket(ev);
 }
 
-zmsg_t* Client::handleAPI( sphactor_event_t * ev ) {
+zmsg_t* OSCOutput::handleAPI( sphactor_event_t * ev ) {
 //pop msg for command
     char * cmd = zmsg_popstr(ev->msg);
     if (cmd) {

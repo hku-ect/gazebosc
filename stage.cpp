@@ -210,7 +210,7 @@ void RegisterActors() {
     // register stock actors
     sph_stock_register_all();
 
-    sphactor_register<Client>( "OSC Output", Client::capabilities);
+    sphactor_register<OSCOutput>( "OSC Output", OSCOutput::capabilities);
     sphactor_register<NatNet>( "NatNet", NatNet::capabilities );
     sphactor_register<NatNet2OSC>( "NatNet2OSC", NatNet2OSC::capabilities );
     sphactor_register<Midi2OSC>( "Midi2OSC", Midi2OSC::capabilities );

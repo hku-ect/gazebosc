@@ -1,7 +1,7 @@
 #ifndef ACTORS_H
 #define ACTORS_H
 
-#include "Actors/ClientActor.h"
+#include "Actors/OSCOutputActor.h"
 #include "Actors/Midi2OSCActor.h"
 #include "Actors/NatNetActor.h"
 #include "Actors/NatNet2OSCActor.h"
