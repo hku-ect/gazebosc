@@ -379,7 +379,8 @@ ModPlayerActor::handleAPI(sphactor_event_t *event)
     {
         char *value = zmsg_popstr(event->msg);
         this->autoplay = streq( value, "True");
-        this->playing = true;
+        if (!this->playing)
+            this->playing = this->autoplay;
         zstr_free(&value);
     }
 
