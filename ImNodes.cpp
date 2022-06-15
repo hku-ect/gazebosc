@@ -621,6 +621,12 @@ void EndNode()
     ImGui::PopID();     // id
 }
 
+bool IsAnyNodeHovered()
+{
+    assert(gCanvas != nullptr);
+    return gCanvas->_Impl->HoveredNodeId != 0;
+}
+
 bool IsNodeHovered()
 {
     assert(gCanvas != nullptr);
