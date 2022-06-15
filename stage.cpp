@@ -37,6 +37,9 @@ namespace fs = std::filesystem;
 #include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
 #include "config.h"
 
+#include "ext/SDL/include/SDL_keyboard.h"
+#include "ext/SDL/include/SDL_scancode.h"
+
 //enum for menu actions
 enum MenuAction
 {
@@ -733,6 +736,10 @@ int UpdateActors(float deltaTime, bool * showLog)
     static std::vector<char *> actorClipboardType;
     static std::vector<char *> actorClipboardCapabilities;
     static std::vector<ImVec2> actorClipboardPositions;
+    static bool D_PRESSED = false;
+
+    int numKeys;
+    byte * keyState = (byte*)SDL_GetKeyboardState(&numKeys);
 
     int rc = 0;
     static ImNodes::Ez::Context* context = ImNodes::Ez::CreateContext();
@@ -743,9 +750,12 @@ int UpdateActors(float deltaTime, bool * showLog)
     ImGuiIO &io = ImGui::GetIO();
     bool copy = ImGui::IsKeyPressedMap(ImGuiKey_C) && (io.KeySuper || io.KeyCtrl);
     bool paste = ImGui::IsKeyPressedMap(ImGuiKey_V) && (io.KeySuper || io.KeyCtrl);
+    bool dup = ( keyState[SDL_SCANCODE_D] == 1 && !D_PRESSED) && (io.KeySuper || io.KeyCtrl);
     bool undo = ImGui::IsKeyPressedMap(ImGuiKey_Z) && (io.KeySuper || io.KeyCtrl);
     bool redo = ImGui::IsKeyPressedMap(ImGuiKey_Y) && (io.KeySuper || io.KeyCtrl);
     bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || (io.KeySuper && ImGui::IsKeyPressedMap(ImGuiKey_Backspace));
+
+    D_PRESSED = keyState[SDL_SCANCODE_D] == 1;
 
     if ( undo ) {
         if ( undoStack.size() > 0 ) {
@@ -851,7 +861,58 @@ int UpdateActors(float deltaTime, bool * showLog)
         actorClipboardCapabilities = nullptr;
         */
     }
+    else if ( selectedActors.size() > 0 && dup && !ImGui::IsAnyItemActive() ) {
+        // zsys_info("DUP");
+        std::vector<char *> dupClipboardType;
+        std::vector<char *> dupClipboardCapabilities;
+        std::vector<ImVec2> dupClipboardPositions;
 
+        ImVec2 center;
+
+        for( int i = 0; i < selectedActors.size(); ++i ) {
+            ActorContainer * selectedActor = selectedActors.at(i);
+
+            dupClipboardCapabilities.push_back(zconfig_str_save(selectedActor->capabilities));
+
+            int length = strlen(selectedActor->title);
+            dupClipboardType.push_back(new char[length+1]);
+            strncpy(dupClipboardType.back(), selectedActor->title, length);
+            dupClipboardType.back()[length] = '\0';
+
+            center += selectedActor->pos;
+        }
+
+        center /= selectedActors.size();
+        for( int i = 0; i < selectedActors.size(); ++i ) {
+            ActorContainer * selectedActor = selectedActors.at(i);
+            dupClipboardPositions.push_back(ImVec2(selectedActor->pos - center));
+        }
+
+        selectedActors.clear();
+
+        for( int i = 0; i < dupClipboardType.size(); ++i ) {
+            char * type = dupClipboardType.at(i);
+            char * capabilities = dupClipboardCapabilities.at(i);
+
+            // zsys_info("PASTE: %s", type);
+
+            int max = -1;
+            if ( max_actors_by_type.find(type) != max_actors_by_type.end() )
+                max = max_actors_by_type.at(type);
+
+            if ( CountActorsOfType(type) < max || max == -1) {
+                ActorContainer *actor = CreateFromType(type, nullptr);
+                actor->SetCapabilities(capabilities);
+                actor->pos = io.MousePos + dupClipboardPositions.at(i) + ImVec2(10,10);
+                actors.push_back(actor);
+
+                // TODO: SELECT DUPLICATED ACTORS!?
+                // selectedActors.push_back(actor);
+
+                RegisterCreateAction(actor);
+            }
+        }
+    }
 
     selectedActors.clear();
     if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar ))
@@ -1199,7 +1260,7 @@ void performUndo(UndoData &undo) {
             sph_stage_add_actor(stage, sphactor_actor);
 
             ActorContainer *actor = new ActorContainer( sphactor_actor );
-            zsys_info("UUID: %s", zuuid_str(sphactor_ask_uuid(sphactor_actor)));
+            //zsys_info("UUID: %s", zuuid_str(sphactor_ask_uuid(sphactor_actor)));
             actor->pos = undo.position;
             actors.push_back(actor);
             break;
