@@ -12,12 +12,13 @@ public:
     ~ProcessActor() {}
 
     zproc_t *proc = NULL;
+    bool keepalive = false;
 
     // handle initialisation
     zmsg_t * handleInit(sphactor_event_t *ev);
 
     // handle timed events
-    zmsg_t * handleTimer(sphactor_event_t *ev) { if ( ev->msg ) zmsg_destroy(&ev->msg); return nullptr; }
+    zmsg_t * handleTimer(sphactor_event_t *ev);
 
     zmsg_t * handleStop(sphactor_event_t *ev);
 
