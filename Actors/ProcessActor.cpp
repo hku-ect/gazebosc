@@ -9,6 +9,12 @@ const char *ProcessActor::capabilities =
         "        value = \"\"\n"
         "        api_call = \"SET PROCESS\"\n"
         "        api_value = \"s\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"keepalive\"\n"
+        "        type = \"bool\"\n"
+        "        help = \"Restart the process if it stops, (checks every second)\"\n"
+        "        value = \"\"\n"
+        "        api_call = \"SET KEEPALIVE\"\n"
         "inputs\n"
         "    input\n"
         "        type = \"OSC\"\n"
@@ -57,6 +63,58 @@ s_string_split(char *stringtosplit, const char delim)
     return retlst;
 }
 
+int
+s_run_proc(zproc_t *proc, sphactor_actor_t *actor)
+{
+    assert(proc);
+    assert(actor);
+    int rc = zproc_run(proc);
+    if (rc != 0)
+    {
+        //TODO: set error state
+        zsys_error("Failed to run command %s", (char *)zlist_first(zproc_args(proc)));
+        zosc_t *oscm = zosc_create("/failed", "ss", (char *)zlist_first(zproc_args(proc)), "cannot run!");
+        sphactor_actor_set_custom_report_data((sphactor_actor_t *)actor, oscm);
+    }
+    else
+    {
+        // poll on the stdout socket
+        if ( zproc_running )
+        {
+            sphactor_actor_poller_add((sphactor_actor_t *)actor, zproc_stdout(proc));
+            zosc_t *oscm = zosc_create("/running", "sssi", (char *)zlist_first(zproc_args(proc)), "running", "pid", zproc_pid(proc));
+            sphactor_actor_set_custom_report_data((sphactor_actor_t *)actor, oscm);
+        }
+        else
+        {
+            zsys_info("the process has already finished");
+            int retcode = zproc_returncode(proc);
+            zosc_t *oscm = zosc_create("/finished", "si", (char *)zlist_first(zproc_args(proc)), retcode);
+            sphactor_actor_set_custom_report_data((sphactor_actor_t *)actor, oscm);
+        }
+    }
+    return rc;
+}
+
+void
+s_restart_zproc(zproc_t **proc_p, sphactor_actor_t *actor)
+{
+    assert(proc_p);
+    zproc_t *proc = *proc_p;
+    assert(proc);
+    // get argslist dup
+    zlist_t *args = zlist_dup(zproc_args(proc));
+    // remove stdout polling
+    sphactor_actor_poller_remove( actor, zproc_stdout(proc) );
+    // re-init zproc
+    s_init_zproc(proc_p);
+    // set args
+    zproc_set_args(*proc_p, &args);
+    // run
+    int rc = s_run_proc(*proc_p, actor);
+    assert(rc==0);
+}
+
 zmsg_t * ProcessActor::handleInit(sphactor_event_t *ev)
 {
     s_init_zproc(&this->proc);
@@ -99,34 +157,23 @@ zmsg_t * ProcessActor::handleAPI(sphactor_event_t *ev)
             zproc_set_args( this->proc, &arglist);
             arglist = zproc_args(this->proc); // we need it for reports but set_args destroyed it :S
 
-            int rc = zproc_run(this->proc);
-            if (rc != 0)
+            s_run_proc(this->proc, (sphactor_actor_t *)ev->actor);
+            if (zproc_running(this->proc) )
             {
-                //TODO: set error state
-                zsys_error("Failed to run command %s", (char *)zlist_first(zproc_args(this->proc)));
-                zosc_t *oscm = zosc_create("/failed", "ss", (char *)zlist_first(arglist), "cannot run!");
-                sphactor_actor_set_custom_report_data((sphactor_actor_t *)ev->actor, oscm);
+                sphactor_actor_set_timeout((sphactor_actor_t *)ev->actor, 1000);
             }
             else
-            {
-                // poll on the stdout socket
-                if ( zproc_running )
-                {
-                    sphactor_actor_poller_add((sphactor_actor_t *)ev->actor, zproc_stdout(this->proc));
-                    zosc_t *oscm = zosc_create("/running", "ss", (char *)zlist_first(arglist), "running");
-                    sphactor_actor_set_custom_report_data((sphactor_actor_t *)ev->actor, oscm);
-                }
-                else
-                {
-                    zsys_info("the process has already finished");
-                    int retcode = zproc_returncode(this->proc);
-                    zosc_t *oscm = zosc_create("/finished", "si", (char *)zlist_first(arglist), retcode);
-                    sphactor_actor_set_custom_report_data((sphactor_actor_t *)ev->actor, oscm);
-                }
-            }
+                sphactor_actor_set_timeout((sphactor_actor_t *)ev->actor, -1);
+
             zlist_destroy(&arglist);
         }
         zstr_free(&arg);
+    }
+    else if ( streq(cmd, "SET KEEPALIVE") )
+    {
+        char *value = zmsg_popstr(ev->msg);
+        this->keepalive = streq( value, "True");
+        zstr_free(&value);
     }
     zstr_free(&cmd);
     if ( ev->msg ) zmsg_destroy(&ev->msg); return retmsg;
@@ -171,3 +218,26 @@ zmsg_t * ProcessActor::handleCustomSocket(sphactor_event_t *ev)
     if ( ev->msg ) zmsg_destroy(&ev->msg);
     return retmsg;
 }
+
+// handle timed events (checking if process is alive
+zmsg_t * ProcessActor::handleTimer(sphactor_event_t *ev)
+{
+    if (this->proc)
+    {
+        // check if process is alive, restart if keep alive is true
+        if (!zproc_running(this->proc))
+        {
+            int retcode = zproc_returncode(this->proc);
+            zosc_t *oscm = zosc_create("/finished", "sssi", (char *)zlist_first(zproc_args(this->proc)), "finished", "return code", retcode);
+            sphactor_actor_set_custom_report_data((sphactor_actor_t *)ev->actor, oscm);
+
+            if (this->keepalive)
+            {
+                zproc_shutdown(this->proc, 10);
+                s_restart_zproc(&this->proc, (sphactor_actor_t *)ev->actor);
+            }
+        }
+    }
+    if ( ev->msg ) zmsg_destroy(&ev->msg); return nullptr;
+}
+

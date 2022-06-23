@@ -685,6 +685,12 @@ struct ActorContainer {
         zconfig_t * zapic = zconfig_locate(data, "api_call");
         zconfig_t * zapiv = zconfig_locate(data, "api_value");
         assert(zvalue);
+        char *apiv;
+        // set default call value
+        if (zapiv == nullptr)
+            apiv = "s";
+        else
+            apiv = zconfig_value(zapiv);
 
         ReadBool( &value, zvalue);
 
@@ -696,7 +702,7 @@ struct ActorContainer {
             const char *zvalueStr = zconfig_value(zvalue);
             strcpy(buf, zvalueStr);
             //SendAPI<char *>(zapic, zapiv, zvalue, &buf);
-            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf );
+            sphactor_ask_api(this->actor, zconfig_value(zapic), apiv, buf );
             zstr_free(&buf);
         }
         zconfig_t *help = zconfig_locate(data, "help");
