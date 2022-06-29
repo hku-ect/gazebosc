@@ -779,7 +779,7 @@ struct ActorContainer {
 
             if ( ImGui::SliderFloat("", &value, min, max) ) {
                 zconfig_set_value(zvalue, "%f", value);
-                sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), itoa(value) );
+                sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), ftoa(value) );
             }
             ImGui::SameLine();
             ImGui::SetNextItemWidth(35);
