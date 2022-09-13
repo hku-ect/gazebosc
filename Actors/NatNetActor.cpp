@@ -9,6 +9,7 @@ int* NatNet::ServerVersion = new int[4]{0,0,0,0};
 std::vector<RigidBodyDescription> NatNet::rigidbody_descs;
 std::vector<SkeletonDescription> NatNet::skeleton_descs;
 std::vector<MarkerSetDescription> NatNet::markerset_descs;
+std::mutex NatNet::desc_mutex;
 
 const char * NatNet::capabilities =
                                 "capabilities\n"
@@ -1155,9 +1156,13 @@ void NatNet::Unpack( char ** pData ) {
         //zsys_info("End Packet\n-------------\n");
 
         //Store data
-        this->markerset_descs = tmp_markerset_descs;
-        this->rigidbody_descs = tmp_rigidbody_descs;
-        this->skeleton_descs = tmp_skeleton_descs;
+        // Lock while doing this (loops to read them must finish and can't start @ NatNet2OSCActor)
+        {
+            const std::lock_guard<std::mutex> lock(desc_mutex);
+            this->markerset_descs = tmp_markerset_descs;
+            this->rigidbody_descs = tmp_rigidbody_descs;
+            this->skeleton_descs = tmp_skeleton_descs;
+        }
     }
     else
     {

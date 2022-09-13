@@ -6,6 +6,7 @@
 #include <vector>
 #include <map>
 #include "NatNetDataTypes.h"
+#include <mutex>
 
 class NatNet : public Sphactor {
 public:
@@ -54,6 +55,8 @@ public:
     static std::vector<RigidBodyDescription> rigidbody_descs;
     static std::vector<SkeletonDescription> skeleton_descs;
     static std::vector<MarkerSetDescription> markerset_descs;
+
+    static std::mutex desc_mutex;
 
     zmsg_t* handleInit(sphactor_event_t *ev);
     zmsg_t* handleTimer(sphactor_event_t *ev);
