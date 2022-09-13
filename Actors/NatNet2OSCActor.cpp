@@ -76,22 +76,26 @@ NatNet2OSC::handleSocket( sphactor_event_t *ev )
         //Send Frame
         zmsg_t *oscMsg = zmsg_new();
 
-        //markers
-        if ( sendMarkers ) {
-            for (int i = 0; i < markers.size(); i++) {
-                zosc_t *osc = zosc_create("/marker", "ifff", i, markers[i][0], markers[i][1], markers[i][2]);
-                zmsg_add(oscMsg, zosc_pack(osc));
-                //TODO: clean up osc* ?
+        // Lock description mutex while building OSC message (since we loop them to construct it)
+        {
+            const std::lock_guard<std::mutex> lock(NatNet::desc_mutex);
+            //markers
+            if (sendMarkers) {
+                for (int i = 0; i < markers.size(); i++) {
+                    zosc_t* osc = zosc_create("/marker", "ifff", i, markers[i][0], markers[i][1], markers[i][2]);
+                    zmsg_add(oscMsg, zosc_pack(osc));
+                    //TODO: clean up osc* ?
+                }
             }
+
+            //rigidbodies
+            if (sendRigidbodies)
+                addRigidbodies(oscMsg);
+
+            //skeletons
+            if (sendSkeletons)
+                addSkeletons(oscMsg);
         }
-
-        //rigidbodies
-        if ( sendRigidbodies )
-            addRigidbodies(oscMsg);
-
-        //skeletons
-        if ( sendSkeletons )
-            addSkeletons(oscMsg);
 
         if ( zmsg_content_size(oscMsg) != 0 ){
             //zsys_info("Sending zmsg of size: %i", zmsg_content_size(oscMsg));
