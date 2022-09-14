@@ -286,9 +286,88 @@ const char *DmxActor::capabilities =
         "        type = \"trigger\"\n"
         "        help = \"Refresh the list of serial ports\"\n"
         "        api_call = \"REFRESH PORTS\"\n"
+        "    data\n"
+        "        name = \"blackout\"\n"
+        "        type = \"trigger\"\n"
+        "        help = \"Turn all lights off, Send 0 value on all channels\"\n"
+        "        api_call = \"BLACKOUT\"\n"
+        "    data\n"
+        "        name = \"whiteon\"\n"
+        "        type = \"trigger\"\n"
+        "        help = \"Turn all lights on, Send 255 value on all channels\"\n"
+        "        api_call = \"WHITEON\"\n"
         "inputs\n"
         "    input\n"
         "        type = \"OSC\"\n";
+
+void
+DmxActor::open_serialport()
+{
+#ifdef __UNIX__
+    int fd = open (portname, O_RDWR | O_NOCTTY | O_NONBLOCK);
+#endif
+}
+
+void
+DmxActor::close_serialport()
+{
+#ifdef __WINDOWS__
+    //SetCommTimeouts(hComm, &oldTimeout);
+    CloseHandle(hComm);
+    hComm = INVALID_HANDLE_VALUE;
+#else
+    if (this->fd != -1)
+        // reset attributes?
+        close(this->fd);
+    this->fd = -1;
+#endif
+}
+
+void
+DmxActor::send_dmxdata()
+{
+    dmxdata[2] = channels & 0xFF;
+    dmxdata[3] = (channels >> 8) & 0xff;
+    dmxdata[channels + 4 ] = 0xe7; // end value
+#ifdef __WINDOWS__
+    DWORD written;
+    if( !WriteFile(this->hComm, this->dmxdata, channels+5, &written, 0) )
+    {
+           zsys_error("DMX actor: couldn't write to port");
+    }
+#else
+    size_t written = 0;
+    fd_set wfds;
+    struct timeval tv;
+    size_t length = channels + 5; // header 4 bytes + end byte
+    while (written < length)
+    {
+        auto n = write(this->fd, this->dmxdata + written, length - written);
+        if (n < 0 && (errno == EAGAIN || errno == EINTR))
+            n = 0;
+        //printf("Write, n = %d\n", n);
+        if (n < 0)
+            zsys_error("Error writing bytes to serial port");
+        if (n > 0)
+        {
+            written += n;
+        }
+        else
+        {
+            tv.tv_sec = 1;
+            tv.tv_usec = 0;
+            FD_ZERO(&wfds);
+            FD_SET(fd, &wfds);
+            n = select(fd+1, NULL, &wfds, NULL, &tv);
+            if (n < 0 && errno == EINTR)
+                n = 1;
+            if (n <= 0)
+                zsys_error("Error waiting for serial port write availability");
+        }
+    }
+    assert(written == length);
+#endif
+}
 
 zmsg_t *
 DmxActor::handleInit(sphactor_event_t *ev)
@@ -326,30 +405,6 @@ DmxActor::handleInit(sphactor_event_t *ev)
     }
 
     return nullptr;
-}
-
-
-void
-DmxActor::open_serialport()
-{
-#ifdef __UNIX__
-    int fd = open (portname, O_RDWR | O_NOCTTY | O_NONBLOCK);
-#endif
-}
-
-void
-DmxActor::close_serialport()
-{
-#ifdef __WINDOWS__
-    //SetCommTimeouts(hComm, &oldTimeout);
-    CloseHandle(hComm);
-    hComm = INVALID_HANDLE_VALUE;
-#else
-    if (this->fd != -1)
-        // reset attributes?
-        close(this->fd);
-    this->fd = -1;
-#endif
 }
 
 zmsg_t *
@@ -451,6 +506,32 @@ DmxActor::handleAPI(sphactor_event_t *ev)
             sphactor_actor_set_custom_report_data((sphactor_actor_t*)ev->actor, msg);
         }
     }
+    else if (streq(cmd, "BLACKOUT") )
+    {
+#ifdef __WINDOWS__
+    if (hComm != INVALID_HANDLE_VALUE)
+#else
+    if (this->fd )
+#endif
+        {
+            memset((void *)(dmxdata+4), 0, channels); // zero out the dmx channel values
+            send_dmxdata();
+        }
+    }
+    else if (streq(cmd, "WHITEON") )
+    {
+#ifdef __WINDOWS__
+    if (hComm != INVALID_HANDLE_VALUE)
+#else
+    if (this->fd )
+#endif
+        {
+            memset((void *)(dmxdata+4), 255, channels); // max out the dmx channel values
+            dmxdata[channels + 4 ] = 0xe7; // end value
+            send_dmxdata();
+        }
+    }
+
     zstr_free(&cmd);
     return NULL;
 }
@@ -466,6 +547,10 @@ DmxActor::handleSocket(sphactor_event_t *ev)
         return NULL;
 #endif
     zframe_t *oscf = zmsg_pop(ev->msg);
+    if (oscf == NULL) // just exit if there's no OSC data
+    {
+        return NULL;
+    }
     while (oscf)
     {
         zosc_t *oscm = zosc_fromframe(oscf); // becomes owner of frame and destroys it
@@ -488,9 +573,6 @@ DmxActor::handleSocket(sphactor_event_t *ev)
                 if (value > 255) value = 255;
                 if (value < 0) value = 0;
                 dmxdata[channel+4] = (unsigned char)value;
-                dmxdata[2] = channels & 0xFF;
-                dmxdata[3] = channels >> 8;
-                dmxdata[channels + 4 ] = 0xe7; // end value
             }
             else if ( zosc_format(oscm)[0] == 'h' )
             {
@@ -499,9 +581,6 @@ DmxActor::handleSocket(sphactor_event_t *ev)
                 if (value > 255) value = 255;
                 if (value < 0) value = 0;
                 dmxdata[channel+4] = (unsigned char)value;
-                dmxdata[2] = channels & 0xFF;
-                dmxdata[3] = channels >> 8;
-                dmxdata[channels + 4 ] = 0xe7; // end value
             }
             else if ( zosc_format(oscm)[0] == 'f' )
             {
@@ -511,9 +590,6 @@ DmxActor::handleSocket(sphactor_event_t *ev)
                 if (value > 255) value = 255;
                 if (value < 0) value = 0;
                 dmxdata[channel+4] = (unsigned char)value;
-                dmxdata[2] = channels & 0xFF;
-                dmxdata[3] = channels >> 8;
-                dmxdata[channels + 4 ] = 0xe7; // end value
             }
             else if ( zosc_format(oscm)[0] == 'd' )
             {
@@ -523,9 +599,6 @@ DmxActor::handleSocket(sphactor_event_t *ev)
                 if (value > 255) value = 255;
                 if (value < 0) value = 0;
                 dmxdata[channel+4] = (unsigned char)value;
-                dmxdata[2] = channels & 0xFF;
-                dmxdata[3] = channels >> 8;
-                dmxdata[channels + 4 ] = 0xe7; // end value
             }
             else
             {
@@ -569,9 +642,6 @@ DmxActor::handleSocket(sphactor_event_t *ev)
                     if (value > 255) value = 255;
                     if (value < 0) value = 0;
                     dmxdata[channel+4] = (unsigned char)value;
-                    dmxdata[2] = channels & 0xFF;
-                    dmxdata[3] = channels >> 8;
-                    dmxdata[channels + 4 ] = 0xe7; // end value
                     break;
                 }
                 case('h'):
@@ -600,9 +670,6 @@ DmxActor::handleSocket(sphactor_event_t *ev)
                     if (value > 255) value = 255;
                     if (value < 0) value = 0;
                     dmxdata[channel+4] = (unsigned char)value;
-                    dmxdata[2] = channels & 0xFF;
-                    dmxdata[3] = channels >> 8;
-                    dmxdata[channels + 4 ] = 0xe7; // end value
                     break;
                 }
                 default:
@@ -614,44 +681,11 @@ DmxActor::handleSocket(sphactor_event_t *ev)
         zosc_destroy(&oscm);
         oscf = zmsg_pop(ev->msg);
     }
-#ifdef __WINDOWS__
-    DWORD written;
-    if( !WriteFile(this->hComm, this->dmxdata, channels+5, &written, 0) )
-    {
-           zsys_error("DMX actor: couldn't write to port");
-    }
-#else
-    size_t written = 0;
-    fd_set wfds;
-    struct timeval tv;
-    size_t length = channels + 5; // header 4 bytes + end byte
-    while (written < length)
-    {
-        auto n = write(this->fd, this->dmxdata + written, length - written);
-        if (n < 0 && (errno == EAGAIN || errno == EINTR))
-            n = 0;
-        //printf("Write, n = %d\n", n);
-        if (n < 0)
-            zsys_error("Error writing bytes to serial port");
-        if (n > 0)
-        {
-            written += n;
-        }
-        else
-        {
-            tv.tv_sec = 10;
-            tv.tv_usec = 0;
-            FD_ZERO(&wfds);
-            FD_SET(fd, &wfds);
-            n = select(fd+1, NULL, &wfds, NULL, &tv);
-            if (n < 0 && errno == EINTR)
-                n = 1;
-            if (n <= 0)
-                zsys_error("Error waiting for serial port write availability");
-        }
-    }
-    assert(written == length);
-#endif
+
+
+    // finally send the dmx values
+    send_dmxdata();
+
     return NULL;
 }
 

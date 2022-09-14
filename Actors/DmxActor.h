@@ -21,6 +21,8 @@ public:
 
     void open_serialport();
 
+    void send_dmxdata();
+
     zmsg_t *
     handleInit(sphactor_event_t *ev);
 
