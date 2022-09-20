@@ -328,6 +328,7 @@ DmxActor::send_dmxdata()
 {
     dmxdata[2] = channels & 0xFF;
     dmxdata[3] = (channels >> 8) & 0xff;
+    dmxdata[4] = 0x0; // DMX start code
     dmxdata[channels + 4 ] = 0xe7; // end value
 #ifdef __WINDOWS__
     DWORD written;
@@ -347,7 +348,10 @@ DmxActor::send_dmxdata()
             n = 0;
         //printf("Write, n = %d\n", n);
         if (n < 0)
+        {
             zsys_error("Error writing bytes to serial port");
+            break;
+        }
         if (n > 0)
         {
             written += n;
@@ -362,10 +366,13 @@ DmxActor::send_dmxdata()
             if (n < 0 && errno == EINTR)
                 n = 1;
             if (n <= 0)
+            {
                 zsys_error("Error waiting for serial port write availability");
+                break;
+            }
         }
     }
-    assert(written == length);
+    // assert(written == length || attempts == 0);
 #endif
 }
 
@@ -527,7 +534,6 @@ DmxActor::handleAPI(sphactor_event_t *ev)
 #endif
         {
             memset((void *)(dmxdata+4), 255, channels); // max out the dmx channel values
-            dmxdata[channels + 4 ] = 0xe7; // end value
             send_dmxdata();
         }
     }
