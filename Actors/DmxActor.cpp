@@ -332,7 +332,7 @@ DmxActor::send_dmxdata()
     dmxdata[channels + 5 ] = 0xe7; // end value
 #ifdef __WINDOWS__
     DWORD written;
-    if( !WriteFile(this->hComm, this->dmxdata, channels+5, &written, 0) )
+    if( !WriteFile(this->hComm, this->dmxdata, channels+6, &written, 0) )
     {
            zsys_error("DMX actor: couldn't write to port");
     }
