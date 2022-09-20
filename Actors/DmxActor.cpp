@@ -326,10 +326,10 @@ DmxActor::close_serialport()
 void
 DmxActor::send_dmxdata()
 {
-    dmxdata[2] = channels & 0xFF;
-    dmxdata[3] = (channels >> 8) & 0xff;
+    dmxdata[2] = channels+1 & 0xFF;
+    dmxdata[3] = (channels+1 >> 8) & 0xff;
     dmxdata[4] = 0x0; // DMX start code
-    dmxdata[channels + 4 ] = 0xe7; // end value
+    dmxdata[channels + 5 ] = 0xe7; // end value
 #ifdef __WINDOWS__
     DWORD written;
     if( !WriteFile(this->hComm, this->dmxdata, channels+5, &written, 0) )
@@ -340,7 +340,7 @@ DmxActor::send_dmxdata()
     size_t written = 0;
     fd_set wfds;
     struct timeval tv;
-    size_t length = channels + 5; // header 4 bytes + end byte
+    size_t length = channels + 6; // header 4 bytes + start code + channels + end byte
     while (written < length)
     {
         auto n = write(this->fd, this->dmxdata + written, length - written);
