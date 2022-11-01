@@ -7,6 +7,7 @@
 class OSCInput : public Sphactor {
 private:
     std::string port = "6200";
+    std::string host = "*";
     zsock_t* dgramr = NULL;
 
 public:

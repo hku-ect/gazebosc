@@ -12,6 +12,13 @@ const char * OSCInput::capabilities =
         "        max = \"10000\"\n"
         "        api_call = \"SET PORT\"\n"
         "        api_value = \"i\"\n"           // optional picture format used in zsock_send
+        "    data\n"
+        "        name = \"host\"\n"
+        "        type = \"string\"\n"
+        "        help = \"The host address to listen on. * for anything, 239.0.0.1 for multicast. Only use unique hosts, don't use two actors with the same host address\"\n"
+        "        value = \"*\"\n"
+        "        api_call = \"SET HOST\"\n"
+        "        api_value = \"s\"\n"           // optional picture format used in zsock_send
         "outputs\n"
         "    output\n"
         "        type = \"OSC\"\n";
@@ -42,7 +49,7 @@ zmsg_t * OSCInput::handleAPI( sphactor_event_t *ev )
                 zsock_destroy(&this->dgramr);
             }
 
-            std::string url = "udp://*:" + this->port;
+            std::string url = "udp://" + this->host + ":" + this->port;
             this->dgramr = zsock_new_dgram(url.c_str());
             if ( this->dgramr ) {
                 sphactor_actor_poller_add((sphactor_actor_t *) ev->actor, this->dgramr);
@@ -54,6 +61,27 @@ zmsg_t * OSCInput::handleAPI( sphactor_event_t *ev )
 
             zsys_info("SET PORT: %s", url.c_str());
             zstr_free(&port);
+        }
+        else if ( streq(cmd, "SET HOST") ) {
+            char *hst = zmsg_popstr(ev->msg);
+            this->host = hst;
+            if ( this->dgramr ) {
+                sphactor_actor_poller_remove((sphactor_actor_t*)ev->actor, this->dgramr);
+                zsock_destroy(&this->dgramr);
+            }
+
+            std::string url = "udp://" + this->host + ":" + this->port;
+            this->dgramr = zsock_new_dgram(url.c_str());
+            if ( this->dgramr ) {
+                sphactor_actor_poller_add((sphactor_actor_t *) ev->actor, this->dgramr);
+                zsys_info("Listening on url: %s", url.c_str());
+            }
+            else {
+                zsys_info("Error creating listener for url: %s", url.c_str());
+            }
+
+            zsys_info("SET HOST: %s", url.c_str());
+            zstr_free(&hst);
         }
 
         zstr_free(&cmd);
