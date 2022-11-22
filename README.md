@@ -80,9 +80,9 @@ The gazebosc executable will be in the bin folder!
 ```
 sudo apt-get update
 sudo apt-get install -y \
-    build-essential libtool cmake \
+    build-essential libtool-bin cmake libasound2-dev \
     pkg-config autotools-dev autoconf automake \
-    uuid-dev libpcre3-dev libsodium-dev 
+    uuid-dev libpcre3-dev libsodium-dev python3-dev
 ```
 
 #### Clone and build libzmq
@@ -102,9 +102,8 @@ Once the above dependencies are installed, you are ready to build Gazebosc:
 * Clone the repo and build Gazebosc
 ```
 git clone --recurse-submodules http://github.com/hku-ect/gazebosc.git
-cd gazebosc
-mkdir build
-cd build
+mkdir gazebosc/build
+cd gazebosc/build
 cmake ..
 make
 ```
@@ -115,6 +114,27 @@ cd bin
 ```
 
 If you want to work on Gazebosc it's easiest to use the QtCreator IDE. Just load the CMakeLists.txt as a project in QtCreator and run from there.
+
+#### Raspberry Pi (Raspberry Pi OS)
+
+Use the following script:
+
+```bash
+sudo apt install git libtool-bin libdrm-dev libgbm-dev build-essential libtool-bin cmake \
+    pkg-config autotools-dev autoconf automake libevdev2 libgles2-mesa-dev \
+    uuid-dev libpcre3-dev libsodium-dev python3-dev libasound2-dev libxext-dev
+git clone https://github.com/zeromq/libzmq.git
+cd libzmq
+./autogen.sh && ./configure --without-documentation
+make
+sudo make install
+cd ..
+git clone --recurse-submodules http://github.com/hku-ect/gazebosc.git
+mkdir gazebosc/build
+cd gazebosc/build
+cmake .. -DWITH_OPENVR=OFF 
+CFLAGS=-mfpu=neon make
+```
 
 ### Windows
 
