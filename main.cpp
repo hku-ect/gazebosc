@@ -381,6 +381,14 @@ int main(int argc, char** argv)
     //TODO: Implement an argument to allow opening a window during a headless run
     if ( headless ) {
 
+        if ( stage_file )
+        {
+            if ( ! Load(stage_file))
+            {
+                zsys_error("Failed loading %s", stage_file);
+            }
+        }
+
         while (!stop) {
             if ( loops != -1 ) {
                 std::this_thread::sleep_for (std::chrono::milliseconds(1));
