@@ -49,7 +49,10 @@ s_handle_inotify_events(pythonactor_t *self, sphactor_actor_t *actorinst, int fd
        if ( event->mask & IN_DELETE_SELF || event->mask & IN_DELETE )
        {
            zsys_warning("Watched file %s is deleted", self->main_filename);
+           PyGILState_STATE gstate;
+           gstate = PyGILState_Ensure();
            s_pythonactor_set_file(self, "");
+           PyGILState_Release(gstate);
            return;
        }
        /*
