@@ -155,10 +155,12 @@ s_get_serialports()
 {
 #ifdef __UTYPE_LINUX
     zdir_t *serdir =zdir_new("/dev/serial/by-id", "-");
-    zlist_t *dirlist = zdir_list(serdir);
-    zfile_t *item = (zfile_t *)zlist_first(dirlist);
     zlist_t *names = zlist_new();
     zlist_autofree(names);
+    if ( serdir == NULL )
+        return names;
+    zlist_t *dirlist = zdir_list(serdir);
+    zfile_t *item = (zfile_t *)zlist_first(dirlist);
     while(item)
     {
         const char *name = zfile_filename(item, NULL);
