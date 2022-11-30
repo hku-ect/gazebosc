@@ -323,6 +323,7 @@ int main(int argc, char** argv)
 
 #if defined(__UNIX__)
     signal(SIGQUIT, sig_hand);
+    signal(SIGTERM, sig_hand);
     signal(SIGHUP, sig_hand);
     signal(SIGILL, print_backtrace); // Illegal Instruction
     signal(SIGBUS, print_backtrace); // Bus error (bad memory access)
