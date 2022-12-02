@@ -594,7 +594,7 @@ DmxActor::handleSocket(sphactor_event_t *ev)
             {
                 float fvalue = 0;
                 int rc = zosc_retr(oscm, "f", &fvalue);
-                int value = int(fvalue);
+                int value = int(fvalue * 255);
                 if (value > 255) value = 255;
                 if (value < 0) value = 0;
                 dmxdata[channel+4] = (unsigned char)value;
@@ -603,7 +603,7 @@ DmxActor::handleSocket(sphactor_event_t *ev)
             {
                 double fvalue = 0;
                 int rc = zosc_retr(oscm, "d", &fvalue);
-                int value = int(fvalue);
+                int value = int(fvalue * 255);
                 if (value > 255) value = 255;
                 if (value < 0) value = 0;
                 dmxdata[channel+4] = (unsigned char)value;
