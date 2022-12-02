@@ -87,7 +87,13 @@ if (EXISTS "/opt/vc/include/bcm_host.h")
     message(STATUS "Enabling building for the Raspberry Pi")
     set(RPI "ON")
     add_definitions(-DIMGUI_IMPL_OPENGL_ES2)
+    set(WITH_OPENVR "OFF")
 endif(EXISTS "/opt/vc/include/bcm_host.h")
+if (EXISTS "/usr/include/bcm_host.h")
+    message(STATUS "Enabling building for the Raspberry Pi on Raspberry Pi OS")
+    set(RPI4 "ON")
+    add_definitions(-DIMGUI_IMPL_OPENGL_ES2)
+endif(EXISTS "/usr/include/bcm_host.h")
 
 # External system libraries through find_package
 find_package(libzmq REQUIRED)
@@ -322,6 +328,14 @@ elseif (WIN32)
         )
     endif(WITH_EMBED_PYTHON)
 elseif (RPI)
+    target_link_libraries(gazebosc PUBLIC
+        SDL2-static
+        sphactor-static
+        rtmidi
+        ${Python3_LIBRARIES}
+        -lasound -ldl -L/opt/vc/lib -lbrcmGLESv2)
+    target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
+elseif (RPI4)
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linuxarm64")
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
@@ -329,7 +343,7 @@ elseif (RPI)
         rtmidi
         ${OPENVR_LIBRARIES}
         ${Python3_LIBRARIES}
-        -lasound -ldl -L/opt/vc/lib -lbrcmGLESv2)
+        -lasound -ldl -lGLESv2)
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
 else()
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linux64")
@@ -383,8 +397,10 @@ install(CODE "
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} CMAKE_HOST_SYSTEM_NAME)
 set(CPACK_GENERATOR "ZIP")
+set(PLATFORMID "${CMAKE_HOST_SYSTEM_NAME}")
 if(APPLE)
     set(CPACK_GENERATOR "DragNDrop")
+    set(PLATFORMID "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}")
 endif(APPLE)
 set(CPACK_VERBATIM_VARIABLES true)
 set(CPACK_PACKAGE_VERSION_MAJOR ${VERSION_MAJOR})
@@ -392,6 +408,6 @@ set(CPACK_PACKAGE_VERSION_MINOR ${VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${VERSION_PATCH})
 set(CPACK_PACKAGE_NAME "Gazebosc")
 set(CPACK_PACKAGE_VENDOR "HKU")
-set(CPACK_PACKAGE_FILE_NAME  "gazebosc_${CMAKE_HOST_SYSTEM_NAME}_${GIT_REPO_VERSION}")
+set(CPACK_PACKAGE_FILE_NAME  "gazebosc_${PLATFORMID}_${GIT_REPO_VERSION}")
 #set(CPACK_PACKAGE_ICON "${ICON_TARGET}")
 include(CPack)
