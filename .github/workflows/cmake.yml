@@ -93,10 +93,9 @@ jobs:
       run: |
         git fetch --all --tags
         if [ "${RUNNER_OS}" == "Linux" ]; then zip -q -r $( echo $GITHUB_REPOSITORY | cut -d"/" -f2)_${RUNNER_OS}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*"; fi
-        if [ ! -d "$HOME/.ssh" ]; then mkdir $HOME/.ssh; fi
         echo '|1|AurlN3z7WhvxYbuNdsouT5s7FYs=|cjTFODbUXIXKeWihh1BjnfXgARw= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=' >> ./known_hosts
         git clone https://github.com/clarkwang/passh.git
         cd passh
         cc -o passh passh.c
-        ./passh -p env:BBPWD scp -o UserKnownHostsFile ../known_hosts ../gazebosc_*_* buildbot@pong.hku.nl:public_html/gazebosc/
+        ./passh -p env:BBPWD scp -o UserKnownHostsFile=../known_hosts ../gazebosc_*_* buildbot@pong.hku.nl:public_html/gazebosc/
         rm ../known_hosts
