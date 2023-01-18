@@ -232,7 +232,16 @@ void RegisterActors() {
 #ifdef PYTHON3_FOUND
     int rc = python_init();
     assert( rc == 0);
-    python_call_file_func("checkver", "check_github_newer_commit", "s", GIT_VERSION);
+    /* Check newer version: We should make this async as it slows startup" */
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+
+    PyObject *pUpdateBool = python_call_file_func("checkver", "check_github_newer_commit", "(s)", GIT_HASH);
+    if (pUpdateBool && PyObject_IsTrue(pUpdateBool))
+        GZB_GLOBAL.UPDATE_AVAIL = true;
+
+    PyGILState_Release(gstate);
+    /* End check newer version */
 #endif
     //enforcable maximum actor counts
     max_actors_by_type.insert(std::make_pair("NatNet", 1));
@@ -647,6 +656,34 @@ int RenderMenuBar( bool * showLog ) {
     }
     else {
         ImGui::TextColored( ImVec4(.7,.9,.7,1), ICON_FA_EDIT ": %s", editingFile.c_str());
+    }
+
+    if (GZB_GLOBAL.UPDATE_AVAIL)
+    {
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 64);
+        ImGui::TextColored( ImVec4(.99,.9,.7,1), "update " ICON_FA_INFO_CIRCLE );
+        if ( ImGui::IsItemHovered() )
+        {
+            ImGui::BeginTooltip();
+            ImGui::PushTextWrapPos(ImGui::GetFontSize() * 24.0f);
+            ImGui::TextUnformatted("Gazebosc update available, click to download");
+            ImGui::PopTextWrapPos();
+            ImGui::EndTooltip();
+
+            if ( ImGui::IsMouseClicked(0) )
+            {
+                char cmd[PATH_MAX];
+                char url[60] = "https://pong.hku.nl/~buildbot/gazebosc/";
+    #ifdef __WINDOWS__
+                snprintf(cmd, PATH_MAX, "start %s", url);
+    #elif defined __UTYPE_LINUX
+                snprintf(cmd, PATH_MAX, "xdg-open %s &", url);
+    #else
+                snprintf(cmd, PATH_MAX, "open %s", url);
+    #endif
+                system(cmd);
+            }
+        }
     }
 
     ImGui::EndMainMenuBar();

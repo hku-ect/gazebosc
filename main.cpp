@@ -344,6 +344,7 @@ int main(int argc, char** argv)
     //
     set_global_resources();
     set_global_temp();
+    GZB_GLOBAL.UPDATE_AVAIL = false;
     RegisterActors();
 
     // Argument capture

@@ -179,13 +179,14 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
 
 # get git version
 include(GitVersion)
-message(STATUS "GIT_REPO_VERSION=${GIT_REPO_VERSION} VERSION_MAJOR=${VERSION_MAJOR} VERSION_MINOR=${VERSION_MINOR} VERSION_PATCH=${VERSION_PATCH}")
+message(STATUS "GIT_REPO_VERSION=${GIT_REPO_VERSION} VERSION_MAJOR=${VERSION_MAJOR} VERSION_MINOR=${VERSION_MINOR} VERSION_PATCH=${VERSION_PATCH} GIT_HASH=${GIT_HASH}")
 # create config.h
 # configure_file(${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h) # this is not run every build
 add_custom_command(
     OUTPUT config.h
     COMMAND ${CMAKE_COMMAND}
             -D GIT_REPO_VERSION=${GIT_REPO_VERSION}
+            -D GIT_HASH=${GIT_HASH}
             -D INPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/config.h.in
             -D OUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/config.h
             -P ${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/Configure.cmake

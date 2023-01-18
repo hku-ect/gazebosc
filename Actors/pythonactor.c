@@ -565,13 +565,10 @@ int python_init()
     return rc;
 }
 
-int python_call_file_func(char *file, char *func, const char *format, ...)
+PyObject *python_call_file_func(const char *file, const char *func, const char *fmt, ...)
 {
-    // free the pyinstance
-    PyGILState_STATE gstate;
-    gstate = PyGILState_Ensure();
-
-    PyObject *pName, *pModule, *pDict, *pFunc, *pValue, *presult;
+    PyObject *pName, *pModule, *pFunc, *pValue;
+    pValue = NULL;
     pName = PyUnicode_DecodeFSDefault(file);
     /* Error checking of pName left out */
     assert(pName);
@@ -585,10 +582,13 @@ int python_call_file_func(char *file, char *func, const char *format, ...)
 
         if (pFunc && PyCallable_Check(pFunc)) {
 
-            va_list args;
-            va_start(args, format);
-            pValue = PyObject_CallFunction(pFunc, format);
-            va_end(args);
+            va_list argsptr;
+            va_start(argsptr, fmt);
+            PyObject *pArgs = Py_VaBuildValue(fmt, argsptr);
+            assert(pArgs);
+            pValue = PyObject_CallObject(pFunc, pArgs);
+            //vprintf(fmt, argsptr);
+            va_end(argsptr);
             if (pValue != NULL) {
                 printf("Result of call: %ld\n", PyLong_AsLong(pValue));
                 Py_DECREF(pValue);
@@ -598,8 +598,6 @@ int python_call_file_func(char *file, char *func, const char *format, ...)
                 Py_DECREF(pModule);
                 PyErr_Print();
                 fprintf(stderr,"Call failed\n");
-                PyGILState_Release(gstate);
-                return 1;
             }
         }
         else {
@@ -614,10 +612,9 @@ int python_call_file_func(char *file, char *func, const char *format, ...)
     {
         PyErr_Print();
         fprintf(stderr, "Failed to load \"%s\"\n", file);
-        PyGILState_Release(gstate);
-        return 1;
     }
-    PyGILState_Release(gstate);
+    return pValue;
+
 }
 
 // this is needed because we have to conform to returning a void * thus we need to wrap

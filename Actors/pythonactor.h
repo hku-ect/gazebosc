@@ -21,7 +21,7 @@ struct _pythonactor_t
 typedef struct _pythonactor_t pythonactor_t;
 
 int python_init();
-int python_call_file_func(char *file, char *func, const char *format, ...);
+PyObject *python_call_file_func(const char *file, const char *func, const char *format, ...);
 
 void * pythonactor_new_helper(void *args);
 pythonactor_t * pythonactor_new();

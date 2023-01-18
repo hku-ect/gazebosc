@@ -54,8 +54,8 @@ def check_github_newer_commit(cursha):
         """
         j = req.json()
         t = j.get("sha")
-        if not cursha == t[:6]:
-            print(cursha, t)
+        if not cursha == t:
+            print("Current sha: {}, newer sha: {}".format(cursha, t))
             return True
 
         return False
