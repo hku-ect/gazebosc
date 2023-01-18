@@ -9,6 +9,7 @@
 #endif
 #ifdef __UTYPE_LINUX
 #include <sys/inotify.h>
+#include "config.h"
 
 zmsg_t *
 s_pythonactor_set_file(pythonactor_t *self, const char *filename);
