@@ -232,6 +232,7 @@ void RegisterActors() {
 #ifdef PYTHON3_FOUND
     int rc = python_init();
     assert( rc == 0);
+    python_call_file_func("checkver", "check_github_newer_commit", "s", GIT_VERSION);
 #endif
     //enforcable maximum actor counts
     max_actors_by_type.insert(std::make_pair("NatNet", 1));

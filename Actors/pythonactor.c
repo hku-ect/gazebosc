@@ -1,6 +1,7 @@
 #include "pythonactor.h"
 #include "pyzmsg.h"
 #include <wchar.h>
+#include "config.h"
 #ifdef __UTYPE_OSX
 #include "CoreFoundation/CoreFoundation.h"
 #elif defined(__WINDOWS__)
@@ -532,15 +533,20 @@ int python_init()
     //Py_NoUserSiteDirectory = true;
     Py_Initialize();
     //  add the working dir for importing python files
-    rc = PyRun_SimpleString(
+    char *script = (char*)malloc(512 * sizeof(char));
+    // Prints "Hello world!" on hello_world
+    snprintf(script, 512 * sizeof(char),
                     "import sys\n"
-                    "import os\n"
-                    //"print(os.getcwd())\n"
-                    "sys.path.insert(0, \"\")\n"
-                    //"sys.path.append(os.getcwd())\n"
-                    //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
-                    "print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n"
-                       );
+                     "import os\n"
+                     //"print(os.getcwd())\n"
+                     "sys.path.insert(0, \"%s/misc/scripts\")\n"
+                     "sys.path.insert(0, \"\")\n"
+                     //"sys.path.append(os.getcwd())\n"
+                     //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
+                     "print(\"Python {0} initialized. Paths: {1}\".format(sys.version, sys.path))\n",
+                     GZB_GLOBAL.RESOURCESPATH);
+    rc = PyRun_SimpleString(script);
+    free(script);
     //  import the internal wrapper module, this is only needed
     //  if you need access to the libsphactor methods
     PyObject *imp = PyImport_ImportModule("sph");
@@ -557,6 +563,61 @@ int python_init()
 
     sphactor_register("Python", &pythonactor_handler, zconfig_str_load(pythonactorcapabilities), &pythonactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
     return rc;
+}
+
+int python_call_file_func(char *file, char *func, const char *format, ...)
+{
+    // free the pyinstance
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+
+    PyObject *pName, *pModule, *pDict, *pFunc, *pValue, *presult;
+    pName = PyUnicode_DecodeFSDefault(file);
+    /* Error checking of pName left out */
+    assert(pName);
+    pModule = PyImport_Import(pName);
+    Py_DECREF(pName);
+
+    if (pModule != NULL)
+    {
+        pFunc = PyObject_GetAttrString(pModule, func);
+        /* pFunc is a new reference */
+
+        if (pFunc && PyCallable_Check(pFunc)) {
+
+            va_list args;
+            va_start(args, format);
+            pValue = PyObject_CallFunction(pFunc, format);
+            va_end(args);
+            if (pValue != NULL) {
+                printf("Result of call: %ld\n", PyLong_AsLong(pValue));
+                Py_DECREF(pValue);
+            }
+            else {
+                Py_DECREF(pFunc);
+                Py_DECREF(pModule);
+                PyErr_Print();
+                fprintf(stderr,"Call failed\n");
+                PyGILState_Release(gstate);
+                return 1;
+            }
+        }
+        else {
+            if (PyErr_Occurred())
+                PyErr_Print();
+            fprintf(stderr, "Cannot find function \"%s\"\n", func);
+        }
+        Py_XDECREF(pFunc);
+        Py_DECREF(pModule);
+    }
+    else
+    {
+        PyErr_Print();
+        fprintf(stderr, "Failed to load \"%s\"\n", file);
+        PyGILState_Release(gstate);
+        return 1;
+    }
+    PyGILState_Release(gstate);
 }
 
 // this is needed because we have to conform to returning a void * thus we need to wrap
