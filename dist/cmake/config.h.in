@@ -2,11 +2,23 @@
 #define GZB_CONFIG_H
 //const char *GIT_VERSION = "${GIT_REPO_VERSION}";
 #define GIT_VERSION "${GIT_REPO_VERSION}"
+#define GIT_HASH ${GIT_HASH}
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct _GZB_GLOBALS_t
 {
     char *RESOURCESPATH;
     char *TMPPATH;
+    bool UPDATE_AVAIL;
 } GZB_GLOBALS_t;
 
 extern GZB_GLOBALS_t GZB_GLOBAL;
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif
