@@ -380,31 +380,8 @@ int main(int argc, char** argv)
     }
     */
 
-    //TODO: Implement an argument to allow opening a window during a headless run
-    if ( headless ) {
-
-        if ( stage_file )
-        {
-            if ( ! Load(stage_file))
-            {
-                zsys_error("Failed loading %s", stage_file);
-            }
-        }
-
-        while (!stop) {
-            if ( loops != -1 ) {
-                std::this_thread::sleep_for (std::chrono::milliseconds(1));
-                if ( ++loopCount > loops ) {
-                    break;
-                }
-            }
-        }
-    }
-    else {
-        int result = SDLInit(&window, &gl_context, &glsl_version);
-        if ( result != 0 ) {
-            return result;
-        }
+    // try to init SDL and otherwise run headless
+    if ( !headless && SDLInit(&window, &gl_context, &glsl_version) == 0 ) {
         SDL_SetWindowTitle(window, "Gazebosc       [" GIT_VERSION "]" );
 
         zsys_info("VERSION: %s", glsl_version);
@@ -425,6 +402,33 @@ int main(int argc, char** argv)
 
         // Cleanup
         Cleanup(window, &gl_context);
+    }
+    //TODO: Implement an argument to allow opening a window during a headless run
+    else {
+
+        if ( stage_file )
+        {
+            if ( ! Load(stage_file))
+            {
+                zsys_error("Failed loading %s", stage_file);
+            }
+            while (!stop) {
+                if ( loops != -1 ) {
+                    std::this_thread::sleep_for (std::chrono::milliseconds(1));
+                    if ( ++loopCount > loops ) {
+                        break;
+                    }
+                }
+            }
+        }
+        else if (headless)
+        {
+            zsys_error("No stage file provided, exiting");
+        }
+        else
+        {
+            zsys_error("Can't open a window and no stage file provided, exiting");
+        }
     }
 
     Clear();
