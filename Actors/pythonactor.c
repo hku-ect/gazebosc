@@ -202,6 +202,15 @@ s_py_set_timeout(pythonactor_t *self, sphactor_event_t *ev)
 zmsg_t *
 s_pythonactor_set_file(pythonactor_t *self, const char *filename)
 {
+    if ( streq(filename, "") )
+    {
+        self->fd = -1;
+        self->wd = -1;
+        Py_CLEAR(self->pyinstance);
+        Py_CLEAR(self->pymodule);
+        return NULL;
+    }
+
     char *filebasename = s_basename(filename);
     char *pyname = s_remove_ext(filebasename);
 
