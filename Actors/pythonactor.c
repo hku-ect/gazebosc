@@ -637,6 +637,14 @@ pythonactor_new()
     self->fd = -1;
     self->wd = -1;
 
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+    PyObject *builtins_module = PyImport_ImportModule("builtins");
+    self->_exitexc = PyObject_GetAttrString(builtins_module, "SystemExit");
+
+    Py_DECREF(builtins_module);
+    PyGILState_Release(gstate);
+
     return self;
 }
 
@@ -653,6 +661,8 @@ pythonactor_destroy(pythonactor_t **self_p)
         gstate = PyGILState_Ensure();
         Py_CLEAR(self->pyinstance);
         Py_CLEAR(self->pymodule);
+        Py_DECREF(self->_exitexc);
+
         PyGILState_Release(gstate);
 
         //  Free object itself
@@ -870,10 +880,18 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
         PyObject *pReturn = PyObject_CallMethod(self->pyinstance, "handleSocket", "sOsss", oscaddress, py_osctuple, ev->type, ev->name, ev->uuid);
         // destroy the osc message
         zosc_destroy(&oscm);
+
+        // check if null in case of error
         if (pReturn == NULL)
         {
             PyErr_Print();
             zsys_error("pythonactor: error calling handleSocket");
+        }
+        else if ( PyObject_IsInstance(pReturn, self->_exitexc) )
+        {   //  Instead of calling sys.exit(), which is messy, an actor can
+            //  return SystemExit() to indicate termination of the application
+            zsys_info("Received instance of SystemExit! Terminating all execution.");
+            kill(0, SIGTERM); // calling exit is not safe, so we're raising SIGTERM which will be caught by the main thread.
         }
         else if (pReturn != Py_None)
         {

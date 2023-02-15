@@ -72,13 +72,14 @@ void RegisterActors();
 
 // exit handlers et al
 volatile sig_atomic_t stop;
-void sig_hand(int signum) {
-    stop = 1;
-}
 
 void handle_exit(void)
 {
     stop = 1;
+}
+
+void sig_hand(int signum) {
+    handle_exit();
 }
 
 
