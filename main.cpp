@@ -82,6 +82,13 @@ void sig_hand(int signum) {
     handle_exit();
 }
 
+#ifdef __WINDOWS__
+static BOOL WINAPI s_exit_handler_fn (DWORD ctrltype)
+{
+    handle_exit();
+    return TRUE;
+}
+#endif
 
 // Window variables
 SDL_Window* window;
@@ -340,6 +347,8 @@ int main(int argc, char** argv)
     chdir(path);
     zsys_info("working dir changed to %s", path);
 #endif
+#elif defined(__WINDOWS__)
+    SetConsoleCtrlHandler (s_exit_handler_fn, TRUE);
 #endif
 
     //

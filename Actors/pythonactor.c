@@ -891,7 +891,11 @@ pythonactor_socket(pythonactor_t *self, sphactor_event_t *ev)
         {   //  Instead of calling sys.exit(), which is messy, an actor can
             //  return SystemExit() to indicate termination of the application
             zsys_info("Received instance of SystemExit! Terminating all execution.");
+#ifdef __WINDOWS__
+            GenerateConsoleCtrlEvent(0, 0); // send CTRL-C
+#else
             kill(0, SIGTERM); // calling exit is not safe, so we're raising SIGTERM which will be caught by the main thread.
+#endif
         }
         else if (pReturn != Py_None)
         {
