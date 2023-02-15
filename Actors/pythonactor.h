@@ -14,6 +14,7 @@ struct _pythonactor_t
     char     *main_filename;  // the full path to the main python source file
     PyObject *pymodule;       // the imported pythonfile as a module
     PyObject *pyinstance;     // our python instance
+    PyObject *_exitexc;       // ref to the SystemExit exception
     int      fd;              // filedescriptor for file change events
     int      wd;              // watch descriptor of the file change events
 };
