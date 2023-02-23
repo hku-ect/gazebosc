@@ -230,3 +230,8 @@ Throughout the lifetime of the actor, the GNode class will receive events, and p
 #### Destruction
 When deleting nodes or clearing sketches, the node instance will be destroyed and its actor stopped.
 
+# Related research
+
+* Sphactor: actor model concurrency for creatives: https://archive.fosdem.org/2020/schedule/event/iotsphactor/
+* Code Orchestration: https://archive.fosdem.org/2016/schedule/event/deviot02/
+* Orchestrating computer systems, a new protocol: https://archive.fosdem.org/2015/schedule/event/deviot02/
