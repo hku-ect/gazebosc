@@ -96,6 +96,7 @@ std::vector<ActorContainer*> actors;
 std::map<std::string, int> max_actors_by_type;
 
 sph_stage_t *stage = NULL;
+static ziflist_t *nics = NULL; // list of network interfaces
 
 // File browser instance
 imgui_addons::ImGuiFileBrowser file_dialog;
@@ -194,6 +195,18 @@ textfile* hardswap_editor = nullptr;
 bool showDemo = false;
 void ImGui::ShowDemoWindow(bool* p_open);
 #endif
+
+void SelectableText(const char *buf)
+{
+    ImGui::PushID(buf);
+    ImGui::PushItemWidth(ImGui::GetColumnWidth());
+    ImGui::GetStyleColorVec4(ImGuiCol_TableRowBg);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetStyleColorVec4(ImGuiCol_TableRowBg)); //otherwise it is colored
+    ImGui::InputText("", (char *)buf, strlen(buf), ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopItemWidth();
+    ImGui::PopStyleColor();
+    ImGui::PopID();
+}
 
 bool showAbout = false;
 
@@ -339,7 +352,7 @@ void FX(ImDrawList* d, V2 o, V2 b, V2 sz, ImVec4, F t) {
 
 void ShowAboutWindow(bool *open)
 {
-    ImGuiIO& io = ImGui::GetIO();    
+    ImGuiIO& io = ImGui::GetIO();
     //TODO: try to center window, doesn't work somehow
     ImGui::SetNextWindowPos(ImGui::GetWindowSize()/2, ImGuiCond_Once, ImVec2(0.5,0.5));
     ImGui::Begin("About", open, ImGuiWindowFlags_AlwaysAutoResize);
@@ -366,6 +379,59 @@ void ShowAboutWindow(bool *open)
     ImGui::Text("CZMQ: %i.%i.%i", CZMQ_VERSION_MAJOR, CZMQ_VERSION_MINOR, CZMQ_VERSION_PATCH);
     ImGui::Text("Sphactor: %i.%i.%i", SPHACTOR_VERSION_MAJOR, SPHACTOR_VERSION_MINOR, SPHACTOR_VERSION_PATCH);
     ImGui::Text("Dear ImGui: %s", IMGUI_VERSION);
+    if (ImGui::CollapsingHeader("System Info"))
+    {
+        if (nics == NULL)
+            nics = ziflist_new();
+
+        static ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Resizable | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg;
+
+        if (ImGui::BeginTable("interfaces", 5, flags))
+        {
+            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("MacAddress");
+            ImGui::TableSetupColumn("IpAddress");
+            ImGui::TableSetupColumn("Netmask");
+            ImGui::TableSetupColumn("Broadcast");
+            ImGui::TableHeadersRow();
+
+            const char *name = ziflist_first (nics);
+            while (name)
+            {
+                ImGui::TableNextRow();
+                // name
+                ImGui::TableSetColumnIndex(0);
+                SelectableText(name);
+
+                // mac
+                char buf[32];
+                ImGui::TableSetColumnIndex(1);
+                sprintf(buf, "%s", ziflist_mac(nics) );
+                SelectableText(buf);
+                // address
+                ImGui::TableSetColumnIndex(2);
+                sprintf(buf, "%s", ziflist_address (nics));
+                SelectableText(buf);
+                // netmask
+                ImGui::TableSetColumnIndex(3);
+                sprintf(buf, "%s", ziflist_netmask (nics));
+                SelectableText(buf);
+                // broadcast
+                ImGui::TableSetColumnIndex(4);
+                //char buf[32];
+                sprintf(buf, "%s", ziflist_broadcast (nics));
+                SelectableText(buf);
+
+                name = ziflist_next (nics);
+            }
+            ImGui::EndTable();
+        }
+        if ( ImGui::Button("refresh interfaces") )
+        {
+            ziflist_reload(nics);
+        }
+
+    }
     ImGui::End();
 }
 
