@@ -406,7 +406,7 @@ void ShowAboutWindow(bool *open)
                 // mac
                 char buf[32];
                 ImGui::TableSetColumnIndex(1);
-                sprintf(buf, "%s", "00:00:00:00:00:00"); //ziflist_mac(nics) );
+                sprintf(buf, "%s", ziflist_mac(nics) );
                 SelectableText(buf);
                 // address
                 ImGui::TableSetColumnIndex(2);
