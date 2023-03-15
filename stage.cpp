@@ -186,6 +186,7 @@ struct textfile {
     zfile_t *file;
     char *basename;
     bool open;
+    bool changed;
 };
 std::vector<textfile> open_text_files;
 bool txteditor_open = false;
@@ -486,7 +487,7 @@ void OpenTextEditor(zfile_t* txtfile)
     }
     if (found == nullptr)
     {
-        zsys_info("NOT FOUND... loading & creating text instance");
+        zsys_info("TextEditor: loading & new textfile");
         // we own the pointer now!
         int rc = zfile_input(txtfile);
         assert(rc == 0);
@@ -496,10 +497,11 @@ void OpenTextEditor(zfile_t* txtfile)
         editor->SetText((char*)zchunk_data(data));
         char* basename = s_basename(zfile_filename(txtfile, nullptr));
         // add the new file to our list of open files
-        open_text_files.push_back({ editor, txtfile, basename, true });
+        open_text_files.push_back({ editor, txtfile, basename, true, false });
+        hardswap_editor = &(open_text_files.back());
     }
     else {
-        zsys_info("FOUND OPEN TEXT FILE!... maybe activate the correct tab?");
+        zsys_info("TextEditor: existing text file found, activating the correct tab?");
         hardswap_editor = found;
         // cleanup not used txtfile
         zfile_destroy(&txtfile);
@@ -562,6 +564,8 @@ void ShowTextEditor()
                         if (rc != 0) {
                             zsys_info("ERROR WRITING TO FILE: %i", rc);
                         }
+                        else
+                            current_editor->changed = false;
                     }
                 }
             }
@@ -631,23 +635,20 @@ void ShowTextEditor()
                     flags |= ImGuiTabItemFlags_SetSelected;
                     hardswap_editor = nullptr;
                 }
+                // TODO: when loading the textfile this will always
+                // result in text being changed.
+                if ( !it->changed && it->editor->IsTextChanged() ) it->changed = true;
 
-                if (&it->open && ImGui::BeginTabItem(it->basename, &it->open, flags))
+                char filename[FILENAME_MAX];
+                if ( it->changed )
+                    snprintf(filename, FILENAME_MAX, "%s*", it->basename);
+                else
+                    snprintf(filename, FILENAME_MAX, "%s", it->basename);
+
+                if (ImGui::BeginTabItem(filename, &it->open, flags))
                 {
-                    if (current_editor != &(*it))
-                    {
-                        current_editor = &(*it); // set current textfile from active tab
-                        //TODO: refresh buffer
-                        //current_editor->editor->
-                        //memset(text, 0, sizeof(text));
-                        //zchunk_t* fileChunk = zfile_read(it->file, zfile_cursize(it->file), 0);
-                        //assert(zchunk_size(fileChunk)+1 < IM_ARRAYSIZE(text));
-                        //memcpy(text, zchunk_data(fileChunk), zchunk_size(fileChunk));
-                        //text[zchunk_size(fileChunk)+1] = 0x0; // force null terminator
-                        //zchunk_destroy(&fileChunk);
-                    }
-                    current_editor->editor->Render("TextEditor");
-                    //ImGui::InputTextMultiline("##source", text, IM_ARRAYSIZE(text), ImVec2(-FLT_MIN, ImGui::GetCurrentWindow()->Size.y - 80), ImGuiInputTextFlags_AllowTabInput);
+                    current_editor = &(*it); // set current textfile from active tab
+                    current_editor->editor->Render("TextEditor", false, ImVec2(), true);
                     ImGui::EndTabItem();
                 }
                 else if (!it->open)
