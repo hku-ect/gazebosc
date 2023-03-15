@@ -25,7 +25,6 @@ endif()
 message(STATUS "Compilation set for ${ARCH}bits architectures.")
 
 set(CMAKE_CXX_STANDARD 17)
-set(DEP_IMGUI_VERSION "1.86" CACHE STRING "ImGui version to use")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/dist/cmake")
 
@@ -157,23 +156,6 @@ if(WITH_DMX)
     add_definitions(-DHAVE_DMX)
 endif(WITH_DMX)
 
-# include Dear ImGui
-if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
-    if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip")
-        file(DOWNLOAD "https://github.com/ocornut/imgui/archive/v${DEP_IMGUI_VERSION}.zip" ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip)
-    endif ()
-    if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}")        
-        if(${CMAKE_VERSION} VERSION_LESS "3.18.0")
-            message(STATUS "cmake version below 3.18")
-            execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip)
-        else()
-            file(ARCHIVE_EXTRACT INPUT ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}.zip
-                DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
-            )
-        endif()
-    endif ()
-endif ()
-
 ### PROJECT SOURCES
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/Actors ACTOR_SOURCES)
 
@@ -196,17 +178,19 @@ add_custom_command(
 
 list(APPEND GZB_SOURCES
     main.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/backends/imgui_impl_opengl3.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/backends/imgui_impl_sdl.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imconfig.h
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_draw.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_widgets.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_tables.cpp
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/imgui_demo.cpp
+    ext/imgui/backends/imgui_impl_opengl3.cpp
+    ext/imgui/backends/imgui_impl_sdl2.cpp
+    ext/imgui/imconfig.h
+    ext/imgui/imgui.cpp
+    ext/imgui/imgui_draw.cpp
+    ext/imgui/imgui_widgets.cpp
+    ext/imgui/imgui_tables.cpp
+    ext/imgui/imgui_demo.cpp
     ImNodes.cpp
     ImNodesEz.cpp
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
+    ext/ImGuiColorTextEdit/LanguageDefinitions.cpp
+    ext/ImGuiColorTextEdit/TextEditor.cpp
     stage.cpp
 )
 
@@ -216,8 +200,9 @@ list(APPEND GZB_INCLUDEDIRS
     ${OPENVR_INCLUDE_DIR}
     ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}
-    ${CMAKE_CURRENT_BINARY_DIR}/imgui-${DEP_IMGUI_VERSION}/backends
+    ext/ImGuiColorTextEdit
+    ext/imgui
+    ext/imgui/backends
 )
 
 if(WIN32)
