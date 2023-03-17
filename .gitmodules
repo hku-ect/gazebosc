@@ -22,3 +22,9 @@
 [submodule "ext/SDL"]
 	path = ext/SDL
 	url = https://github.com/libsdl-org/SDL.git
+[submodule "ext/ImGuiColorTextEdit"]
+	path = ext/ImGuiColorTextEdit
+	url = https://github.com/sphaero/ImGuiColorTextEdit.git
+[submodule "imgui"]
+	path = ext/imgui
+	url = https://github.com/ocornut/imgui.git

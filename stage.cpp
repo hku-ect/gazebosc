@@ -35,6 +35,7 @@ namespace fs = std::filesystem;
 #include "ActorContainer.h"
 #include "actors.h"
 #include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
+#include "ext/ImGuiColorTextEdit/TextEditor.h"
 #include "config.h"
 
 #include "ext/SDL/include/SDL_keyboard.h"
@@ -181,9 +182,11 @@ void moveCwdIfNeeded() {
 
 // Ability to load multiple text files
 struct textfile {
-    zfile_t* file;
-    char* basename;
+    TextEditor *editor;
+    zfile_t *file;
+    char *basename;
     bool open;
+    bool changed;
 };
 std::vector<textfile> open_text_files;
 bool txteditor_open = false;
@@ -469,7 +472,9 @@ void ShowLogWindow(ImGuiTextBuffer& buffer) {
 }
 
 void OpenTextEditor(zfile_t* txtfile)
-{
+{    
+    static auto lang = TextEditor::LanguageDefinition::Python();
+
     assert(txtfile);
     textfile * found = nullptr;
     for (auto it = open_text_files.begin(); it != open_text_files.end(); ++it)
@@ -482,21 +487,21 @@ void OpenTextEditor(zfile_t* txtfile)
     }
     if (found == nullptr)
     {
-        zsys_info("NOT FOUND... loading & creating text instance");
+        zsys_info("TextEditor: loading & new textfile");
         // we own the pointer now!
         int rc = zfile_input(txtfile);
         assert(rc == 0);
         zchunk_t* data = zfile_read(txtfile, zfile_cursize(txtfile), 0);
-        //TextEditor* editor = new TextEditor();
-        //auto lang = TextEditor::LanguageDefinition::CPlusPlus();
-        //editor->SetLanguageDefinition(lang);
-        //editor->SetText((char*)zchunk_data(data));
+        TextEditor* editor = new TextEditor();
+        editor->SetLanguageDefinition(lang);
+        editor->SetText((char*)zchunk_data(data));
         char* basename = s_basename(zfile_filename(txtfile, nullptr));
-
-        open_text_files.push_back({ txtfile, basename, true });
+        // add the new file to our list of open files
+        open_text_files.push_back({ editor, txtfile, basename, true, false });
+        hardswap_editor = &(open_text_files.back());
     }
     else {
-        zsys_info("FOUND OPEN TEXT FILE!... maybe activate the correct tab?");
+        zsys_info("TextEditor: existing text file found, activating the correct tab?");
         hardswap_editor = found;
         // cleanup not used txtfile
         zfile_destroy(&txtfile);
@@ -506,8 +511,6 @@ void OpenTextEditor(zfile_t* txtfile)
 
 void ShowTextEditor()
 {
-    static char text[1024 * 16] = "Load a file to start editing...";
-
     if (ImGui::Begin("Texteditor", &txteditor_open, ImGuiWindowFlags_MenuBar)) {
 
         ImGui::BeginMenuBar();
@@ -522,6 +525,7 @@ void ShowTextEditor()
             if (file_selected)
                 ImGui::OpenPopup("Actor Open File");
 
+            // open the load dialog
             if (actor_file_dialog.showFileDialog("Actor Open File",
                 imgui_addons::ImGuiFileBrowser::DialogMode::OPEN,
                 ImVec2(700, 310),
@@ -542,23 +546,26 @@ void ShowTextEditor()
                     ssize_t oldSize = zfile_size(zfile_filename(current_editor->file, NULL));
                     int rc = zfile_output(current_editor->file);
                     if (rc == 0) {
-                        zchunk_t* data = zchunk_frommem(text, strlen(text), nullptr, nullptr);
+                        std::string text = current_editor->editor->GetText();
+                        zchunk_t* data = zchunk_frommem((void *)text.c_str(), strlen(text.c_str()), nullptr, nullptr);
                         int rc = zfile_write(current_editor->file, data, 0);
-                        if (oldSize > strlen(text) )
+                        if (oldSize > text.length() )
                         {
 #ifdef __WINDOWS__          // truncate the file
-                            if ( _chsize_s(fileno(zfile_handle(current_editor->file)), (__int64)strlen(text)) != 0 )
+                            if ( _chsize_s(fileno(zfile_handle(current_editor->file)), (__int64)text.length()) != 0 )
                             {
                                 zsys_error("Some error trying to truncate the file");
                             }
 #else
-                            ftruncate(fileno(zfile_handle(current_editor->file)), strlen(text));
+                            ftruncate(fileno(zfile_handle(current_editor->file)), text.length());
 #endif
                         }
                         zfile_close(current_editor->file);
                         if (rc != 0) {
                             zsys_info("ERROR WRITING TO FILE: %i", rc);
                         }
+                        else
+                            current_editor->changed = false;
                     }
                 }
             }
@@ -574,6 +581,47 @@ void ShowTextEditor()
 
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Edit"))
+        {
+            bool ro = current_editor->editor->IsReadOnly();
+            if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+                current_editor->editor->SetReadOnly(ro);
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Undo", "ALT-Backspace", nullptr, !ro && current_editor->editor->CanUndo()))
+                current_editor->editor->Undo();
+            if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && current_editor->editor->CanRedo()))
+                current_editor->editor->Redo();
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, current_editor->editor->HasSelection()))
+                current_editor->editor->Copy();
+            if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && current_editor->editor->HasSelection()))
+                current_editor->editor->Cut();
+            if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && current_editor->editor->HasSelection()))
+                current_editor->editor->Delete();
+            if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+                current_editor->editor->Paste();
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Select all", nullptr, nullptr))
+                current_editor->editor->SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(current_editor->editor->GetTotalLines(), 0));
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("View"))
+        {
+            if (ImGui::MenuItem("Dark palette"))
+                current_editor->editor->SetPalette(TextEditor::GetDarkPalette());
+            if (ImGui::MenuItem("Light palette"))
+                current_editor->editor->SetPalette(TextEditor::GetLightPalette());
+            if (ImGui::MenuItem("Retro blue palette"))
+                current_editor->editor->SetPalette(TextEditor::GetRetroBluePalette());
+            ImGui::EndMenu();
+        }
 
         ImGui::EndMenuBar();
 
@@ -587,22 +635,20 @@ void ShowTextEditor()
                     flags |= ImGuiTabItemFlags_SetSelected;
                     hardswap_editor = nullptr;
                 }
+                // TODO: when loading the textfile this will always
+                // result in text being changed.
+                if ( !it->changed && it->editor->IsTextChanged() ) it->changed = true;
 
-                if (&it->open && ImGui::BeginTabItem(it->basename, &it->open, flags))
+                char filename[FILENAME_MAX];
+                if ( it->changed )
+                    snprintf(filename, FILENAME_MAX, "%s*", it->basename);
+                else
+                    snprintf(filename, FILENAME_MAX, "%s", it->basename);
+
+                if (ImGui::BeginTabItem(filename, &it->open, flags))
                 {
-                    if (current_editor != &(*it))
-                    {
-                        current_editor = &(*it); // set current textfile from active tab
-                        //TODO: refresh buffer
-                        memset(text, 0, sizeof(text));
-                        zchunk_t* fileChunk = zfile_read(it->file, zfile_cursize(it->file), 0);
-                        assert(zchunk_size(fileChunk)+1 < IM_ARRAYSIZE(text));
-                        memcpy(text, zchunk_data(fileChunk), zchunk_size(fileChunk));
-                        text[zchunk_size(fileChunk)+1] = 0x0; // force null terminator
-                        zchunk_destroy(&fileChunk);
-                    }
-
-                    ImGui::InputTextMultiline("##source", text, IM_ARRAYSIZE(text), ImVec2(-FLT_MIN, ImGui::GetCurrentWindow()->Size.y - 80), ImGuiInputTextFlags_AllowTabInput);
+                    current_editor = &(*it); // set current textfile from active tab
+                    current_editor->editor->Render("TextEditor", false, ImVec2(), true);
                     ImGui::EndTabItem();
                 }
                 else if (!it->open)
