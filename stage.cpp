@@ -620,6 +620,8 @@ void ShowTextEditor()
                 current_editor->editor->SetPalette(TextEditor::GetLightPalette());
             if (ImGui::MenuItem("Retro blue palette"))
                 current_editor->editor->SetPalette(TextEditor::GetRetroBluePalette());
+            if (ImGui::MenuItem("Mariana palette"))
+                current_editor->editor->SetPalette(TextEditor::GetMarianaPalette());
             ImGui::EndMenu();
         }
 
@@ -641,14 +643,14 @@ void ShowTextEditor()
 
                 char filename[FILENAME_MAX];
                 if ( it->changed )
-                    snprintf(filename, FILENAME_MAX, "%s*", it->basename);
+                    snprintf(filename, FILENAME_MAX, "%s*###%s", it->basename, it->basename);
                 else
-                    snprintf(filename, FILENAME_MAX, "%s", it->basename);
+                    snprintf(filename, FILENAME_MAX, "%s###%s", it->basename, it->basename);
 
                 if (ImGui::BeginTabItem(filename, &it->open, flags))
                 {
                     current_editor = &(*it); // set current textfile from active tab
-                    current_editor->editor->Render("TextEditor", false, ImVec2(), true);
+                    current_editor->editor->Render("TextEditor");//, false, ImVec2(), false);
                     ImGui::EndTabItem();
                 }
                 else if (!it->open)
