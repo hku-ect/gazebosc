@@ -102,6 +102,11 @@ endif()
 
 # Find Python3 ref: https://gitlab.kitware.com/cmake/cmake/-/issues/20674
 set(Python3_USE_STATIC_LIBS FALSE)
+if(WIN32)
+	if(WITH_EMBED_PYTHON)
+		set(Python3_ROOT_DIR "${PROJECT_SOURCE_DIR}/build/python")
+	endif(WITH_EMBED_PYTHON)
+endif(WIN32)
 if(Python3_ROOT_DIR)                        # Usually specified on command line to find python explicitly
     set(CMAKE_FIND_USE_CMAKE_PATH FALSE)
     set(Python3_FIND_STRATEGY "LOCATION")
