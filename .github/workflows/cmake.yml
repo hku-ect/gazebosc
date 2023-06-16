@@ -24,10 +24,12 @@ jobs:
           - os: macos-12
             env:
               BUILD_TYPE: Debug
+              CMAKE_GENERATOR: Xcode
           - os: self-hosted
             env:
               BUILD_TYPE: Debug
               MACOSX_DEPLOYMENT_TARGET: 10.15
+              CMAKE_GENERATOR: Xcode
 
     steps:
     - uses: actions/checkout@v2
