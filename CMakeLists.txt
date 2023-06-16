@@ -260,12 +260,15 @@ if (APPLE)
     configure_file("${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist" @ONLY)
     set_target_properties(gazebosc PROPERTIES
             MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_BUNDLE_NAME gazebosc
+            MACOSX_BUNDLE_COPYRIGHT "Gazebosc is licensed under the MPLv2 License"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc"
+            MACOSX_BUNDLE_ICON_FILE "AppIcon.icns"
             MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+            RESOURCE_DEST "gazebosc.app/Contents/Resources"
+            XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist"
+            XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
         )
-    set(MACOSX_BUNDLE_BUNDLE_NAME gazebosc)
-    set(MACOSX_BUNDLE_COPYRIGHT "Gazebosc is licensed under the MPLv2 License")
-    set(MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc")
-    set(MACOSX_BUNDLE_ICON_FILE "AppIcon.icns")
     set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
 
@@ -396,6 +399,12 @@ if(APPLE)
     else()
         set(PLATFORMID "OSX_${CMAKE_OSX_DEPLOYMENT_TARGET}")
     endif()
+    set(CPACK_BUNDLE_NAME "gazebosc")
+    set(CPACK_BUNDLE_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
+    set(CPACK_BUNDLE_ICON "AppIcon.icns")
+    # The name of your Apple supplied code signing certificate for the application. The name usually takes the form Developer ID Application: [Name] or 3rd Party Mac Developer Application: [Name]. If this variable is not set the application will not be signed.
+    #set(CPACK_BUNDLE_APPLE_CERT_APP "")
+    set(CPACK_BUNDLE_APPLE_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist")
 endif()
 message(WARN "Platform id: ${PLATFORMID}")
 set(CPACK_VERBATIM_VARIABLES true)
