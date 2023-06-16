@@ -61,7 +61,7 @@ jobs:
         sudo make install
 
     - name: Python dep
-      if: ${{ contains( matrix.os, 'macos' ) }}
+      if: ${{ matrix.os != 'ubuntu-latest' }} 
       run: |
         ./dist/osx/build_python.sh ${{github.workspace}}/build/python
         PY_ROOT=`${{github.workspace}}/build/python/Python.framework/Versions/Current/bin/python3 -c "import sys;print(sys.base_prefix)"`
