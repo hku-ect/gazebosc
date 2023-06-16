@@ -79,7 +79,7 @@ jobs:
     - name: Pack
       if: ${{ matrix.os != 'ubuntu-latest' }}
       working-directory: ${{github.workspace}}/build
-      run: cpack -V
+      run: cpack -V -C ${{env.BUILD_TYPE}}
 
     - name: Test
       working-directory: ${{github.workspace}}/build
