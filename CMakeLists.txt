@@ -112,7 +112,11 @@ if(Python3_ROOT_DIR)                        # Usually specified on command line 
     set(Python3_FIND_STRATEGY "LOCATION")
     set(Python3_FIND_REGISTRY NEVER)
 endif(Python3_ROOT_DIR)
-find_package (Python3 COMPONENTS Development REQUIRED)
+if(APPLE AND Python3_ROOT_DIR)
+    find_package (Python3 3.9.5 EXACT COMPONENTS Interpreter Development REQUIRED)
+else(APPLE AND Python3_ROOT_DIR)
+    find_package (Python3 COMPONENTS Development REQUIRED)
+endif(APPLE AND Python3_ROOT_DIR)
 if(Python3_FOUND)
     message ("python3 found libs: ${Python3_LIBRARIES} incl: ${Python3_INCLUDE_DIRS}")
     add_definitions(-DPYTHON3_FOUND)
@@ -271,7 +275,7 @@ if (APPLE)
         )
     set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
-
+    link_directories(${Python3_LIBRARY_DIRS})
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
@@ -283,10 +287,10 @@ if (APPLE)
     # This is handled by fixup_bundle as well but it doesn't copy all required files
     if (WITH_EMBED_PYTHON )
         # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
-        install(DIRECTORY ${CMAKE_BINARY_DIR}/python/Python.framework DESTINATION ${RESOURCE_DEST}/../Frameworks
-            USE_SOURCE_PERMISSIONS
-            PATTERN exe_with_* EXCLUDE
-        )
+        #install(DIRECTORY ${CMAKE_BINARY_DIR}/python/Python.framework DESTINATION ${RESOURCE_DEST}/../Frameworks
+        #    USE_SOURCE_PERMISSIONS
+        #    PATTERN exe_with_* EXCLUDE
+        #)
         # Todo: fix paths in the framework, perhaps run install_name_tool manually?
         # problem is that the python binaries end up with the wrong rpaths, see otool -L python3.8
         # see: https://pong.hku.nl/redmine/issues/303#change-1041
@@ -386,8 +390,9 @@ endif()
 install(CODE "
         include(InstallRequiredSystemLibraries)
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
-       )
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+       COMPONENT Runtime
+    )
         #fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}/Python.framework/Versions/3.8\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} CMAKE_HOST_SYSTEM_NAME)
