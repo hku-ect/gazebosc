@@ -64,7 +64,7 @@ jobs:
       if: ${{ matrix.os != 'ubuntu-latest' }} 
       run: |
         ./dist/osx/build_python.sh ${{github.workspace}}/build/python
-        PY_ROOT=`${{github.workspace}}/build/python/Python.framework/Versions/Current/bin/python3 -c "import sys;print(sys.base_prefix)"`
+        PY_ROOT=`${{github.workspace}}/build/python/bin/python3 -c "import sys, os;print(os.path.abspath(sys.base_prefix))"`
         echo "CMAKE_OPTIONS=-DPython3_ROOT_DIR=$PY_ROOT -DWITH_EMBED_PYTHON=ON -DWITH_OPENVR=OFF -DWITH_DEV=OFF" >> $GITHUB_ENV
 
     - name: Configure CMake

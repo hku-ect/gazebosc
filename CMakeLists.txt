@@ -100,24 +100,24 @@ if (NOT libzmq_FOUND)
     message (FATAL_ERROR "Cannot find libzmq, make sure it is available on the system")
 endif()
 
-# Find Python3 ref: https://gitlab.kitware.com/cmake/cmake/-/issues/20674
-set(Python3_USE_STATIC_LIBS FALSE)
-if(WIN32)
-	if(WITH_EMBED_PYTHON)
-		set(Python3_ROOT_DIR "${PROJECT_SOURCE_DIR}/build/python")
-	endif(WITH_EMBED_PYTHON)
-endif(WIN32)
+if(WIN32 AND WITH_EMBED_PYTHON)
+    set(Python3_ROOT_DIR "${PROJECT_SOURCE_DIR}/build/python")
+endif(WIN32 AND WITH_EMBED_PYTHON)
 if(Python3_ROOT_DIR)                        # Usually specified on command line to find python explicitly
     set(CMAKE_FIND_USE_CMAKE_PATH FALSE)
     set(Python3_FIND_STRATEGY "LOCATION")
     set(Python3_FIND_REGISTRY NEVER)
 endif(Python3_ROOT_DIR)
-find_package (Python3 COMPONENTS Development REQUIRED)
+if(APPLE AND Python3_ROOT_DIR)
+    find_package (Python3 3.9 EXACT COMPONENTS Interpreter Development REQUIRED)
+else(APPLE AND Python3_ROOT_DIR)
+    find_package (Python3 COMPONENTS Development REQUIRED)
+endif(APPLE AND Python3_ROOT_DIR)
 if(Python3_FOUND)
     message ("python3 found libs: ${Python3_LIBRARIES} incl: ${Python3_INCLUDE_DIRS}")
     add_definitions(-DPYTHON3_FOUND)
 else()
-    message (FATAL_ERROR "Cannot find Python3, make sure the development packages of Python are available on the system")
+    message (FATAL_ERROR "Cannot find Python3, make sure the development packages of Python are available on the system. ROOT_DIR=${Python3_ROOT_DIR}")
 endif()
 
 if (WITH_UNWIND)
@@ -271,7 +271,6 @@ if (APPLE)
         )
     set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
-
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
@@ -281,20 +280,12 @@ if (APPLE)
         -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
 
     # This is handled by fixup_bundle as well but it doesn't copy all required files
-    if (WITH_EMBED_PYTHON )
+    if (WITH_EMBED_PYTHON)
         # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
-        install(DIRECTORY ${CMAKE_BINARY_DIR}/python/Python.framework DESTINATION ${RESOURCE_DEST}/../Frameworks
+        install(DIRECTORY ${Python3_ROOT_DIR} DESTINATION ${RESOURCE_DEST}/python
             USE_SOURCE_PERMISSIONS
             PATTERN exe_with_* EXCLUDE
         )
-        # Todo: fix paths in the framework, perhaps run install_name_tool manually?
-        # problem is that the python binaries end up with the wrong rpaths, see otool -L python3.8
-        # see: https://pong.hku.nl/redmine/issues/303#change-1041
-        #install(CODE
-        #        "Include(BundleUtilities)\n
-        #       message(STATUS \"Fixing bundled python rpaths\")\n
-        #       fixup_bundle_item(\"$\{CMAKE_INSTALL_PREFIX\}/gazebosc.app/Contents/Frameworks/Python.framework/Python\" \"$\{CMAKE_INSTALL_PREFIX\}/gazebosc.app/Contents/Frameworks/Python.framework\" \"\")"
-        #)
     endif(WITH_EMBED_PYTHON)
 
 elseif (WIN32)
@@ -386,8 +377,9 @@ endif()
 install(CODE "
         include(InstallRequiredSystemLibraries)
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip;Python;python3;python3.8\")"
-       )
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+       COMPONENT Runtime
+    )
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} CMAKE_HOST_SYSTEM_NAME)
 set(CPACK_GENERATOR "ZIP")
