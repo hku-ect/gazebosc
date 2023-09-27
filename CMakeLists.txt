@@ -282,7 +282,7 @@ if (APPLE)
     # This is handled by fixup_bundle as well but it doesn't copy all required files
     if (WITH_EMBED_PYTHON)
         # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
-        install(DIRECTORY ${Python3_ROOT_DIR} DESTINATION ${RESOURCE_DEST}/python
+        install(DIRECTORY ${Python3_ROOT_DIR}/ DESTINATION ${RESOURCE_DEST}/python/
             USE_SOURCE_PERMISSIONS
             PATTERN exe_with_* EXCLUDE
         )
