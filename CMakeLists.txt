@@ -100,11 +100,9 @@ if (NOT libzmq_FOUND)
     message (FATAL_ERROR "Cannot find libzmq, make sure it is available on the system")
 endif()
 
-if(WIN32)
-	if(WITH_EMBED_PYTHON)
-		set(Python3_ROOT_DIR "${PROJECT_SOURCE_DIR}/build/python")
-	endif(WITH_EMBED_PYTHON)
-endif(WIN32)
+if(WIN32 AND WITH_EMBED_PYTHON)
+    set(Python3_ROOT_DIR "${PROJECT_SOURCE_DIR}/build/python")
+endif(WIN32 AND WITH_EMBED_PYTHON)
 if(Python3_ROOT_DIR)                        # Usually specified on command line to find python explicitly
     set(CMAKE_FIND_USE_CMAKE_PATH FALSE)
     set(Python3_FIND_STRATEGY "LOCATION")
@@ -119,7 +117,7 @@ if(Python3_FOUND)
     message ("python3 found libs: ${Python3_LIBRARIES} incl: ${Python3_INCLUDE_DIRS}")
     add_definitions(-DPYTHON3_FOUND)
 else()
-    message (FATAL_ERROR "Cannot find Python3, make sure the development packages of Python are available on the system. ROOT_DIR: ${Python3_ROOT_DIR}")
+    message (FATAL_ERROR "Cannot find Python3, make sure the development packages of Python are available on the system. ROOT_DIR=${Python3_ROOT_DIR}")
 endif()
 
 if (WITH_UNWIND)
@@ -273,7 +271,6 @@ if (APPLE)
         )
     set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
-    link_directories(${Python3_LIBRARY_DIRS})
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
@@ -289,14 +286,6 @@ if (APPLE)
             USE_SOURCE_PERMISSIONS
             PATTERN exe_with_* EXCLUDE
         )
-        # Todo: fix paths in the framework, perhaps run install_name_tool manually?
-        # problem is that the python binaries end up with the wrong rpaths, see otool -L python3.8
-        # see: https://pong.hku.nl/redmine/issues/303#change-1041
-        #install(CODE
-        #        "Include(BundleUtilities)\n
-        #       message(STATUS \"Fixing bundled python rpaths\")\n
-        #       fixup_bundle_item(\"$\{CMAKE_INSTALL_PREFIX\}/gazebosc.app/Contents/Frameworks/Python.framework/Python\" \"$\{CMAKE_INSTALL_PREFIX\}/gazebosc.app/Contents/Frameworks/Python.framework\" \"\")"
-        #)
     endif(WITH_EMBED_PYTHON)
 
 elseif (WIN32)
@@ -388,10 +377,9 @@ endif()
 install(CODE "
         include(InstallRequiredSystemLibraries)
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
        COMPONENT Runtime
     )
-        #fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}/Python.framework/Versions/3.8\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_NAME} CMAKE_HOST_SYSTEM_NAME)
 set(CPACK_GENERATOR "ZIP")
