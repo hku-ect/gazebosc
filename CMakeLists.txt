@@ -284,6 +284,7 @@ if (APPLE)
         # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
         install(DIRECTORY ${Python3_ROOT_DIR}/ DESTINATION ${RESOURCE_DEST}/python/
             USE_SOURCE_PERMISSIONS
+            COMPONENT Runtime
             PATTERN exe_with_* EXCLUDE
         )
     endif(WITH_EMBED_PYTHON)
@@ -309,6 +310,7 @@ elseif (WIN32)
         # copy embedded python, we force binary_dir/python just because :S
         install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${RESOURCE_DEST}
             USE_SOURCE_PERMISSIONS
+            COMPONENT Runtime
             PATTERN exe_with_* EXCLUDE
         )
     endif(WITH_EMBED_PYTHON)
@@ -364,7 +366,8 @@ install(TARGETS gazebosc
         RUNTIME DESTINATION ${RUNTIME_DEST} COMPONENT Runtime
         )
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc
-        DESTINATION ${RESOURCE_DEST})
+        DESTINATION ${RESOURCE_DEST}
+        COMPONENT Runtime)
 
 ### POST BUILD/INSTALL
 # Path used for searching by FIND_XXX(), with appropriate suffixes added
