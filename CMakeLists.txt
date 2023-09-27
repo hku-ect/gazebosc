@@ -111,7 +111,7 @@ if(Python3_ROOT_DIR)                        # Usually specified on command line 
     set(Python3_FIND_FRAMEWORK NEVER)
 endif(Python3_ROOT_DIR)
 if(APPLE AND Python3_ROOT_DIR)
-    find_package (Python3 3.9 EXACT COMPONENTS Interpreter Development REQUIRED)
+    find_package (Python3 3.11 EXACT COMPONENTS Interpreter Development REQUIRED)
 else(APPLE AND Python3_ROOT_DIR)
     find_package (Python3 COMPONENTS Development REQUIRED)
 endif(APPLE AND Python3_ROOT_DIR)

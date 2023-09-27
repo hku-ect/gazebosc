@@ -9,7 +9,7 @@ fi
 
 if [[ -z "$2" ]]
 then
-    PY_VER=3.9
+    PY_VER=3.11
 else
     PY_VER=$2
 fi
