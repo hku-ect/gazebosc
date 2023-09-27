@@ -285,6 +285,7 @@ if (APPLE)
         install(DIRECTORY ${Python3_ROOT_DIR}/ DESTINATION ${RESOURCE_DEST}/python/
             USE_SOURCE_PERMISSIONS
             PATTERN exe_with_* EXCLUDE
+            COMPONENT Runtime
         )
     endif(WITH_EMBED_PYTHON)
 
@@ -310,6 +311,7 @@ elseif (WIN32)
         install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${RESOURCE_DEST}
             USE_SOURCE_PERMISSIONS
             PATTERN exe_with_* EXCLUDE
+            COMPONENT Runtime
         )
     endif(WITH_EMBED_PYTHON)
 elseif (RPI)
@@ -364,7 +366,8 @@ install(TARGETS gazebosc
         RUNTIME DESTINATION ${RUNTIME_DEST} COMPONENT Runtime
         )
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/misc
-        DESTINATION ${RESOURCE_DEST})
+        DESTINATION ${RESOURCE_DEST}
+        COMPONENT Runtime)
 
 ### POST BUILD/INSTALL
 # Path used for searching by FIND_XXX(), with appropriate suffixes added
