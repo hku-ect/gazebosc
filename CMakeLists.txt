@@ -284,8 +284,8 @@ if (APPLE)
         # copy embedded python to the bundle but exclude exe_with_* files as it kills fixup_bundle
         install(DIRECTORY ${Python3_ROOT_DIR}/ DESTINATION ${RESOURCE_DEST}/python/
             USE_SOURCE_PERMISSIONS
-            PATTERN exe_with_* EXCLUDE
             COMPONENT Runtime
+            PATTERN exe_with_* EXCLUDE
         )
     endif(WITH_EMBED_PYTHON)
 
@@ -310,8 +310,8 @@ elseif (WIN32)
         # copy embedded python, we force binary_dir/python just because :S
         install(DIRECTORY ${CMAKE_BINARY_DIR}/python DESTINATION ${RESOURCE_DEST}
             USE_SOURCE_PERMISSIONS
-            PATTERN exe_with_* EXCLUDE
             COMPONENT Runtime
+            PATTERN exe_with_* EXCLUDE
         )
     endif(WITH_EMBED_PYTHON)
 elseif (RPI)
