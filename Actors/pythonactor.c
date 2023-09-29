@@ -550,6 +550,7 @@ int python_init()
                      "import os\n"
                      //"print(os.getcwd())\n"
                      "sys.path.insert(0, r\"%s/misc/scripts\")\n"
+                     "sys.path.insert(0, \"./stage-packages\")\n"
                      "sys.path.insert(0, \"\")\n"
                      //"sys.path.append(os.getcwd())\n"
                      //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
