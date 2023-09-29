@@ -273,13 +273,14 @@ if (APPLE)
         )
     set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
+    target_link_libraries(gazebosc PUBLIC "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
         rtmidi
         ${OPENVR_LIBRARIES}
         ${Python3_LIBRARIES}
-        -ldl "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
+        -ldl )
 
     # This is handled by fixup_bundle as well but it doesn't copy all required files
     if (WITH_EMBED_PYTHON)
