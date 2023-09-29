@@ -273,7 +273,6 @@ if (APPLE)
         )
     set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
-    target_link_libraries(gazebosc PUBLIC "-framework OpenGL" "-framework CoreFoundation" "-framework CoreMidi" "-framework CoreAudio")
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
         sphactor-static
