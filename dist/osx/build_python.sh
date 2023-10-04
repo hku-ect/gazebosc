@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ev
+set -e
 if [[ -z "$1" ]]
 then
     BUILD_DIR=`pwd`/pythonbuild
@@ -31,7 +31,7 @@ else
   git clone https://github.com/python/cpython.git --branch=$PY_VER --depth=1
   cd cpython
 fi
-brew remove --ignore-dependencies gettext  # Fix https://bugs.python.org/issue46975
+brew remove --ignore-dependencies gettext || true # Fix https://bugs.python.org/issue46975
 ./configure --with-openssl=$(brew --prefix --installed openssl@1.1) --prefix=$BUILD_DIR --enable-optimizations
 make -s
 make altinstall > /dev/null
