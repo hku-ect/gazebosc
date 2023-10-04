@@ -51,5 +51,10 @@
 	<!--Copyright (human-readable)-->
 	<key>NSHumanReadableCopyright</key>
 	<string>${MACOSX_BUNDLE_COPYRIGHT}</string>
+
+	<key>NSCameraUsageDescription</key>
+    <string>Could use a camera through an actor</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Could use a mic through an actor</string>
 </dict>
 </plist>
