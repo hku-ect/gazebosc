@@ -31,8 +31,9 @@ else
   git clone https://github.com/python/cpython.git --branch=$PY_VER --depth=1
   cd cpython
 fi
-./configure --with-openssl=$(brew --prefix --installed openssl@1.1) --prefix=$BUILD_DIR --enable-optimizations --enable-shared
+brew remove --ignore-dependencies gettext  # Fix https://bugs.python.org/issue46975
+./configure --with-openssl=$(brew --prefix --installed openssl@1.1) --prefix=$BUILD_DIR --enable-optimizations
 make -s
-make install > /dev/null
+make altinstall > /dev/null
 # we might need to fix Python rpath
 #install_name_tool -change $BUILD_DIR/Python.framework/Versions/Current/Python @executable_path/../../Python python3
