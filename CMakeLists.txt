@@ -107,6 +107,8 @@ if(Python3_ROOT_DIR)                        # Usually specified on command line 
     set(CMAKE_FIND_USE_CMAKE_PATH FALSE)
     set(Python3_FIND_STRATEGY "LOCATION")
     set(Python3_FIND_REGISTRY NEVER)
+    set(Python3_USE_STATIC_LIBS TRUE)
+    set(Python3_FIND_FRAMEWORK NEVER)
 endif(Python3_ROOT_DIR)
 if(APPLE AND Python3_ROOT_DIR)
     find_package (Python3 3.9 EXACT COMPONENTS Interpreter Development REQUIRED)
