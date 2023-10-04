@@ -45,10 +45,10 @@ jobs:
         keys-asc: https://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_22.04/Release.key
         install: libzmq5 libzmq3-dev libglx-dev mesa-common-dev libasound2-dev libglew-dev libunwind-dev
 
-    - name: Add brew packages
-      if: ${{ contains( matrix.os, 'macos' ) }}
-      shell: bash
-      run: brew install automake autoconf cmake
+#    - name: Add brew packages
+#      if: ${{ contains( matrix.os, 'macos' ) }}
+#      shell: bash
+#      run: brew install automake
 
     - name: libZMQ Dep
       if: ${{ contains( matrix.os, 'macos' ) }}
