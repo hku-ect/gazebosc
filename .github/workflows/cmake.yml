@@ -60,10 +60,21 @@ jobs:
         make
         sudo make install
 
-    - name: Python dep
-      if: ${{ matrix.os != 'ubuntu-latest' }} 
+    - name: Cache CPython Build
+      id: cpython-build-cache
+      uses: actions/cache@v3
+      with:
+        path: ${{github.workspace}}/build/python
+        key: ${{ runner.os }}-${{ hashFiles('dist/osx/build_python.sh') }}
+
+    - name: Build Python dep
+      if: ${{ matrix.os != 'ubuntu-latest' && steps.cpython-build-cache.outputs.cache-hit != 'true' }}
       run: |
         ./dist/osx/build_python.sh ${{github.workspace}}/build/python
+
+    - name: Extract Python Info
+      if: ${{ matrix.os != 'ubuntu-latest' }}
+      run: |
         PY_ROOT=`${{github.workspace}}/build/python/bin/python3 -c "import sys, os;print(os.path.abspath(sys.base_prefix))"`
         echo "CMAKE_OPTIONS=-DPython3_ROOT_DIR=$PY_ROOT -DWITH_EMBED_PYTHON=ON -DWITH_OPENVR=OFF -DWITH_DEV=OFF" >> $GITHUB_ENV
 
