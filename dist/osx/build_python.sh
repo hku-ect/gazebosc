@@ -34,6 +34,6 @@ fi
 brew remove --ignore-dependencies gettext || true # Fix https://bugs.python.org/issue46975
 ./configure --with-openssl=$(brew --prefix --installed openssl@1.1) --prefix=$BUILD_DIR --enable-optimizations
 make -s
-make altinstall > /dev/null
+make install > /dev/null
 # we might need to fix Python rpath
 #install_name_tool -change $BUILD_DIR/Python.framework/Versions/Current/Python @executable_path/../../Python python3
