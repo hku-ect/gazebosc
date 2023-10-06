@@ -270,6 +270,13 @@ if (APPLE)
             RESOURCE_DEST "gazebosc.app/Contents/Resources"
             XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist"
             XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
+
+            XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Manual""
+            #XCODE_ATTRIBUTE_DEVELOPMENT_TEAM ${TEAM_ID}
+            XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "-"
+            XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED TRUE
+            XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--timestamp=http://timestamp.apple.com/ts01  --options=runtime,library"
+            XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS "NO"
         )
     set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
