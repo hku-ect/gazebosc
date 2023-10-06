@@ -400,7 +400,7 @@ if(APPLE)
     set(CPACK_BUNDLE_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
     set(CPACK_BUNDLE_ICON "AppIcon.icns")
     # The name of your Apple supplied code signing certificate for the application. The name usually takes the form Developer ID Application: [Name] or 3rd Party Mac Developer Application: [Name]. If this variable is not set the application will not be signed.
-    #set(CPACK_BUNDLE_APPLE_CERT_APP "")
+    set(CPACK_BUNDLE_APPLE_CERT_APP "-")
     set(CPACK_BUNDLE_APPLE_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist")
 endif()
 message(WARN "Platform id: ${PLATFORMID}")
