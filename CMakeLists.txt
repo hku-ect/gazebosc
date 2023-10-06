@@ -270,6 +270,11 @@ if (APPLE)
             RESOURCE_DEST "gazebosc.app/Contents/Resources"
             XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist"
             XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
+            XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Manual"
+            XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "-"
+            XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED TRUE
+            XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--timestamp=http://timestamp.apple.com/ts01  --options=runtime,library"
+            XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS "NO"
         )
     set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
@@ -400,8 +405,9 @@ if(APPLE)
     set(CPACK_BUNDLE_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
     set(CPACK_BUNDLE_ICON "AppIcon.icns")
     # The name of your Apple supplied code signing certificate for the application. The name usually takes the form Developer ID Application: [Name] or 3rd Party Mac Developer Application: [Name]. If this variable is not set the application will not be signed.
-    #set(CPACK_BUNDLE_APPLE_CERT_APP "")
+    set(CPACK_BUNDLE_APPLE_CERT_APP "-")
     set(CPACK_BUNDLE_APPLE_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist")
+    set(CPACK_POST_BUILD_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/DmgSign.cmake")
 endif()
 message(WARN "Platform id: ${PLATFORMID}")
 set(CPACK_VERBATIM_VARIABLES true)
