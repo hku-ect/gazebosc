@@ -22,5 +22,5 @@ function( codesign path deep is_dmg)
 
     execute_process( COMMAND xcrun codesign ${args} ${path} )
 endfunction()
-warning("${CPACK_PACKAGE_FILES}")
+message(WARNING "${CPACK_PACKAGE_FILES}")
 codesign( "${CPACK_PACKAGE_FILES}" Off On)
