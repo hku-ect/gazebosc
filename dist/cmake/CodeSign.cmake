@@ -25,8 +25,8 @@ IF(APPLE)
 ENDIF(APPLE)
 endfunction()
 
-function( bundlesign path entitlements)
 IF(APPLE)
+function( bundlesign path entitlements)
     message(STATUS "Signing ${path} entitlements ${entitlements}")
 
     set ( args
@@ -45,8 +45,10 @@ IF(APPLE)
     endif()
     message(STATUS "bundlesign ${args} ${path}" )
     execute_process( COMMAND xcrun codesign ${args} ${path} )
-ENDIF(APPLE)
 endfunction()
-
+ELSE(APPLE)
+function( bundlesign path)
+endfunction()
+ENDIF(APPLE)
 #message(WARNING "${CPACK_PACKAGE_FILES}  ")
 #codesign( "${CPACK_PACKAGE_FILES}" Off On)
