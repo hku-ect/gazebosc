@@ -389,7 +389,7 @@ install(CODE "
         include(BundleUtilities)
         include(${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/CodeSign.cmake)
         fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")
-        bundlesign(\"\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app\" ${XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS})"
+        bundlesign(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" ${XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS})"
        COMPONENT Runtime
     )
 

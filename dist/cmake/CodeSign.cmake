@@ -1,5 +1,6 @@
 
 function( codesign path deep is_dmg)
+IF(APPLE)
     message(STATUS "Signing ${path}")
 
     set ( args 
@@ -21,9 +22,11 @@ function( codesign path deep is_dmg)
     endif()
 
     execute_process( COMMAND xcrun codesign ${args} ${path} )
+ENDIF(APPLE)
 endfunction()
 
 function( bundlesign path entitlements)
+IF(APPLE)
     message(STATUS "Signing ${path} entitlements ${entitlements}")
 
     set ( args
@@ -42,6 +45,7 @@ function( bundlesign path entitlements)
     endif()
     message(STATUS "bundlesign ${args} ${path}" )
     execute_process( COMMAND xcrun codesign ${args} ${path} )
+ENDIF(APPLE)
 endfunction()
 
 #message(WARNING "${CPACK_PACKAGE_FILES}  ")
