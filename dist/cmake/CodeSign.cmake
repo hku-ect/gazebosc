@@ -46,7 +46,7 @@ function( bundlesign path entitlements)
     message(STATUS "bundlesign ${args} ${path}" )
     execute_process( COMMAND xcrun codesign ${args} ${path} )
 endfunction()
-ELSE
+ELSE(APPLE)
 function( bundlesign path)
 endfunction()
 ENDIF(APPLE)
