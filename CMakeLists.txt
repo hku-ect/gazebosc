@@ -256,6 +256,8 @@ set(DIRS "${CMAKE_BINARY_DIR}")
 ### PLATFORM SPECIFICS
 if (APPLE)
     set(APPS "gazebosc.app")
+    set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
+    set(APPLE_ENTITLEMENTS ${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist)
     list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/osx32")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-stack-check")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-stack-check")
@@ -267,8 +269,8 @@ if (APPLE)
             MACOSX_BUNDLE_GUI_IDENTIFIER "org.sphactor.Gazebosc"
             MACOSX_BUNDLE_ICON_FILE "AppIcon.icns"
             MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
-            RESOURCE_DEST "gazebosc.app/Contents/Resources"
-            XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist"
+            RESOURCE_DEST "${RESOURCE_DEST}"
+            XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${APPLE_ENTITLEMENTS}"
             XCODE_ATTRIBUTE_ENABLE_HARDENED_RUNTIME YES
             XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Manual"
             XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "-"
@@ -276,7 +278,6 @@ if (APPLE)
             XCODE_ATTRIBUTE_OTHER_CODE_SIGN_FLAGS "--timestamp=http://timestamp.apple.com/ts01  --options=runtime,library"
             XCODE_ATTRIBUTE_CODE_SIGN_INJECT_BASE_ENTITLEMENTS "NO"
         )
-    set(RESOURCE_DEST "gazebosc.app/Contents/Resources")
     add_definitions(-D__MACOSX_CORE__)
     target_link_libraries(gazebosc PUBLIC
         SDL2-static
@@ -387,7 +388,9 @@ endif()
 install(CODE "
         include(InstallRequiredSystemLibraries)
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+        include(${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/CodeSign.cmake)
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")
+        bundlesign(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" ${APPLE_ENTITLEMENTS})"
        COMPONENT Runtime
     )
 
@@ -406,8 +409,8 @@ if(APPLE)
     set(CPACK_BUNDLE_ICON "AppIcon.icns")
     # The name of your Apple supplied code signing certificate for the application. The name usually takes the form Developer ID Application: [Name] or 3rd Party Mac Developer Application: [Name]. If this variable is not set the application will not be signed.
     set(CPACK_BUNDLE_APPLE_CERT_APP "-")
-    set(CPACK_BUNDLE_APPLE_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist")
-    set(CPACK_POST_BUILD_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/DmgSign.cmake")
+    set(CPACK_BUNDLE_APPLE_ENTITLEMENTS ${APPLE_ENTITLEMENTS})
+    #set(CPACK_POST_BUILD_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/DmgSign.cmake")
 endif()
 message(WARN "Platform id: ${PLATFORMID}")
 set(CPACK_VERBATIM_VARIABLES true)
