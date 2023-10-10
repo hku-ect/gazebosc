@@ -35,7 +35,10 @@ brew remove --ignore-dependencies gettext || true # Fix https://bugs.python.org/
 ./configure --with-openssl=$(brew --prefix --installed openssl@1.1) --prefix=$BUILD_DIR --enable-optimizations --with-ensurepip=no
 make -s
 make install > /dev/null
-make pycremoval > /dev/null
+cd $BUILD_DIR # Remove .pyc files
+find . -depth -name '__pycache__' -exec rm -rf {} ';'
+find . -name '*.py[co]' -exec rm -f {} ';'
+cd -
 brew install gettext || true
 # we might need to fix Python rpath
 #install_name_tool -change $BUILD_DIR/Python.framework/Versions/Current/Python @executable_path/../../Python python3
