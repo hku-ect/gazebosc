@@ -387,7 +387,9 @@ endif()
 install(CODE "
         include(InstallRequiredSystemLibraries)
         include(BundleUtilities)
-        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")"
+        include(${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/CodeSign.cmake)
+        fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")
+        bundlesign(\"\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app\" ${XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS})"
        COMPONENT Runtime
     )
 
@@ -406,8 +408,8 @@ if(APPLE)
     set(CPACK_BUNDLE_ICON "AppIcon.icns")
     # The name of your Apple supplied code signing certificate for the application. The name usually takes the form Developer ID Application: [Name] or 3rd Party Mac Developer Application: [Name]. If this variable is not set the application will not be signed.
     set(CPACK_BUNDLE_APPLE_CERT_APP "-")
-    set(CPACK_BUNDLE_APPLE_ENTITLEMENTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/osx/Entitlements.plist")
-    set(CPACK_POST_BUILD_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/DmgSign.cmake")
+    set(CPACK_BUNDLE_APPLE_ENTITLEMENTS ${XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS})
+    #set(CPACK_POST_BUILD_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/DmgSign.cmake")
 endif()
 message(WARN "Platform id: ${PLATFORMID}")
 set(CPACK_VERBATIM_VARIABLES true)
