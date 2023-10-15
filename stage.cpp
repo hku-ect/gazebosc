@@ -31,6 +31,7 @@
 namespace fs = std::filesystem;
 #include <imgui.h>
 #include "ImNodesEz.h"
+#include "ImNodes.h"
 #include "libsphactor.h"
 #include "ActorContainer.h"
 #include "actors.h"
@@ -50,6 +51,15 @@ enum MenuAction
     MenuAction_Exit,
     MenuAction_SaveAs,
     MenuAction_None
+};
+
+struct Comment {
+    char * textBuf = new char[512];
+    std::vector<ActorContainer*> actorsContained;
+    ImVec2 topLeft, botRight;
+    bool selected = false;
+    int state = 0;
+    ImVec2 startDrag;
 };
 
 //enum for undo stack
@@ -88,6 +98,7 @@ struct UndoData {
 
 std::stack<UndoData> undoStack;
 std::stack<UndoData> redoStack;
+std::vector<ActorContainer*> selectedActors;
 
 // List of actor types and constructors
 //  Currently these are all internal dependencies, but we will need to create
@@ -104,11 +115,14 @@ imgui_addons::ImGuiFileBrowser file_dialog;
 std::string editingFile = "";
 std::string editingPath = "";
 
+std::vector<Comment> comments;
+
 bool Save( const char* configFile );
 bool Load( const char* configFile );
 void Clear();
 void Init();
 ActorContainer* Find( const char* endpoint );
+void UpdateComments();
 
 // undo stuff
 void performUndo(UndoData &undo);
@@ -884,7 +898,6 @@ inline ImU32 LerpImU32( ImU32 c1, ImU32 c2, int index, int total, float offset, 
 
 int UpdateActors(float deltaTime, bool * showLog)
 {
-    static std::vector<ActorContainer*> selectedActors;
     static std::vector<char *> actorClipboardType;
     static std::vector<char *> actorClipboardCapabilities;
     static std::vector<ImVec2> actorClipboardPositions;
@@ -1066,14 +1079,14 @@ int UpdateActors(float deltaTime, bool * showLog)
         }
     }
 
-    selectedActors.clear();
-    if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar ))
+    if (ImGui::Begin("ImNodes", nullptr, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_MenuBar ))
     {
         rc = RenderMenuBar(showLog);
 
         // We probably need to keep some state, like positions of nodes/slots for rendering connections.
         ImNodes::Ez::BeginCanvas();
 
+        selectedActors.clear();
         for (auto it = std::begin(actors); it != std::end(actors); it++)
         {
             ActorContainer* actor = *it;
@@ -1169,6 +1182,8 @@ int UpdateActors(float deltaTime, bool * showLog)
             // Node rendering is done. This call will render node background based on size of content inside node.
             ImNodes::Ez::EndNode();
 
+            actor->size = ImGui::GetItemRectSize();
+
             if ( actor->selected) {
                 selectedActors.push_back(actor); 
             }
@@ -1180,23 +1195,19 @@ int UpdateActors(float deltaTime, bool * showLog)
             ImGui::OpenPopup("NodesContextMenu");
         }
 
-        if (ImGui::BeginPopup("NodesContextMenu"))
-        {
+        if (ImGui::BeginPopup("NodesContextMenu")) {
             //TODO: Fetch updated available nodes?
-            for (const auto desc : actor_types)
-            {
-                if (ImGui::MenuItem(desc))
-                {
-                    if ( max_actors_by_type.find(desc) != max_actors_by_type.end() ) {
+            for (const auto desc : actor_types) {
+                if (ImGui::MenuItem(desc)) {
+                    if (max_actors_by_type.find(desc) != max_actors_by_type.end()) {
                         int max = max_actors_by_type.at(desc);
-                        if ( CountActorsOfType(desc) < max ) {
+                        if (CountActorsOfType(desc) < max) {
                             ActorContainer *actor = CreateFromType(desc, nullptr);
                             actors.push_back(actor);
                             ImNodes::AutoPositionNode(actors.back());
                             RegisterCreateAction(actor);
                         }
-                    }
-                    else {
+                    } else {
                         ActorContainer *actor = CreateFromType(desc, nullptr);
                         actors.push_back(actor);
                         ImNodes::AutoPositionNode(actors.back());
@@ -1213,6 +1224,8 @@ int UpdateActors(float deltaTime, bool * showLog)
                 ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
         }
+
+        UpdateComments();
 
         ImNodes::Ez::EndCanvas();
     }
@@ -1544,7 +1557,7 @@ void RegisterCreateAction( ActorContainer * actor ) {
     undo.title = strdup(actor->title);
     undo.sphactor_config = sphactor_save(actor->actor, nullptr);
     undo.uuid = strdup(zuuid_str(sphactor_ask_uuid(actor->actor)));
-    zsys_info("UUID: %s", undo.uuid);
+    //zsys_info("UUID: %s", undo.uuid);
     ImGuiIO& io = ImGui::GetIO();
     if (actor->pos.x == 0 && actor->pos.y == 0) {
         undo.position = ImVec2(io.MousePos.x, io.MousePos.y);
@@ -1597,4 +1610,165 @@ void RegisterDisconnectAction(ActorContainer * in, ActorContainer * out, const c
     undo.input_slot = strdup(input_slot);
     undo.output_slot = strdup(output_slot);
     undoStack.push(undo);
+}
+
+void CreateComment( ImVec2 topLeft, ImVec2 botRight ) {
+    Comment com;
+    com.topLeft = topLeft;
+    com.botRight = botRight;// - topLeft;
+    sprintf(com.textBuf, "Click to edit...");
+
+    comments.push_back(com);
+}
+
+void UpdateComments() {
+    static Comment *activeComment = nullptr;
+    static Comment *toErase = nullptr;
+    static bool wasDown = false;
+    static bool dragging = false;
+    static ImVec2 startPos, endPos;
+    static int MARGIN = 20;
+    static int DRAG_CORNER = 10;
+
+    ImGuiIO io = ImGui::GetIO();
+
+    if (selectedActors.size() > 0 && ImGui::IsKeyPressedMap(ImGuiKey_C) && !(io.KeySuper || io.KeyCtrl)) {
+        ImVec2 topLeft, botRight;
+        bool first = true;
+        for (auto it = selectedActors.begin(); it != selectedActors.end(); ++it) {
+            ActorContainer *actor = *it;
+            if (first) {
+                topLeft = actor->pos - ImVec2(MARGIN, MARGIN);
+                botRight = actor->pos + actor->size + ImVec2(MARGIN, MARGIN);
+                first = false;
+            } else {
+                topLeft.x = glm::min(topLeft.x, actor->pos.x - MARGIN);
+                topLeft.y = glm::min(topLeft.y, actor->pos.y - MARGIN);
+                botRight.x = glm::max(botRight.x, actor->pos.x + actor->size.x + MARGIN);
+                botRight.y = glm::max(botRight.y, actor->pos.y + actor->size.y + MARGIN);
+            }
+        }
+
+        zsys_info("CREATING COMMENT");
+
+        CreateComment(topLeft, botRight);
+    }
+
+    wasDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+
+    auto draw = ImGui::GetBackgroundDrawList();
+
+    ImU32 col_bg = ImGui::GetColorU32(ImGuiCol_WindowBg, 1.0f);//ImGui::GetColorU32(IM_COL32(0, 0, 0, 255));
+    draw->AddRectFilled(ImVec2(0, 0), ImGui::GetWindowSize(), col_bg, 0.1f);
+
+    ImU32 col_comment = ImGui::GetColorU32(IM_COL32(0, 127, 127, 127));
+    ImU32 col_text = ImGui::GetColorU32(IM_COL32(200, 200, 200, 255));
+    ImU32 col_white = ImGui::GetColorU32(IM_COL32(200, 200, 200, 255));
+
+    ImVec2 offset = ImNodes::GetCurrentCanvas()->Offset;
+    float zoom = ImNodes::GetCurrentCanvas()->Zoom;
+    ImVec2 mPos = ImGui::GetMousePos() / zoom - offset / zoom;
+
+    int id = 1001;
+    for (auto it = std::begin(comments); it != std::end(comments); it++) {
+        Comment &comment = *it;
+
+        ImGui::PushID(&comment);
+
+        int id = ImGui::GetID("#comment");
+
+        std::string label = "comment" + std::to_string(id);
+        ImGui::SetWindowFontScale(1.6f * zoom);
+
+        ImVec2 textSize = ImGui::CalcTextSize(comment.textBuf);
+
+        switch (comment.state) {
+            case 0: {   // idle
+                if (!ImNodes::IsAnyNodeHovered() && activeComment == nullptr) {
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                        if (mPos.x > comment.topLeft.x && mPos.x < comment.botRight.x - DRAG_CORNER &&
+                            mPos.y > comment.topLeft.y &&
+                            mPos.y < comment.botRight.y - DRAG_CORNER) {
+                            if ( io.KeySuper || io.KeyCtrl ) {
+                                delete[] comment.textBuf;
+                                comments.erase(it--);
+                                ImGui::PopID();
+                                continue;
+                            }
+                            else {
+                                comment.state = 1;
+                                comment.startDrag = mPos;
+                            }
+                        } else if (mPos.x > comment.topLeft.x && mPos.x < comment.topLeft.x + textSize.x &&
+                                   mPos.y > comment.topLeft.y - textSize.y &&
+                                   mPos.y < comment.topLeft.y) {
+                            activeComment = &comment;
+                        } else if (mPos.x > comment.botRight.x - DRAG_CORNER && mPos.x < comment.botRight.x &&
+                                   mPos.y > comment.botRight.y - DRAG_CORNER &&
+                                   mPos.y < comment.botRight.y) {
+                            comment.state = 2;
+                            comment.startDrag = mPos;
+                        }
+                    }
+                }
+                break;
+            }
+            case 1: {   // drag to move
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                    ImGui::SetActiveID(id, ImGui::GetCurrentWindow());
+                    ImVec2 delta = mPos - comment.startDrag;
+                    comment.topLeft += delta;
+                    comment.botRight += delta;
+                    comment.startDrag = mPos;
+                } else {
+                    comment.state = 0;
+                    ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
+                }
+                break;
+            }
+            case 2: {   // drag to resize
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                    ImGui::SetActiveID(id, ImGui::GetCurrentWindow());
+                    ImVec2 delta = mPos - comment.startDrag;
+                    comment.botRight += delta;
+                    comment.startDrag = mPos;
+                } else {
+                    comment.state = 0;
+                    ImGui::SetActiveID(0, ImGui::GetCurrentWindow());
+                }
+                break;
+            }
+        }
+
+        draw->AddText(offset + ( comment.topLeft + ImVec2(0, -textSize.y) ) * zoom, col_text, comment.textBuf);
+        draw->AddRectFilled( offset + comment.topLeft * zoom, offset + comment.botRight * zoom, col_comment, 1.0f);
+        draw->AddRectFilled(offset + ( comment.botRight - ImVec2(10, 10) ) * zoom, offset + comment.botRight * zoom, col_white, 1.0f);
+        ImGui::SetWindowFontScale(1.0f);
+
+        ImGui::PopID();
+
+        id++;
+    }
+
+    if (activeComment != nullptr) {
+        ImGui::PushID(&activeComment);
+        if (!ImGui::IsPopupOpen("EDITCOMMENT")) {
+            ImGui::OpenPopup("EDITCOMMENT");
+        }
+        if (ImGui::BeginPopup("EDITCOMMENT", ImGuiWindowFlags_AlwaysAutoResize)) {
+            if ( !ImGui::IsMouseDown(0) && !ImGui::IsAnyItemHovered() ) ImGui::SetKeyboardFocusHere(0);
+            if ( ImGui::InputText("Edit Comment", activeComment->textBuf, 512, ImGuiInputTextFlags_EnterReturnsTrue) ) {
+                activeComment = nullptr;
+                ImGui::CloseCurrentPopup();
+            }
+
+            ImVec2 button_size(ImGui::GetFontSize() * 7.0f, 0.0f);
+            if (ImGui::Button("OK", button_size)) {
+                activeComment = nullptr;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+        ImGui::PopID();
+    }
 }

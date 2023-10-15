@@ -85,6 +85,7 @@ struct ActorContainer {
     bool selected = false;
     /// Actor position on the canvas.
     ImVec2 pos{};
+    ImVec2 size{};
     /// List of actor connections.
     std::vector<Connection> connections{};
     /// A list of input slots current actor has.
