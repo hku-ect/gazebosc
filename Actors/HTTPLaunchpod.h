@@ -20,7 +20,7 @@ static const char *httplaunchpodactorcapabilities =
     "capabilities\n"
     "    data\n"
     "        name = \"port\"\n"
-    "        type = \"integer\"\n"
+    "        type = \"int\"\n"
     "        help = \"Port number for the webserver\"\n"
     "        value = \"8080\"\n"
     "        api_call = \"SET PORT\"\n"
