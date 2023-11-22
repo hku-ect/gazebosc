@@ -43,12 +43,12 @@ jobs:
         repo-name: obs
         repo: deb http://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_22.04/ ./
         keys-asc: https://download.opensuse.org/repositories/network:/messaging:/zeromq:/git-draft/xUbuntu_22.04/Release.key
-        install: libzmq5 libzmq3-dev libglx-dev mesa-common-dev libasound2-dev libglew-dev libunwind-dev
+        install: libzmq5 libzmq3-dev libglx-dev mesa-common-dev libasound2-dev libglew-dev libunwind-dev libmicrohttpd-dev
 
     - name: Add brew packages
       if: ${{ contains( matrix.os, 'macos' ) }}
       shell: bash
-      run: brew install automake
+      run: brew install automake libmicrohttpd
 
     - name: libZMQ Dep
       if: ${{ contains( matrix.os, 'macos' ) }}
