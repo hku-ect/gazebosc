@@ -34,7 +34,7 @@ s_handle_post(zhttp_request_t *req, zhttp_response_t *resp)
     assert (streq (zhttp_request_method (req), "POST"));
     zosc_t *ret = zosc_new(zhttp_request_url(req));
     const char *content = zhttp_request_content(req);
-    const char *type = zhttp_request_content(req);
+    const char *type = zhttp_request_content_type(req);
     zosc_append(ret, "ss", content, type);
     return ret;
 }
