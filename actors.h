@@ -1,6 +1,7 @@
 #ifndef ACTORS_H
 #define ACTORS_H
 
+#include "Actors/HTTPLaunchpod.h"
 #include "Actors/OSCOutputActor.h"
 #include "Actors/Midi2OSCActor.h"
 #include "Actors/NatNetActor.h"
