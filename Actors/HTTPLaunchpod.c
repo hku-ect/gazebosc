@@ -22,8 +22,8 @@ s_reset_server(httplaunchpodactor_t *self, sphactor_actor_t *actor)
     self->server = zhttp_server_new (options);
     assert (self->server);
 
-    zsock_t *worker = zsock_new_dealer (zhttp_server_options_backend_address (options));
-    sphactor_actor_poller_add(actor, worker);
+    self->worker = zsock_new_dealer (zhttp_server_options_backend_address (options));
+    sphactor_actor_poller_add(actor, self->worker);
     zsys_info("Init Webserver port: %i", self->port);
 }
 
