@@ -1258,6 +1258,11 @@ bool Load( const char* configFile )
     stage = sph_stage_load(configFile);
     if ( stage == NULL )
         return false;
+#ifdef PYTHON3_FOUND
+    std::error_code ec; // no exception
+    fs::path cwd = fs::current_path(ec);
+    python_add_path(cwd.c_str());
+#endif
 
     // clear active file as it needs saving to become a file first
     editingFile = std::string(configFile);
@@ -1337,6 +1342,7 @@ void Init() {
 }
 
 void Clear() {
+
     undoStack = std::stack<UndoData>();
     redoStack = std::stack<UndoData>();
 
@@ -1360,6 +1366,9 @@ void Clear() {
     // remove working dir if it's a temporary path
     std::error_code ec; // no exception
     fs::path cwd = fs::current_path(ec);
+#ifdef PYTHON3_FOUND
+    python_remove_path(cwd.c_str());
+#endif
     // temporary change the working dir otherwise we cannot delete it on windows, Load or Init will reset it
     fs::current_path(GZB_GLOBAL.TMPPATH);
 

@@ -483,6 +483,43 @@ s_py_zosc_tuple(pythonactor_t *self, zosc_t *oscmsg)
     return rettuple;
 }
 
+void python_add_path(const char *path)
+{
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+    char *script = (char*)malloc(512 * sizeof(char));
+    // Prints "Hello world!" on hello_world
+    snprintf(script, 512 * sizeof(char),
+             "import sys\n"
+             "if \"%s\" not in sys.path:\n"
+             "\tsys.path.append(r\"%s\")\n"
+             "print(\"added path %s to sys.path\")\n",
+             path, path, path);
+    int rc = PyRun_SimpleString(script);
+    assert(rc == 0);
+    PyGILState_Release(gstate);
+    free(script);
+}
+
+void python_remove_path(const char *path)
+{
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+    char *script = (char*)malloc(512 * sizeof(char));
+    // Prints "Hello world!" on hello_world
+    snprintf(script, 512 * sizeof(char),
+             "import sys\n"
+             "try:\n"
+             "\tsys.path.remove(r\"%s\")\n"
+             "except:\n"
+             "\tpass\")\n",
+             path);
+    int rc = PyRun_SimpleString(script);
+    assert(rc);
+    PyGILState_Release(gstate);
+    free(script);
+}
+
 int python_init()
 {
     Py_UnbufferedStdioFlag = 1;
