@@ -389,6 +389,7 @@ install(CODE "
         include(InstallRequiredSystemLibraries)
         include(BundleUtilities)
         include(${CMAKE_CURRENT_SOURCE_DIR}/dist/cmake/CodeSign.cmake)
+        set(BU_CHMOD_BUNDLE_ITEMS TRUE) # https://gitlab.kitware.com/cmake/cmake/-/issues/19663
         fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" \"${LIBS}\" \"${DIRS}\" IGNORE_ITEM \"exe_with_z64;exe_with_zip\")
         bundlesign(\"\${CMAKE_INSTALL_PREFIX}/${APPS}\" ${APPLE_ENTITLEMENTS})"
        COMPONENT Runtime
