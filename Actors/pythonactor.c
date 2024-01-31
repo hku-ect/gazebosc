@@ -492,8 +492,8 @@ void python_add_path(const char *path)
     snprintf(script, 512 * sizeof(char),
              "import sys\n"
              "if \"%s\" not in sys.path:\n"
-             "\tsys.path.append(r\"%s\\site-packages\")\n"
-             "print(\"added path %s\\site-packages to sys.path\")\n",
+             "\tsys.path.append(r\"%s/site-packages\")\n"
+             "print(\"added path %s/site-packages to sys.path\")\n",
              path, path, path);
     int rc = PyRun_SimpleString(script);
     assert(rc == 0);
@@ -510,12 +510,13 @@ void python_remove_path(const char *path)
     snprintf(script, 512 * sizeof(char),
              "import sys\n"
              "try:\n"
-             "\tsys.path.remove(r\"%s\\site-packages\")\n"
-             "except:\n"
-             "\tpass\")\n",
-             path);
+             "\tsys.path.remove(r\"%s/site-packages\")\n"
+             "except Exception:\n"
+             "\tpass\n"
+             "print(\"removed path %s/site-packages from sys.path\")\n",
+             path, path);
     int rc = PyRun_SimpleString(script);
-    assert(rc);
+    assert(rc == 0);
     PyGILState_Release(gstate);
     free(script);
 }
