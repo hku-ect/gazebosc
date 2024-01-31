@@ -139,7 +139,7 @@ void moveCwdIfNeeded() {
         // moving if cwd was tmp dir (name contains _gzs_)
         std::string cwds = std::string(cwd);
         std::filesystem::path newcwds = std::filesystem::path(editingPath);
-        fs::path tmppath(GZB_GLOBAL.TMPPATH);
+        std::filesystem::path tmppath(GZB_GLOBAL.TMPPATH);
         tmppath.append("_gzs_");
         if (cwds.rfind(tmppath.string(), 0) == 0)
         {
@@ -147,7 +147,7 @@ void moveCwdIfNeeded() {
             // copy and delete for now
             try
             {
-                fs::copy(cwds, newcwds.parent_path(), fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+                std::filesystem::copy(cwds, newcwds.parent_path(), std::filesystem::copy_options::overwrite_existing | std::filesystem::copy_options::recursive);
             }
             catch (std::exception& e)
             {
@@ -155,7 +155,7 @@ void moveCwdIfNeeded() {
             }
             try
             {
-                fs::remove_all(cwds);
+                std::filesystem::remove_all(cwds);
             }
             catch (std::exception& e)
             {
@@ -168,14 +168,19 @@ void moveCwdIfNeeded() {
             // Recursively copies all files and folders from src to target and overwrites existing files in target.
             try
             {
-                fs::copy(cwds, newcwds.parent_path(), fs::copy_options::overwrite_existing | fs::copy_options::recursive);
+                std::filesystem::copy(cwds, newcwds.parent_path(), std::filesystem::copy_options::overwrite_existing | std::filesystem::copy_options::recursive);
             }
             catch (std::exception& e)
             {
                 zsys_error("Copy files to new working dir failed: %s", e.what());
             }
         }
-        fs::current_path(newcwds.parent_path());
+        std::filesystem::current_path(newcwds.parent_path());
+#ifdef PYTHON3_FOUND
+        std::error_code ec; // no exception
+        python_remove_path((const char *)cwd);
+        python_add_path(newcwds.parent_path().string().c_str());
+#endif
         zsys_info("Working dir set to %s", newcwds.parent_path().c_str());
     }
 }
@@ -1260,7 +1265,7 @@ bool Load( const char* configFile )
         return false;
 #ifdef PYTHON3_FOUND
     std::error_code ec; // no exception
-    fs::path cwd = fs::current_path(ec);
+    std::filesystem::path cwd = std::filesystem::current_path(ec);
     python_add_path(cwd.string().c_str());
 #endif
 
@@ -1323,17 +1328,17 @@ void Init() {
         tmpdir[i] = charset[key];
     }
     tmpdir[11] = 0; // null termination
-    fs::path tmppath(GZB_GLOBAL.TMPPATH);
+    std::filesystem::path tmppath(GZB_GLOBAL.TMPPATH);
     tmppath.append(tmpdir);
     std::error_code ec;
-    if ( ! fs::create_directory(tmppath, ec) )
+    if ( ! std::filesystem::create_directory(tmppath, ec) )
     {
         // TODO: what to do if creating the dir fails?
         zsys_error("Creating tmp dir %s failed, this might mean trouble!!!", tmppath.string().c_str() );
     }
     else
     {
-        fs::current_path(tmppath);
+        std::filesystem::current_path(tmppath);
         zsys_info("Temporary stage dir is now at %s", tmppath.string().c_str());
     }
     // clear active file as it needs saving to become a file first
@@ -1365,20 +1370,20 @@ void Clear() {
     sph_stage_destroy(&stage);
     // remove working dir if it's a temporary path
     std::error_code ec; // no exception
-    fs::path cwd = fs::current_path(ec);
+    std::filesystem::path cwd = std::filesystem::current_path(ec);
 #ifdef PYTHON3_FOUND
     python_remove_path(cwd.string().c_str());
 #endif
     // temporary change the working dir otherwise we cannot delete it on windows, Load or Init will reset it
-    fs::current_path(GZB_GLOBAL.TMPPATH);
+    std::filesystem::current_path(GZB_GLOBAL.TMPPATH);
 
-    fs::path tmppath(GZB_GLOBAL.TMPPATH);
+    std::filesystem::path tmppath(GZB_GLOBAL.TMPPATH);
     tmppath.append("_gzs_");
     if ( cwd.string().rfind(tmppath.string(), 0) == 0 )
     {
         try
         {
-            fs::remove_all(cwd);
+            std::filesystem::remove_all(cwd);
         }
         catch (std::exception& e)
         {
