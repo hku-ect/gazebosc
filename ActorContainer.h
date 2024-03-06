@@ -338,7 +338,7 @@ struct ActorContainer {
                 RenderMediacontrol( nameStr, data );
             }
             else if ( streq(typeStr, "list")) {
-                RenderList( nameStr, data );
+                RenderMultilineString( nameStr, data );
             }
             else if ( streq(typeStr, "trigger")) {
                 RenderTrigger( nameStr, data );
@@ -1024,6 +1024,44 @@ struct ActorContainer {
 
         ImGui::SetNextItemWidth(200);
         if ( ImGui::InputText(name, buf, max) ) {
+            zconfig_set_value(zvalue, "%s", buf);
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf);
+        }
+
+        zconfig_t *help = zconfig_locate(data, "help");
+        if (help)
+        {
+            char *helpv = zconfig_value(help);
+            RenderTooltip(helpv);
+        }
+    }
+
+    void RenderMultilineString(const char* name, zconfig_t *data) {
+        int max = MAX_STR_DEFAULT;
+
+        zconfig_t * zvalue = zconfig_locate(data, "value");
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+        zconfig_t * zapiv = zconfig_locate(data, "api_value");
+        assert(zvalue);
+
+        zconfig_t * zmax = zconfig_locate(data, "max");
+
+        ReadInt( &max, zmax );
+
+        char buf[MAX_STR_DEFAULT];
+        const char* zvalueStr = zconfig_value(zvalue);
+        strcpy(buf, zvalueStr);
+        char *p = &buf[0];
+
+        static char text[1024 * 16] =
+            "127.0.0.1:1234\n"
+            "127.0.0.1:6200\n";
+
+
+        ImGui::SetNextItemWidth(200);
+        if ( ImGui::InputTextMultiline("##source", p, max, ImVec2(0, ImGui::GetTextLineHeight() * 16)) )
+        {
+        //if ( ImGui::InputText(name, buf, max) ) {
             zconfig_set_value(zvalue, "%s", buf);
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf);
         }

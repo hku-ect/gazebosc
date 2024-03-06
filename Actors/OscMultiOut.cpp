@@ -7,20 +7,10 @@ OSCMultiOut::capabilities =          "capabilities\n"
                                 "    data\n"
                                 "        name = \"host list\"\n"
                                 "        type = \"list\"\n"
-                                "        help = \"List of hosts\"\n"
-                                "        value = \"\"\n"
-                                "        name\n"
-                                "            type = \"string\"\n"
-                                "            help = \"Just a name for your convenience\"\n"
-                                "        ip\n"
-                                "            type = \"ipaddress\"\n"
-                                "            help = \"The ipaddress of the host to send to\"\n"
-                                "        port\n"
-                                "            type = \"int\"\n"
-                                "            help = \"The port number of the host to send to\"\n"
-                                "            value = \"6200\"\n"
-                                "            min = \"1\"\n"
-                                "            max = \"65534\"\n"
+                                "        help = \"List of hosts with port (host:port)\"\n"
+                                "        value = \"127.0.0.1:1234,127.0.0.1:6200\"\n"
+                                "        api_call = \"SET HOSTS\"\n"
+                                "        api_value = \"s\"\n"
                                 "inputs\n"
                                 "    input\n"
                                 "        type = \"OSC\"\n";
@@ -55,12 +45,12 @@ zmsg_t* OSCMultiOut::handleSocket( sphactor_event_t * ev ) {
             char *host = (char *)zlist_first(this->hosts);
             while ( host )
             {
-                char *url = strchr(host, ',');
-                assert(url);
-                zstr_sendm(dgrams, url);
+                //char *url = strchr(host, ',');
+                //assert(url);
+                zstr_sendm(dgrams, host);
                 int rc = zsock_send(dgrams,  "b", msgBuffer, len);
                 if ( rc != 0 ) {
-                    zsys_info("Error sending zosc message to: %s, %i", url, rc);
+                    zsys_info("Error sending zosc message to: %s, %i", host, rc);
                 }
                 host = (char *)zlist_next(this->hosts);
             }
@@ -82,19 +72,24 @@ zmsg_t* OSCMultiOut::handleAPI( sphactor_event_t * ev ) {
             zlist_autofree(this->hosts);
 
             // fill with new data
-            char *name;
-            while ( name = zmsg_popstr(ev->msg) )
+            char *hosts = zmsg_popstr(ev->msg);
+            while ( hosts != NULL )
             {
-                char *ip = zmsg_popstr(ev->msg);
-                assert(ip);
-                char *port = zmsg_popstr(ev->msg);
-                assert(port);
-                char host[PATH_MAX];
-                snprintf(host, PATH_MAX, "%s,%s:%s");
-                zlist_append(this->hosts, (void *)&host[0]);
-                zstr_free(&name);
-                zstr_free(&ip);
-                zstr_free(&port);
+                ssize_t length = strlen(hosts);
+                char *host = hosts;
+
+                // Iterate through the characters in the array
+                for (ssize_t i = 0; i < length; i++) {
+                    // Check if the current character is a newline
+                    if (hosts[i] == '\n')
+                    {
+                        hosts[i] = 0;
+                        printf("Found a newline character at index %d\n", i);
+                        zlist_append(this->hosts, host); //copies the string!
+                        host = hosts+i+1;
+                    }
+                }
+                hosts = zmsg_popstr(ev->msg);
             }
         }
         zstr_free(&cmd);
