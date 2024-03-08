@@ -37,6 +37,19 @@ convert_to_relative_to_wd(const char *path)
     return strdup( &path[ wdpathlen ]);
 }
 
+void
+s_replace_char(char *str, char from, char to)
+{
+    ssize_t length = strlen(str);
+    for (int i = 0; i<length;i++)
+    {
+        if (str[i] == from )
+        {
+            str[i] = to;
+        }
+    }
+}
+
 // OpenTextEditor forward declare
 void OpenTextEditor(zfile_t* txtfile);
 
@@ -1051,19 +1064,18 @@ struct ActorContainer {
         char buf[MAX_STR_DEFAULT];
         const char* zvalueStr = zconfig_value(zvalue);
         strcpy(buf, zvalueStr);
+        s_replace_char(buf, ',', '\n');  // replace comma with newline if needed
         char *p = &buf[0];
 
-        static char text[1024 * 16] =
-            "127.0.0.1:1234\n"
-            "127.0.0.1:6200\n";
-
-
         ImGui::SetNextItemWidth(200);
-        if ( ImGui::InputTextMultiline("##source", p, max, ImVec2(0, ImGui::GetTextLineHeight() * 16)) )
+        ImGui::InputTextMultiline("##source", p, max, ImVec2(0, ImGui::GetTextLineHeight() * 8), ImGuiInputTextFlags_EnterReturnsTrue);
+        if ( ImGui::IsItemEdited() || ImGui::IsItemDeactivatedAfterEdit())
         {
-        //if ( ImGui::InputText(name, buf, max) ) {
-            zconfig_set_value(zvalue, "%s", buf);
-            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf);
+            char *sendbuf = strdup(buf);
+            s_replace_char(sendbuf, '\n', ','); // We use ',' instead of newline since we can't save newlines in the stage save file
+            zconfig_set_value(zvalue, "%s", sendbuf);
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), sendbuf);
+            zstr_free(&sendbuf);
         }
 
         zconfig_t *help = zconfig_locate(data, "help");
