@@ -228,6 +228,7 @@ s_pythonactor_set_file(pythonactor_t *self, const char *filename)
             zstr_free(&filebasename);
             return NULL;
         }
+
         Py_CLEAR(self->pymodule);
         self->pymodule = pyreloaded;
     }
@@ -587,7 +588,7 @@ int python_init()
                     "import sys\n"
                      "import os\n"
                      //"print(os.getcwd())\n"
-                     "sys.path.insert(0, r\"%s/misc/scripts\")\n"
+                     "sys.path.insert(0, r\"%s\\misc\\scripts\")\n"
                      "sys.path.insert(0, \"\")\n"
                      //"sys.path.append(os.getcwd())\n"
                      //"sys.path.append('/home/arnaud/src/czmq/bindings/python')\n"
@@ -723,6 +724,7 @@ pythonactor_init(pythonactor_t *self, sphactor_event_t *ev)
 {
     // we don't do anything in python
     if ( ev->msg ) zmsg_destroy(&ev->msg);
+
     return NULL;
 }
 
@@ -840,7 +842,8 @@ pythonactor_timer(pythonactor_t *self, sphactor_event_t *ev)
         }
         else
         {
-            zsys_error("We don't know what to do with the return value from python");
+            // None returns are valid, so don't spam the log
+            // zsys_error("We don't know what to do with the return value from python");
         }
         Py_XDECREF(pReturn);  // decrease refcount to trigger destroy
     }
