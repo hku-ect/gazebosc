@@ -236,6 +236,7 @@ void RegisterActors() {
 
     sphactor_register("HTTPLaunchpod", &httplaunchpodactor_handler, zconfig_str_load(httplaunchpodactorcapabilities), &httplaunchpodactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
     sphactor_register<OSCOutput>( "OSC Output", OSCOutput::capabilities);
+    sphactor_register<OSCMultiOut>( "OSC Multi Output", OSCMultiOut::capabilities);
     sphactor_register<NatNet>( "NatNet", NatNet::capabilities );
     sphactor_register<NatNet2OSC>( "NatNet2OSC", NatNet2OSC::capabilities );
     sphactor_register<Midi2OSC>( "Midi2OSC", Midi2OSC::capabilities );

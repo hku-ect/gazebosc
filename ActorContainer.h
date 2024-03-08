@@ -37,6 +37,19 @@ convert_to_relative_to_wd(const char *path)
     return strdup( &path[ wdpathlen ]);
 }
 
+void
+s_replace_char(char *str, char from, char to)
+{
+    ssize_t length = strlen(str);
+    for (int i = 0; i<length;i++)
+    {
+        if (str[i] == from )
+        {
+            str[i] = to;
+        }
+    }
+}
+
 // OpenTextEditor forward declare
 void OpenTextEditor(zfile_t* txtfile);
 
@@ -337,6 +350,9 @@ struct ActorContainer {
             else if ( streq(typeStr, "mediacontrol")) {
                 RenderMediacontrol( nameStr, data );
             }
+            else if ( streq(typeStr, "list")) {
+                RenderMultilineString( nameStr, data );
+            }
             else if ( streq(typeStr, "trigger")) {
                 RenderTrigger( nameStr, data );
             }
@@ -463,6 +479,137 @@ struct ActorContainer {
     void RenderValue(T *value, const byte * bytes, int *position) {
         memcpy(value, bytes+*position, sizeof(T));
         *position += sizeof(T);
+    }
+
+    // Make the UI compact because there are so many fields
+    static void PushStyleCompact()
+    {
+        ImGuiStyle& style = ImGui::GetStyle();
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, (float)(int)(style.FramePadding.y * 0.60f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, (float)(int)(style.ItemSpacing.y * 0.60f)));
+    }
+
+    static void PopStyleCompact()
+    {
+        ImGui::PopStyleVar(2);
+    }
+    void RenderList(const char *name, zconfig_t *data)
+    {
+        ImVec2 size = ImVec2(300,100); // what's a reasonable size?
+        ImGui::BeginChild("##", size, false, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings );
+        // The list capability expects a tree of zconfig data.
+        // Every node is a column
+        zconfig_t *namec = zconfig_locate(data, "name");
+        int colcount = 0;
+        zconfig_t *columnc = zconfig_child(data);
+        while (columnc)
+        {
+            // we only count nodes not leaves
+            if ( zconfig_child(columnc) )
+            {
+                colcount++;
+            }
+            columnc = zconfig_next(columnc);
+        }
+        assert(colcount);
+
+        // By default, if we don't enable ScrollX the sizing policy for each columns is "Stretch"
+        // Each columns maintain a sizing weight, and they will occupy all available width.
+        static ImGuiTableFlags flags = ImGuiTableFlags_Resizable ;//ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY;
+        if (ImGui::BeginTable(zconfig_value(namec), colcount, flags))
+        {
+            unsigned int dirty = 0; //track changes bitwise
+            columnc = zconfig_child(data);
+            // generate table header
+            while (columnc)
+            {
+                if ( zconfig_child(columnc) )
+                {
+                    char *name = zconfig_name(columnc);
+                    ImGui::TableSetupColumn(name, ImGuiTableColumnFlags_None);
+                }
+                columnc = zconfig_next(columnc);
+            }
+            ImGui::TableHeadersRow();
+            // generate entries
+
+            // always end with an empty entry row
+            char *values[10] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}; // capture input
+            columnc = zconfig_child(data);
+            ImGui::TableNextRow();
+            int colidx = 0;
+            while (columnc)
+            {
+                zconfig_t *rowc = NULL;
+                if ( rowc = zconfig_child(columnc) )
+                {
+                    char *name = zconfig_name(columnc);
+                    ImGui::TableSetColumnIndex(colidx);
+                    zconfig_t *typec = zconfig_locate(columnc, "type");
+                    char *type = zconfig_value(typec);
+                    ImGui::PushItemWidth( -1.0f );
+                    if ( streq(type, "intbla") )
+                    {
+                        int value = 6200;
+                        if ( ImGui::InputInt("##", &value, 1, 100,ImGuiInputTextFlags_EnterReturnsTrue ) )
+                        {
+                            dirty = (1 << colidx) | colidx;
+                        }
+                    }
+                    else
+                    {
+                        static char bla[256] = "";
+                        char label[256] = "";
+                        snprintf(label, 256, "##%s", name);
+                        if ( ImGui::InputText(&label[0], &bla[0], 256, ImGuiInputTextFlags_None) )
+                        {
+                            dirty = (1 << colidx) | colidx;
+                        }
+                    }
+                    ImGui::PopItemWidth();
+                    colidx++;
+                }
+                columnc = zconfig_next(columnc);
+            }
+            ImGui::EndTable();
+
+            if (dirty)
+            {
+                // get current value, append new value if all input fields contain data
+            }
+        }
+        //PushStyleCompact();
+        //ImGui::CheckboxFlags("ImGuiTableFlags_Resizable", &flags, ImGuiTableFlags_Resizable);
+        //ImGui::CheckboxFlags("ImGuiTableFlags_BordersV", &flags, ImGuiTableFlags_BordersV);
+        //ImGui::SameLine(); HelpMarker("Using the _Resizable flag automatically enables the _BordersInnerV flag as well, this is why the resize borders are still showing when unchecking this.");
+        //PopStyleCompact();
+
+
+        /*
+        if (ImGui::BeginTable("table1", 3, flags))
+        {
+            ImGui::TableSetupColumn("name", ImGuiTableColumnFlags_None, 80.f);
+            ImGui::TableSetupColumn("ip", ImGuiTableColumnFlags_None, 80.f);
+            ImGui::TableSetupColumn("port", ImGuiTableColumnFlags_None, 60.f);
+            ImGui::TableHeadersRow();
+            for (int row = 0; row < 3; row++)
+            {
+                ImGui::TableNextRow();
+
+                for (int column = 0; column < 3; column++)
+                {
+                    ImGui::TableSetColumnIndex(column);
+                    static int port = 0;
+                    static char bla[256] = "";
+                    if (column == 2)
+                        ImGui::InputInt("##port", &port);
+                    else
+                        ImGui::InputText("##Hello", &bla[0], 256);
+                }
+            }
+            ImGui::EndTable();
+        }*/
+        ImGui::EndChild();
     }
 
     void RenderMediacontrol(const char* name, zconfig_t *data)
@@ -892,6 +1039,43 @@ struct ActorContainer {
         if ( ImGui::InputText(name, buf, max) ) {
             zconfig_set_value(zvalue, "%s", buf);
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), buf);
+        }
+
+        zconfig_t *help = zconfig_locate(data, "help");
+        if (help)
+        {
+            char *helpv = zconfig_value(help);
+            RenderTooltip(helpv);
+        }
+    }
+
+    void RenderMultilineString(const char* name, zconfig_t *data) {
+        int max = MAX_STR_DEFAULT;
+
+        zconfig_t * zvalue = zconfig_locate(data, "value");
+        zconfig_t * zapic = zconfig_locate(data, "api_call");
+        zconfig_t * zapiv = zconfig_locate(data, "api_value");
+        assert(zvalue);
+
+        zconfig_t * zmax = zconfig_locate(data, "max");
+
+        ReadInt( &max, zmax );
+
+        char buf[MAX_STR_DEFAULT];
+        const char* zvalueStr = zconfig_value(zvalue);
+        strcpy(buf, zvalueStr);
+        s_replace_char(buf, ',', '\n');  // replace comma with newline if needed
+        char *p = &buf[0];
+
+        ImGui::SetNextItemWidth(200);
+        ImGui::InputTextMultiline("##source", p, max, ImVec2(0, ImGui::GetTextLineHeight() * 8), ImGuiInputTextFlags_EnterReturnsTrue);
+        if ( ImGui::IsItemEdited() || ImGui::IsItemDeactivatedAfterEdit())
+        {
+            char *sendbuf = strdup(buf);
+            s_replace_char(sendbuf, '\n', ','); // We use ',' instead of newline since we can't save newlines in the stage save file
+            zconfig_set_value(zvalue, "%s", sendbuf);
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), sendbuf);
+            zstr_free(&sendbuf);
         }
 
         zconfig_t *help = zconfig_locate(data, "help");
