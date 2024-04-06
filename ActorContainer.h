@@ -51,7 +51,7 @@ s_replace_char(char *str, char from, char to)
 }
 
 // OpenTextEditor forward declare
-void OpenTextEditor(zfile_t* txtfile);
+void OpenTextEditor(const char *filepath);
 
 /// A structure defining a connection between two slots of two actors.
 struct Connection
@@ -702,8 +702,7 @@ struct ActorContainer {
                     const char* zvalueStr = zconfig_value(zvalue);
                     if (strlen(zvalueStr) && zsys_file_exists (zvalueStr) )
                     {
-                        zfile_t* f = zfile_new(nullptr, zvalueStr);
-                        OpenTextEditor(f); // could own the f pointer
+                        OpenTextEditor(zvalueStr); // could own the f pointer
                     }
                     else
                         zsys_error("no valid file to load: %s", zvalueStr);
@@ -818,7 +817,7 @@ struct ActorContainer {
                         zconfig_set_value(zvalue, "%s", fnamebuf);
                         sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
 
-                        OpenTextEditor(txtfile); // could own the f pointer
+                        OpenTextEditor(zfile_filename(txtfile, NULL)); // could own the f pointer
                     }
                 }
             }

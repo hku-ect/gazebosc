@@ -34,6 +34,7 @@ namespace fs = std::filesystem;
 #include "libsphactor.h"
 #include "ActorContainer.h"
 #include "actors.h"
+#include "app/TextEditorWindow.hpp"
 #include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
 #include "ext/ImGuiColorTextEdit/TextEditor.h"
 #include "config.h"
@@ -193,7 +194,7 @@ struct textfile {
     bool open;
     bool changed;
 };
-std::vector<textfile> open_text_files;
+std::vector<gzb::TextEditorWindow*> text_editors;
 bool txteditor_open = false;
 textfile* current_editor = nullptr;
 textfile* hardswap_editor = nullptr;
@@ -478,45 +479,33 @@ void ShowLogWindow(ImGuiTextBuffer& buffer) {
     ImGui::PopID();
 }
 
-void OpenTextEditor(zfile_t* txtfile)
+void OpenTextEditor(const char *filepath)
 {    
-    static auto lang = TextEditor::LanguageDefinition::Python();
+    //static auto lang = TextEditor::LanguageDefinition::Python();
 
-    assert(txtfile);
-    textfile * found = nullptr;
-    for (auto it = open_text_files.begin(); it != open_text_files.end(); ++it)
+    gzb::TextEditorWindow *txtwin = NULL;
+    for ( auto w : text_editors )
     {
-        if (streq(zfile_filename(it->file, NULL), zfile_filename(txtfile, nullptr)))
+        if ( w->associated_file == filepath )
         {
-            found = &(*it);
-            break; // file already exists in the editor
+            txtwin = w;
         }
     }
-    if (found == nullptr)
+    if (txtwin == NULL)
     {
-        zsys_info("TextEditor: loading & new textfile");
-        // we own the pointer now!
-        int rc = zfile_input(txtfile);
-        assert(rc == 0);
-        zchunk_t* data = zfile_read(txtfile, zfile_cursize(txtfile), 0);
-        TextEditor* editor = new TextEditor();
-        editor->SetLanguageDefinition(lang);
-        editor->SetText((char*)zchunk_data(data));
-        char* basename = s_basename(zfile_filename(txtfile, nullptr));
-        // add the new file to our list of open files
-        open_text_files.push_back({ editor, txtfile, basename, true, false });
-        hardswap_editor = &(open_text_files.back());
+        txtwin = new gzb::TextEditorWindow(filepath);
+        text_editors.push_back(txtwin);
     }
-    else {
-        zsys_info("TextEditor: existing text file found, activating the correct tab?");
-        hardswap_editor = found;
-        // cleanup not used txtfile
-        zfile_destroy(&txtfile);
+    else
+    {
+        txtwin->showing = true;
+        ImGuiWindow *win = ImGui::FindWindowByName(txtwin->window_name.c_str());
+        ImGui::FocusWindow(win);
     }
     txteditor_open = true;
 }
 
-void ShowTextEditor()
+/*void ShowTextEditor()
 {
     if (ImGui::Begin("Texteditor", &txteditor_open, ImGuiWindowFlags_MenuBar)) {
 
@@ -664,10 +653,10 @@ void ShowTextEditor()
                 {
                     // file is closed by gui do we need to save it?
                     // this doesn't work, mTextChanged is set to false when rendered
-                    /*if ( it->editor->IsTextChanged() )
-                    {
-                        zsys_debug("need to save file %s", it->basename );
-                    }*/
+                    //if ( it->editor->IsTextChanged() )
+                    //{
+                    //    zsys_debug("need to save file %s", it->basename );
+                    //}
                     zsys_debug("remove file %s", it->basename);
                     open_text_files.erase(it);
                     current_editor = nullptr;
@@ -680,7 +669,7 @@ void ShowTextEditor()
     }
     ImGui::End();
 }
-
+*/
 int RenderMenuBar( bool * showLog ) {
     static char* configFile = new char[64] { 0x0 };
     static int keyFocus = 0;
@@ -1227,7 +1216,10 @@ int UpdateActors(float deltaTime, bool * showLog)
 
     if (showAbout) ShowAboutWindow(&showAbout);
 
-    if (txteditor_open) ShowTextEditor();
+    for (gzb::TextEditorWindow *w : text_editors )
+    {
+        if (w->showing ) w->OnImGui();
+    }
 #ifdef HAVE_IMGUI_DEMO
     // ImGui Demo window for dev purposes
     if (showDemo) ImGui::ShowDemoWindow(&showDemo);
