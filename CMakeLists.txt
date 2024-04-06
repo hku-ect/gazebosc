@@ -185,6 +185,10 @@ add_custom_command(
 
 list(APPEND GZB_SOURCES
     main.cpp
+    app/App.hpp
+    app/Window.hpp
+    app/TextEditorWindow.hpp
+    app/TextEditorWindow.cpp
     ext/imgui/backends/imgui_impl_opengl3.cpp
     ext/imgui/backends/imgui_impl_sdl2.cpp
     ext/imgui/imconfig.h
@@ -195,6 +199,8 @@ list(APPEND GZB_SOURCES
     ext/imgui/imgui_demo.cpp
     ImNodes.cpp
     ImNodesEz.cpp
+    ext/ImFileDialog/ImFileDialog.h
+    ext/ImFileDialog/ImFileDialog.cpp
     ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
     ext/ImGuiColorTextEdit/LanguageDefinitions.cpp
     ext/ImGuiColorTextEdit/TextEditor.cpp
@@ -202,11 +208,13 @@ list(APPEND GZB_SOURCES
 )
 
 list(APPEND GZB_INCLUDEDIRS
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     ${Unwind_INCLUDE_DIRS}
     ${OPENVR_INCLUDE_DIR}
     ${libzmq_INCLUDE_DIRS}
     ${Python3_INCLUDE_DIRS}
+    ext/
     ext/ImGuiColorTextEdit
     ext/imgui
     ext/imgui/backends
@@ -246,7 +254,7 @@ endif (Unwind_FOUND)
 
 target_link_options(gazebosc PUBLIC ${Python3_LINK_OPTIONS})
 target_compile_options(gazebosc PUBLIC ${SDL2_CFLAGS_OTHER} )
-target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
+target_compile_definitions(gazebosc PUBLIC -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=0)
 
 set(RESOURCE_DEST "./")
 set(RUNTIME_DEST "bin")

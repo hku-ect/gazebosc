@@ -907,12 +907,12 @@ int UpdateActors(float deltaTime, bool * showLog)
     ImGui::SetNextWindowPos(ImVec2(0,0));
 
     ImGuiIO &io = ImGui::GetIO();
-    bool copy = ImGui::IsKeyPressedMap(ImGuiKey_C) && (io.KeySuper || io.KeyCtrl);
-    bool paste = ImGui::IsKeyPressedMap(ImGuiKey_V) && (io.KeySuper || io.KeyCtrl);
+    bool copy = ImGui::IsKeyPressed(ImGuiKey_C) && (io.KeySuper || io.KeyCtrl);
+    bool paste = ImGui::IsKeyPressed(ImGuiKey_V) && (io.KeySuper || io.KeyCtrl);
     bool dup = ( keyState[SDL_SCANCODE_D] == 1 && !D_PRESSED) && (io.KeySuper || io.KeyCtrl);
-    bool undo = ImGui::IsKeyPressedMap(ImGuiKey_Z) && (io.KeySuper || io.KeyCtrl);
-    bool redo = ImGui::IsKeyPressedMap(ImGuiKey_Y) && (io.KeySuper || io.KeyCtrl);
-    bool del = ImGui::IsKeyPressedMap(ImGuiKey_Delete) || (io.KeySuper && ImGui::IsKeyPressedMap(ImGuiKey_Backspace));
+    bool undo = ImGui::IsKeyPressed(ImGuiKey_Z) && (io.KeySuper || io.KeyCtrl);
+    bool redo = ImGui::IsKeyPressed(ImGuiKey_Y) && (io.KeySuper || io.KeyCtrl);
+    bool del = ImGui::IsKeyPressed(ImGuiKey_Delete) || (io.KeySuper && ImGui::IsKeyPressed(ImGuiKey_Backspace));
 
     D_PRESSED = keyState[SDL_SCANCODE_D] == 1;
 

@@ -54,6 +54,7 @@
 namespace fs = std::filesystem;
 
 #include "config.h"
+#include "app/App.hpp"
 
 // Forward declare to keep main func on top for readability
 int SDLInit(SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version);
@@ -525,7 +526,7 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     font_cfg.PixelSnapH = true;
     font_cfg.SizePixels = 13.0f * 1.0f;
     font_cfg.EllipsisChar = (ImWchar)0x0085;
-    font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / 13.0f);  // Add +1 offset per 13 units
+    font_cfg.GlyphOffset.y = 1.0f * IM_TRUNC(font_cfg.SizePixels / 13.0f);  // Add +1 offset per 13 units
     char fontpath[PATH_MAX];
     snprintf(fontpath, PATH_MAX, "%s/%s", GZB_GLOBAL.RESOURCESPATH, "misc/fonts/ProggyCleanSZ.ttf");
     io.Fonts->AddFontFromFileTTF(fontpath, 13.0f, &font_cfg);
