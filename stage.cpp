@@ -186,18 +186,7 @@ void moveCwdIfNeeded() {
     }
 }
 
-// Ability to load multiple text files
-struct textfile {
-    TextEditor *editor;
-    zfile_t *file;
-    char *basename;
-    bool open;
-    bool changed;
-};
 std::vector<gzb::TextEditorWindow*> text_editors;
-bool txteditor_open = false;
-textfile* current_editor = nullptr;
-textfile* hardswap_editor = nullptr;
 
 #ifdef HAVE_IMGUI_DEMO
 // ImGui Demo window for dev purposes
@@ -480,9 +469,7 @@ void ShowLogWindow(ImGuiTextBuffer& buffer) {
 }
 
 void OpenTextEditor(const char *filepath)
-{    
-    //static auto lang = TextEditor::LanguageDefinition::Python();
-
+{
     gzb::TextEditorWindow *txtwin = NULL;
     for ( auto w : text_editors )
     {
@@ -502,174 +489,9 @@ void OpenTextEditor(const char *filepath)
         ImGuiWindow *win = ImGui::FindWindowByName(txtwin->window_name.c_str());
         ImGui::FocusWindow(win);
     }
-    txteditor_open = true;
 }
 
-/*void ShowTextEditor()
-{
-    if (ImGui::Begin("Texteditor", &txteditor_open, ImGuiWindowFlags_MenuBar)) {
 
-        ImGui::BeginMenuBar();
-
-        if (ImGui::BeginMenu("File")) {
-            
-            bool file_selected = false;
-
-            if (ImGui::MenuItem(ICON_FA_FOLDER_OPEN " Load"))
-                file_selected = true;
-
-            if (file_selected)
-                ImGui::OpenPopup("Actor Open File");
-
-            // open the load dialog
-            if (actor_file_dialog.showFileDialog("Actor Open File",
-                imgui_addons::ImGuiFileBrowser::DialogMode::OPEN,
-                ImVec2(700, 310),
-                "*.*")) // TODO: perhaps add type hint for extensions?
-            {
-                zfile_t* f = zfile_new(nullptr, actor_file_dialog.selected_path.c_str());
-                if (actor_file_dialog.selected_path.length() > 0 && f)
-                {
-                    OpenTextEditor(f);
-                }
-                else
-                    zsys_error("no valid file to load: %s", actor_file_dialog.selected_path.c_str());
-            }
-            if (ImGui::MenuItem(ICON_FA_SAVE " Save")) {
-                if (current_editor != nullptr) {
-                    // the zfile class is missing truncating files on write if the file is smaller than the old file
-                    // see https://github.com/zeromq/czmq/issues/2203
-                    ssize_t oldSize = zfile_size(zfile_filename(current_editor->file, NULL));
-                    int rc = zfile_output(current_editor->file);
-                    if (rc == 0) {
-                        std::string text = current_editor->editor->GetText();
-                        zchunk_t* data = zchunk_frommem((void *)text.c_str(), strlen(text.c_str()), nullptr, nullptr);
-                        int rc = zfile_write(current_editor->file, data, 0);
-                        if (oldSize > text.length() )
-                        {
-#ifdef __WINDOWS__          // truncate the file
-                            if ( _chsize_s(fileno(zfile_handle(current_editor->file)), (__int64)text.length()) != 0 )
-                            {
-                                zsys_error("Some error trying to truncate the file");
-                            }
-#else
-                            ftruncate(fileno(zfile_handle(current_editor->file)), text.length());
-#endif
-                        }
-                        zfile_close(current_editor->file);
-                        if (rc != 0) {
-                            zsys_info("ERROR WRITING TO FILE: %i", rc);
-                        }
-                        else
-                            current_editor->changed = false;
-                    }
-                }
-            }
-            // TODO: support save as?
-            //if (ImGui::MenuItem(ICON_FA_SAVE " Save As")) {
-            //
-            //}
-            ImGui::Separator();
-            if (ImGui::MenuItem(ICON_FA_WINDOW_CLOSE " Exit")) {
-                //TODO: support checking if changes were made
-                txteditor_open = false;
-            }
-
-            ImGui::EndMenu();
-        }
-        if (ImGui::BeginMenu("Edit"))
-        {
-            bool ro = current_editor->editor->IsReadOnly();
-            if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
-                current_editor->editor->SetReadOnly(ro);
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("Undo", "ALT-Backspace", nullptr, !ro && current_editor->editor->CanUndo()))
-                current_editor->editor->Undo();
-            if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && current_editor->editor->CanRedo()))
-                current_editor->editor->Redo();
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, current_editor->editor->HasSelection()))
-                current_editor->editor->Copy();
-            if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && current_editor->editor->HasSelection()))
-                current_editor->editor->Cut();
-            if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && current_editor->editor->HasSelection()))
-                current_editor->editor->Delete();
-            if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-                current_editor->editor->Paste();
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("Select all", nullptr, nullptr))
-                current_editor->editor->SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(current_editor->editor->GetTotalLines(), 0));
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("View"))
-        {
-            if (ImGui::MenuItem("Dark palette"))
-                current_editor->editor->SetPalette(TextEditor::GetDarkPalette());
-            if (ImGui::MenuItem("Light palette"))
-                current_editor->editor->SetPalette(TextEditor::GetLightPalette());
-            if (ImGui::MenuItem("Retro blue palette"))
-                current_editor->editor->SetPalette(TextEditor::GetRetroBluePalette());
-            if (ImGui::MenuItem("Mariana palette"))
-                current_editor->editor->SetPalette(TextEditor::GetMarianaPalette());
-            ImGui::EndMenu();
-        }
-
-        ImGui::EndMenuBar();
-
-        ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_AutoSelectNewTabs;
-        if (ImGui::BeginTabBar("TextEditorTabBar", tab_bar_flags))
-        {
-            for (auto it = open_text_files.begin(); it != open_text_files.end(); ++it)
-            {
-                ImGuiTabItemFlags flags = ImGuiTabItemFlags_None;
-                if (hardswap_editor && &(*it) == hardswap_editor) {
-                    flags |= ImGuiTabItemFlags_SetSelected;
-                    hardswap_editor = nullptr;
-                }
-                // TODO: when loading the textfile this will always
-                // result in text being changed.
-                if ( !it->changed && it->editor->IsTextChanged() ) it->changed = true;
-
-                char filename[FILENAME_MAX];
-                if ( it->changed )
-                    snprintf(filename, FILENAME_MAX, "%s*###%s", it->basename, it->basename);
-                else
-                    snprintf(filename, FILENAME_MAX, "%s###%s", it->basename, it->basename);
-
-                if (ImGui::BeginTabItem(filename, &it->open, flags))
-                {
-                    current_editor = &(*it); // set current textfile from active tab
-                    current_editor->editor->Render("TextEditor");//, false, ImVec2(), false);
-                    ImGui::EndTabItem();
-                }
-                else if (!it->open)
-                {
-                    // file is closed by gui do we need to save it?
-                    // this doesn't work, mTextChanged is set to false when rendered
-                    //if ( it->editor->IsTextChanged() )
-                    //{
-                    //    zsys_debug("need to save file %s", it->basename );
-                    //}
-                    zsys_debug("remove file %s", it->basename);
-                    open_text_files.erase(it);
-                    current_editor = nullptr;
-                    break;
-                }
-            }
-
-            ImGui::EndTabBar();
-        }
-    }
-    ImGui::End();
-}
-*/
 int RenderMenuBar( bool * showLog ) {
     static char* configFile = new char[64] { 0x0 };
     static int keyFocus = 0;
@@ -708,6 +530,20 @@ int RenderMenuBar( bool * showLog ) {
     }
 
     if ( ImGui::BeginMenu("Tools") ) {
+        if ( ImGui::BeginMenu(ICON_FA_EDIT " Text Editor") )
+        {
+            if ( ImGui::MenuItem(ICON_FA_FOLDER_OPEN " New editor") )
+            {
+                text_editors.push_back(new gzb::TextEditorWindow());
+            }
+            for (auto w : text_editors )
+            {
+                std::string title = w->window_name + " " + ICON_FA_EYE;
+                if ( ImGui::MenuItem(w->window_name.c_str(), NULL, w->showing, true ) )
+                    w->showing = !w->showing;
+            }
+            ImGui::EndMenu();
+        }
         if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Console") ) {
             *showLog = !(*showLog);
         }
