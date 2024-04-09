@@ -36,6 +36,7 @@ TextEditorWindow::~TextEditorWindow()
 
 void TextEditorWindow::OnImGui()
 {
+    ImGui::SetNextWindowSize(ImVec2(0.f, 200), ImGuiCond_FirstUseEver);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
     ImGui::Begin(window_name.c_str(), &showing,
                 ImGuiWindowFlags_MenuBar |
