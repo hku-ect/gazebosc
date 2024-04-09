@@ -33,7 +33,7 @@ namespace fs = std::filesystem;
 #include "ImNodesEz.h"
 #include "libsphactor.h"
 #include "ActorContainer.h"
-#include "actors.h"
+#include "actors/actors.h"
 #include "app/TextEditorWindow.hpp"
 #include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
 #include "ext/ImGuiColorTextEdit/TextEditor.h"
