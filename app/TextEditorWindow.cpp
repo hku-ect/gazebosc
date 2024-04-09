@@ -40,7 +40,6 @@ void TextEditorWindow::OnImGui()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 0.0f, 0.0f });
     ImGui::Begin(window_name.c_str(), &showing,
                 ImGuiWindowFlags_MenuBar |
-                ImGuiWindowFlags_NoSavedSettings |
                 (editor->GetUndoIndex() != undo_index_in_disk ? ImGuiWindowFlags_UnsavedDocument : 0x0));
     ImGui::PopStyleVar();
 
