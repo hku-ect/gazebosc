@@ -30,4 +30,4 @@
 	url = https://github.com/ocornut/imgui.git
 [submodule "ext/ImFileDialog"]
 	path = ext/ImFileDialog
-	url = https://github.com/dfranx/ImFileDialog
+	url = https://github.com/sphaero/ImFileDialog
