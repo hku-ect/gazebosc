@@ -25,8 +25,8 @@ TextEditorWindow::TextEditorWindow(const char* filePath)
         std::string str((std::istreambuf_iterator<char>(t)),
                         std::istreambuf_iterator<char>());
         editor->SetText(str);
-        editor->SetLanguageDefinition(TextEditor::LanguageDefinition::Python());
     }
+    editor->SetLanguageDefinition(TextEditor::LanguageDefinition::Python());
 }
 
 TextEditorWindow::~TextEditorWindow()
