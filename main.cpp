@@ -31,6 +31,7 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
 #include "fontawesome5.h"
+#include "ext/ImFileDialog/ImFileDialog.h"
 #include <stdio.h>
 #include <signal.h>
 #define SDL_MAIN_HANDLED
@@ -543,6 +544,28 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphR>
     //IM_ASSERT(font != NULL);
+
+    // ImFileDialog requires you to set the CreateTexture and DeleteTexture
+    ifd::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt) -> void* {
+        GLuint tex;
+
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, (fmt == 0) ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE); //Gl2
+        //glGenerateMipmap(GL_TEXTURE_2D); //GL3
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        return (void*)tex;
+    };
+    ifd::FileDialog::Instance().DeleteTexture = [](void* tex) {
+        GLuint texID = (GLuint)((uintptr_t)tex);
+        glDeleteTextures(1, &texID);
+    };
 
     return io;
 }
