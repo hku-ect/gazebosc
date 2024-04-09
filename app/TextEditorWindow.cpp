@@ -60,6 +60,9 @@ void TextEditorWindow::OnImGui()
             }
             if (ImGui::MenuItem("Save", "Ctrl+S"))
                 OnSaveCommand();
+            if (ImGui::MenuItem("Close", "Ctrl+W"))
+                requesting_close = true;
+
             //if (this->has_associated_file && ImGui::MenuItem("Show in file explorer"))
             //Utils::ShowInFileExplorer(this->associated_file);
             ImGui::EndMenu();
@@ -249,6 +252,29 @@ void TextEditorWindow::OnImGui()
 
         ImGui::EndPopup();
     }
+    if (requesting_close)
+    {
+        if (editor->GetUndoIndex() )
+            ImGui::OpenPopup("requesting_close_popup");
+        else
+            requesting_destroy = true;
+        if (ImGui::BeginPopup("requesting_close_popup"))
+        {
+            ImGui::Text("Usaved changes will be lost. Are you sure?");
+            if ( ImGui::Button("Yes") )
+            {
+                requesting_destroy = true;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::SameLine();
+            if ( ImGui::Button("No"))
+            {
+                requesting_close = false;
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+}
 
     //if (requestingFontSizeIncrease && codeFontSize < FontManager::GetMaxCodeFontSize())
     //	codeFontSize++;

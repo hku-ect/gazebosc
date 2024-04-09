@@ -35,6 +35,8 @@ struct TextEditorWindow : public Window
     char ctrlf_text_to_find[FIND_POPUP_TEXT_FIELD_LENGTH] = "";
     bool ctrlf_case_sensitive = false;
     bool requesting_load_from = false;
+    bool requesting_close = false;
+    bool requesting_destroy = false;
 };
 
 }

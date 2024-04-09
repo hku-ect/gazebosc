@@ -1052,10 +1052,17 @@ int UpdateActors(float deltaTime, bool * showLog)
 
     if (showAbout) ShowAboutWindow(&showAbout);
 
-    for (gzb::TextEditorWindow *w : text_editors )
+    std::vector<gzb::TextEditorWindow *>::iterator itr = text_editors.begin();
+    while ( itr < text_editors.end() )
     {
-        if (w->showing ) w->OnImGui();
+        if ( (*itr)->showing )
+            (*itr)->OnImGui();
+        if ( (*itr)->requesting_destroy )
+            itr = text_editors.erase(itr);
+        else
+            ++itr;
     }
+
 #ifdef HAVE_IMGUI_DEMO
     // ImGui Demo window for dev purposes
     if (showDemo) ImGui::ShowDemoWindow(&showDemo);
