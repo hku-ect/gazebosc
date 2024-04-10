@@ -192,6 +192,8 @@ list(APPEND GZB_SOURCES
     app/Window.hpp
     app/TextEditorWindow.hpp
     app/TextEditorWindow.cpp
+    app/AboutWindow.hpp
+    app/AboutWindow.cpp
     ext/imgui/backends/imgui_impl_opengl3.cpp
     ext/imgui/backends/imgui_impl_sdl2.cpp
     ext/imgui/imconfig.h
