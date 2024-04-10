@@ -106,17 +106,6 @@ bool logWindow = false;
 char huge_string_buf[4096];
 int out_pipe[2];
 
-ImGuiTextBuffer& getBuffer(){
-    static ImGuiTextBuffer sLogBuffer; // static log buffer for logger channel
-
-    //read(out_pipe[0], huge_string_buf, 4096);
-    if ( strlen( huge_string_buf ) > 0 ) {
-        sLogBuffer.appendf("%s", huge_string_buf);
-        memset(huge_string_buf,0,4096);
-    }
-
-    return sLogBuffer;
-}
 /* Obtain a backtrace and print it to stdout. */
 #if defined(HAVE_LIBUNWIND)
 
@@ -573,6 +562,7 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
 void UILoop( SDL_Window* window, ImGuiIO& io ) {
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+    gzb::App &app = gzb::App::getApp();
     // Main loop
     unsigned int deltaTime = 0, oldTime = 0;
     while (!stop)
@@ -592,7 +582,6 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
                 stop = 1;
         }
-
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
@@ -615,6 +604,28 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         oldTime = SDL_GetTicks();
         int rc = UpdateActors( ((float)deltaTime) / 1000, &logWindow);
 
+        // text editor windows
+        std::vector<gzb::TextEditorWindow *>::iterator itr = app.text_editors.begin();
+        while ( itr < app.text_editors.end() )
+        {
+            if ( (*itr)->showing )
+                (*itr)->OnImGui();
+            if ( (*itr)->requesting_destroy )
+            {
+                delete(*itr);
+                itr = app.text_editors.erase(itr);
+            }
+            else
+                ++itr;
+        }
+        if (app.about_win.showing)
+            app.about_win.OnImGui();
+        if (app.log_win.showing)
+            app.log_win.OnImGui();
+        if (app.demo_win.showing)
+            app.demo_win.OnImGui();
+
+
         if ( rc == -1 ) {
             stop = 1;
         }
@@ -625,9 +636,9 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         //ImGui::SetNextWindowPos(pos);
         //ShowConfigWindow(&logWindow);
 
-        if ( logWindow ) {
-            ShowLogWindow(getBuffer());
-        }
+        //if ( logWindow ) {
+        //    ShowLogWindow(getBuffer());
+        //}
 
         // Rendering
         ImGui::Render();

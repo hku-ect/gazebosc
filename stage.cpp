@@ -34,8 +34,7 @@ namespace fs = std::filesystem;
 #include "libsphactor.h"
 #include "ActorContainer.h"
 #include "actors/actors.h"
-#include "app/TextEditorWindow.hpp"
-#include "app/AboutWindow.hpp"
+#include "app/App.hpp"
 #include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
 #include "ext/ImGuiColorTextEdit/TextEditor.h"
 #include "config.h"
@@ -190,8 +189,6 @@ void moveCwdIfNeeded() {
     }
 }
 
-std::vector<gzb::TextEditorWindow*> text_editors;
-
 #ifdef HAVE_IMGUI_DEMO
 // ImGui Demo window for dev purposes
 bool showDemo = false;
@@ -209,8 +206,6 @@ void SelectableText(const char *buf)
     ImGui::PopStyleColor();
     ImGui::PopID();
 }
-
-bool showAbout = false;
 
 void UpdateRegisteredActorsCache() {
     zhash_t *hash = sphactor_get_registered();
@@ -326,43 +321,10 @@ void ShowConfigWindow(bool * showLog) {
     ImGui::End();
 }
 
-void ShowLogWindow(ImGuiTextBuffer& buffer) {
-    static bool ScrollToBottom = true;
-
-    ImGui::PushID(123);
-
-    ImGui::SetNextWindowSizeConstraints(ImVec2(100,100), ImVec2(1000,1000));
-    ImGui::Begin("Console");
-
-    if (ImGui::Button("Clear")) buffer.clear();
-    ImGui::SameLine();
-    if ( ImGui::Button("To Bottom") ) {
-        ScrollToBottom = true;
-    }
-
-    ImGui::BeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
-
-    if ( !ScrollToBottom && ImGui::GetScrollY() == ImGui::GetScrollMaxY() ) {
-        ScrollToBottom = true;
-    }
-
-    ImGui::TextUnformatted(buffer.begin());
-
-    if (ScrollToBottom)
-        ImGui::SetScrollHereY(1.0f);
-    ScrollToBottom = false;
-
-    ImGui::EndChild();
-
-    ImGui::End();
-
-    ImGui::PopID();
-}
-
 void OpenTextEditor(const char *filepath)
 {
     gzb::TextEditorWindow *txtwin = NULL;
-    for ( auto w : text_editors )
+    for ( auto w : gzb::App::getApp().text_editors )
     {
         if ( w->associated_file == filepath )
         {
@@ -372,7 +334,7 @@ void OpenTextEditor(const char *filepath)
     if (txtwin == NULL)
     {
         txtwin = new gzb::TextEditorWindow(filepath);
-        text_editors.push_back(txtwin);
+        gzb::App::getApp().text_editors.push_back(txtwin);
     }
     else
     {
@@ -425,9 +387,9 @@ int RenderMenuBar( bool * showLog ) {
         {
             if ( ImGui::MenuItem(ICON_FA_FOLDER_OPEN " New editor") )
             {
-                text_editors.push_back(new gzb::TextEditorWindow());
+                gzb::App::getApp().text_editors.push_back(new gzb::TextEditorWindow());
             }
-            for (auto w : text_editors )
+            for (auto w : gzb::App::getApp().text_editors )
             {
                 std::string title = w->window_name + " " + ICON_FA_EYE;
                 if ( ImGui::MenuItem(w->window_name.c_str(), NULL, w->showing, true ) )
@@ -435,8 +397,8 @@ int RenderMenuBar( bool * showLog ) {
             }
             ImGui::EndMenu();
         }
-        if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Console") ) {
-            *showLog = !(*showLog);
+        if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Log Console") ) {
+            gzb::App::getApp().log_win.showing = !gzb::App::getApp().log_win.showing;
         }
 #ifdef HAVE_IMGUI_DEMO
         if ( ImGui::MenuItem(ICON_FA_CARAVAN " Toggle Demo") ) {
@@ -444,7 +406,7 @@ int RenderMenuBar( bool * showLog ) {
         }
 #endif
         if ( ImGui::MenuItem(ICON_FA_INFO " Toggle About") ) {
-            showAbout = !showAbout;
+            gzb::App::getApp().about_win.showing = !gzb::App::getApp().about_win.showing;
         }
 
         ImGui::EndMenu();
@@ -607,12 +569,14 @@ inline ImU32 LerpImU32( ImU32 c1, ImU32 c2, int index, int total, float offset, 
 
 int UpdateActors(float deltaTime, bool * showLog)
 {
-    about_win = new gzb::AboutWindow(); // about window
     static std::vector<ActorContainer*> selectedActors;
     static std::vector<char *> actorClipboardType;
     static std::vector<char *> actorClipboardCapabilities;
     static std::vector<ImVec2> actorClipboardPositions;
     static bool D_PRESSED = false;
+
+    if (about_win == NULL)
+        about_win = new gzb::AboutWindow();
 
     int numKeys;
     byte * keyState = (byte*)SDL_GetKeyboardState(&numKeys);
@@ -941,25 +905,6 @@ int UpdateActors(float deltaTime, bool * showLog)
         ImNodes::Ez::EndCanvas();
     }
     ImGui::End();
-
-    // text editor windows
-    std::vector<gzb::TextEditorWindow *>::iterator itr = text_editors.begin();
-    while ( itr < text_editors.end() )
-    {
-        if ( (*itr)->showing )
-            (*itr)->OnImGui();
-        if ( (*itr)->requesting_destroy )
-        {
-            delete(*itr);
-            itr = text_editors.erase(itr);
-        }
-        else
-            ++itr;
-    }
-
-    // about window
-    if (about_win->showing)
-        about_win->OnImGui();
 
 #ifdef HAVE_IMGUI_DEMO
     // ImGui Demo window for dev purposes
