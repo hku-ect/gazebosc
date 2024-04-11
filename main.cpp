@@ -25,7 +25,10 @@
 #include<dbghelp.h>
 #include"StackWalker.h"
 #endif
-
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+#   define IMGUI_DEFINE_MATH_OPERATORS
+#   define IM_VEC2_CLASS_EXTRA
+#endif
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
@@ -55,6 +58,7 @@
 namespace fs = std::filesystem;
 
 #include "config.h"
+#include "actors/actors.h"
 #include "app/App.hpp"
 
 // Forward declare to keep main func on top for readability
@@ -390,13 +394,13 @@ int main(int argc, char** argv)
 
         if ( stage_file )
         {
-            if ( ! Load(stage_file))
+            if ( ! gzb::App::getApp().stage_win.Load(stage_file))
             {
                 zsys_error("Failed loading %s", stage_file);
             }
         }
         else
-            Init(); // start with an empty stage
+            gzb::App::getApp().stage_win.Init(); // start with an empty stage
 
         // Blocking UI loop
         UILoop(window, io);
@@ -409,7 +413,7 @@ int main(int argc, char** argv)
 
         if ( stage_file )
         {
-            if ( ! Load(stage_file))
+            if ( ! gzb::App::getApp().stage_win.Load(stage_file))
             {
                 zsys_error("Failed loading %s", stage_file);
             }
@@ -432,7 +436,7 @@ int main(int argc, char** argv)
         }
     }
 
-    Clear();
+    gzb::App::getApp().stage_win.Clear();
     sphactor_dispose();
 
     zstr_free(&GZB_GLOBAL.RESOURCESPATH);
@@ -441,6 +445,63 @@ int main(int argc, char** argv)
 
     fflush(stdout);
     return 0;
+}
+
+ImVector<char*> actor_types;
+void UpdateRegisteredActorsCache() {
+    zhash_t *hash = sphactor_get_registered();
+    zlist_t *list = zhash_keys(hash);
+    actor_types.clear();
+
+    char* item = (char*)zlist_first(list);
+    while( item ) {
+        actor_types.push_back(item);
+        item = (char*)zlist_next(list);
+    }
+}
+
+std::map<std::string, int> max_actors_by_type;
+void RegisterActors() {
+    // register stock actors
+    sph_stock_register_all();
+
+    sphactor_register("HTTPLaunchpod", &httplaunchpodactor_handler, zconfig_str_load(httplaunchpodactorcapabilities), &httplaunchpodactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
+    sphactor_register<OSCOutput>( "OSC Output", OSCOutput::capabilities);
+    sphactor_register<OSCMultiOut>( "OSC Multi Output", OSCMultiOut::capabilities);
+    sphactor_register<NatNet>( "NatNet", NatNet::capabilities );
+    sphactor_register<NatNet2OSC>( "NatNet2OSC", NatNet2OSC::capabilities );
+    sphactor_register<Midi2OSC>( "Midi2OSC", Midi2OSC::capabilities );
+#ifdef HAVE_OPENVR
+    sphactor_register<OpenVR>("OpenVR", OpenVR::capabilities);
+#endif
+    sphactor_register<OSCInput>( "OSC Input", OSCInput::capabilities );
+    sphactor_register<Record>("Record", Record::capabilities );
+    sphactor_register<ModPlayerActor>( "ModPlayer", ModPlayerActor::capabilities );
+    sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
+#ifdef HAVE_OPENVR
+    sphactor_register<DmxActor>( "DmxOut", DmxActor::capabilities );
+    sphactor_register<IntSlider>( "IntSlider", IntSlider::capabilities );
+    sphactor_register<FloatSlider>( "FloatSlider", FloatSlider::capabilities );
+#endif
+#ifdef PYTHON3_FOUND
+    int rc = python_init();
+    assert( rc == 0);
+    /* Check newer version: We should make this async as it slows startup" */
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+
+    PyObject *pUpdateBool = python_call_file_func("checkver", "check_github_newer_commit", "(s)", GIT_HASH);
+    if (pUpdateBool && PyObject_IsTrue(pUpdateBool))
+        GZB_GLOBAL.UPDATE_AVAIL = true;
+
+    PyGILState_Release(gstate);
+    /* End check newer version */
+#endif
+    //enforcable maximum actor counts
+    max_actors_by_type.insert(std::make_pair("NatNet", 1));
+    max_actors_by_type.insert(std::make_pair("OpenVR", 1));
+
+    UpdateRegisteredActorsCache();
 }
 
 int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version ) {
@@ -602,7 +663,9 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         //printf("fps %.2f %i\n", 1000./(SDL_GetTicks() - oldTime), deltaTime);
         /* For when we send msgs to the main thread */
         oldTime = SDL_GetTicks();
-        int rc = UpdateActors( ((float)deltaTime) / 1000, &logWindow);
+
+        // root window
+        int rc = app.stage_win.UpdateActors(deltaTime);
 
         // text editor windows
         std::vector<gzb::TextEditorWindow *>::iterator itr = app.text_editors.begin();

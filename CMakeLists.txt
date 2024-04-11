@@ -185,17 +185,22 @@ add_custom_command(
 
 list(APPEND GZB_SOURCES
     main.cpp
-    stage.cpp
     ImNodes.cpp
     ImNodesEz.cpp
+    helpers.h
+    helpers.c
     app/App.hpp
     app/Window.hpp
     app/TextEditorWindow.hpp
     app/TextEditorWindow.cpp
+    app/StageWindow.hpp
+    app/StageWindow.cpp
     app/AboutWindow.hpp
     app/AboutWindow.cpp
     app/LogWindow.hpp
     app/DemoWindow.hpp
+    app/ActorContainer.hpp
+    app/ActorContainer.cpp
     ext/imgui/backends/imgui_impl_opengl3.cpp
     ext/imgui/backends/imgui_impl_sdl2.cpp
     ext/imgui/imconfig.h
