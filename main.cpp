@@ -648,13 +648,6 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        //main window
-        //  this will be our main workspace
-
-        SDL_GetWindowSize(window, &w, &h);
-        ImVec2 size = ImVec2(w,h);
-        ImGui::SetNextWindowSize(size);
-
         // Get time since last frame
         deltaTime = SDL_GetTicks() - oldTime;
         /* In here we can poll sockets */
@@ -663,6 +656,12 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         //printf("fps %.2f %i\n", 1000./(SDL_GetTicks() - oldTime), deltaTime);
         /* For when we send msgs to the main thread */
         oldTime = SDL_GetTicks();
+
+        //main window
+        //  this will be our main workspace
+        SDL_GetWindowSize(window, &w, &h);
+        ImVec2 size = ImVec2(w,h);
+        ImGui::SetNextWindowSize(size);
 
         // root window
         int rc = app.stage_win.UpdateActors(deltaTime);
@@ -692,17 +691,6 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         if ( rc == -1 ) {
             stop = 1;
         }
-        // Save/load window
-        //size = ImVec2(350,135);
-        //ImVec2 pos = ImVec2(w - 400, 50);
-        //ImGui::SetNextWindowSize(size);
-        //ImGui::SetNextWindowPos(pos);
-        //ShowConfigWindow(&logWindow);
-
-        //if ( logWindow ) {
-        //    ShowLogWindow(getBuffer());
-        //}
-
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
