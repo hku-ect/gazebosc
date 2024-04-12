@@ -217,9 +217,14 @@ convert_to_relative_to_wd(const char *path)
     getcwd(wdpath, PATH_MAX);
 
 #if WIN32
-    std::string pathStr = wdpath;
-    std::replace(pathStr.begin(), pathStr.end(), '\\', '/');
-    strcpy(wdpath, pathStr.c_str());
+    for (int i = 0; wdpath[i] != '\0'; i++) {
+        if (wdpath[i] == '\\') {
+            wdpath[i] = '/';
+        }
+    }
+    //std::string pathStr = wdpath;
+    //std::replace(pathStr.begin(), pathStr.end(), '\\', '/');
+    //strcpy(wdpath, pathStr.c_str());
 #endif
 
     const char *ret = strstr(path, wdpath);
