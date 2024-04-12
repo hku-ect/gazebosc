@@ -3,11 +3,15 @@
 
 #include "app/Window.hpp"
 #include "imgui.h"
+#include <unistd.h>
 
 namespace gzb {
-class LogWindow : public Window
+struct LogWindow : public Window
 {
-public:
+    int pipe_fd = -1;
+    bool scroll_to_bottom = true;
+    ImGuiTextBuffer *buffer;
+
     LogWindow(ImGuiTextBuffer *log_buffer)
     {
         buffer = log_buffer;
@@ -16,6 +20,7 @@ public:
     ~LogWindow() {};
     void OnImGui()
     {
+        ReadStdOut();
         ImGui::PushID(123);
 
         ImGui::SetNextWindowSizeConstraints(ImVec2(100,100), ImVec2(1000,1000));
@@ -46,8 +51,19 @@ public:
         ImGui::PopID();
     }
 
-    bool scroll_to_bottom = true;
-    ImGuiTextBuffer *buffer;
+    int ReadStdOut()
+    {
+        static char huge_string_buf[4096];
+        int rc = 0;
+
+        if (pipe_fd !=-1)
+            rc = read(pipe_fd, huge_string_buf, 4096);
+        if ( rc > 0 && strlen( huge_string_buf ) > 0 ) {
+            buffer->appendf("%s", huge_string_buf);
+            memset(huge_string_buf,0,4096);
+        }
+        return rc;
+    }
 };
 } // namespace
 #endif // LOGWINDOW_HPP

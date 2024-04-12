@@ -352,7 +352,9 @@ int main(int argc, char** argv)
     if (!headless)
     {
         memset(huge_string_buf,0,4096);
-        gzb::capture_stdio();
+        int rc = pipe(out_pipe);
+        assert( rc == 0 );
+        gzb::capture_stdio(out_pipe[0], out_pipe[1]);
     }
 
     // try to init SDL and otherwise run headless
@@ -595,6 +597,7 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     gzb::App &app = gzb::App::getApp();
+    app.log_win.pipe_fd = out_pipe[0];
     // Main loop
     unsigned int deltaTime = 0, oldTime = 0;
     while (!stop)

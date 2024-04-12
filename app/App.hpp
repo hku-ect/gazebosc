@@ -236,35 +236,18 @@ struct App
     }
 };
 
-static ImGuiTextBuffer& getLogBuffer(int fd=-1){
-    static ImGuiTextBuffer sLogBuffer; // static log buffer for logger channel
-    static char huge_string_buf[4096];
-
-    if (fd !=-1)
-        read(fd, huge_string_buf, 4096);
-    if ( strlen( huge_string_buf ) > 0 ) {
-        sLogBuffer.appendf("%s", huge_string_buf);
-        memset(huge_string_buf,0,4096);
-    }
-
-    return sLogBuffer;
-}
-
-static void capture_stdio()
+static void capture_stdio(int pipe_in, int pipe_out)
 {
 #ifdef __WINDOWS__
     printf("WARNING: stdio redirection not implemented on Windows\n");
 #else
-    static int out_pipe[2];
-    int rc = pipe(out_pipe);
-    assert( rc == 0 );
-
-    long flags = fcntl(out_pipe[0], F_GETFL);
+    //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
+    long flags = fcntl(pipe_in, F_GETFL);
     flags |= O_NONBLOCK;
-    fcntl(out_pipe[0], F_SETFL, flags);
+    fcntl(pipe_in, F_SETFL, flags);
 
-    dup2(out_pipe[1], STDOUT_FILENO);
-    close(out_pipe[1]);
+    dup2(pipe_out, STDOUT_FILENO);
+    close(pipe_out);
 #endif
 }
 
