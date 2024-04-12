@@ -154,7 +154,7 @@ ActorContainer::HandleAPICalls(zconfig_t * data) {
             case 'i': {
                 int ival;
                 ReadInt(&ival, zvalue);
-                sphactor_ask_api(this->actor, zconfig_value(zapic), zapivStr, itoa(ival));
+                sphactor_ask_api(this->actor, zconfig_value(zapic), zapivStr, gzb_itoa(ival));
             } break;
             case 'f': {
                 float fval;
@@ -786,7 +786,7 @@ ActorContainer::RenderInt(const char* name, zconfig_t *data) {
 
         zconfig_set_value(zvalue, "%i", value);
         //SendAPI<int>(zapic, zapiv, zvalue, &value);
-        sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), itoa(value) );
+        sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), gzb_itoa(value) );
     }
     zconfig_t *help = zconfig_locate(data, "help");
     if (help)
@@ -849,7 +849,7 @@ ActorContainer::RenderSlider(const char* name, zconfig_t *data) {
 
         if ( ImGui::SliderInt( "", &value, min, max) ) {
             zconfig_set_value(zvalue, "%i", value);
-            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), itoa(value) );
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), gzb_itoa(value) );
         }
         ImGui::SameLine();
         ImGui::SetNextItemWidth(30);

@@ -231,7 +231,7 @@ convert_to_relative_to_wd(const char *path)
     return strdup( &path[ wdpathlen ]);
 }
 
-char *itoa(int i)
+char *gzb_itoa(int i)
 {
     char *str = (char *)malloc(10);
     sprintf(str, "%d", i);

@@ -16,7 +16,7 @@ char *s_basename(char const *path);
 bool s_dir_exists(const wchar_t *pypath);
 void s_replace_char(char *str, char from, char to);
 char *convert_to_relative_to_wd(const char *path);
-char *itoa(int i);
+char *gzb_itoa(int i);
 char *ftoa(float f);
 #ifdef __cplusplus
 }
