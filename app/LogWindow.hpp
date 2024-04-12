@@ -3,8 +3,9 @@
 
 #include "app/Window.hpp"
 #include "imgui.h"
+#ifdef __unix__
 #include <unistd.h>
-
+#endif
 namespace gzb {
 struct LogWindow : public Window
 {
@@ -53,8 +54,9 @@ struct LogWindow : public Window
 
     int ReadStdOut()
     {
-        static char huge_string_buf[4096];
         int rc = 0;
+#ifdef __unix__
+        static char huge_string_buf[4096];
 
         if (pipe_fd !=-1)
             rc = read(pipe_fd, huge_string_buf, 4096);
@@ -62,6 +64,7 @@ struct LogWindow : public Window
             buffer->appendf("%s", huge_string_buf);
             memset(huge_string_buf,0,4096);
         }
+#endif
         return rc;
     }
 };
