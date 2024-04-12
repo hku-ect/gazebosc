@@ -252,6 +252,9 @@ static ImGuiTextBuffer& getLogBuffer(int fd=-1){
 
 static void capture_stdio()
 {
+#ifdef __WINDOWS__
+    printf("WARNING: stdio redirection not implemented on Windows\n");
+#else
     static int out_pipe[2];
     int rc = pipe(out_pipe);
     assert( rc == 0 );
@@ -262,6 +265,7 @@ static void capture_stdio()
 
     dup2(out_pipe[1], STDOUT_FILENO);
     close(out_pipe[1]);
+#endif
 }
 
 }
