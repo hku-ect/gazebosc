@@ -34,9 +34,6 @@
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
 #include "fontawesome5.h"
-#include "ext/ImFileDialog/ImFileDialog.h"
-#include <stdio.h>
-#include <signal.h>
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -47,10 +44,8 @@
 
 #include <chrono>
 #include <thread>
-
+#include <stdio.h>
 #include <signal.h>
-
-
 #include <streambuf>
 #include <iostream>
 #include <sstream>
@@ -58,6 +53,7 @@
 namespace fs = std::filesystem;
 
 #include "config.h"
+#include "ext/ImFileDialog/ImFileDialog.h"
 #include "actors/actors.h"
 #include "app/App.hpp"
 
@@ -66,15 +62,17 @@ int SDLInit(SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_ve
 ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* glsl_version);
 void UILoop(SDL_Window* window, ImGuiIO& io );
 void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
-
-void ShowConfigWindow(bool * showLog);
-void ShowLogWindow(ImGuiTextBuffer&);
-int UpdateActors(float deltaTime, bool * showLog);
-bool Load(const char* fileName);
-void Clear();
-void Init();
-
-void RegisterActors();
+void register_actors();
+// Window variables
+SDL_Window* window;
+SDL_GLContext gl_context;
+ImGuiIO io;
+const char* glsl_version;
+static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+GZB_GLOBALS_t GZB_GLOBAL;
+// Logging
+char huge_string_buf[4096];
+int out_pipe[2];
 
 // exit handlers et al
 volatile sig_atomic_t stop;
@@ -96,23 +94,8 @@ static BOOL WINAPI s_exit_handler_fn (DWORD ctrltype)
 }
 #endif
 
-// Window variables
-SDL_Window* window;
-SDL_GLContext gl_context;
-ImGuiIO io;
-const char* glsl_version;
-static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-
-GZB_GLOBALS_t GZB_GLOBAL;
-
-// Logging
-bool logWindow = false;
-char huge_string_buf[4096];
-int out_pipe[2];
-
-/* Obtain a backtrace and print it to stdout. */
+// Obtain a backtrace and print it to stdout.
 #if defined(HAVE_LIBUNWIND)
-
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 #include <stdlib.h>
@@ -323,7 +306,6 @@ int main(int argc, char** argv)
     signal(SIGSEGV, print_backtrace); // Invalid memory reference
     signal(SIGABRT, print_backtrace); // Abort signal from abort(3)
     signal(SIGFPE,  print_backtrace); // Floating-point exception
-
 #if defined(__UNIX__)
     signal(SIGQUIT, sig_hand);
     signal(SIGTERM, sig_hand);
@@ -350,7 +332,7 @@ int main(int argc, char** argv)
     set_global_resources();
     set_global_temp();
     GZB_GLOBAL.UPDATE_AVAIL = false;
-    RegisterActors();
+    register_actors();
 
     // Argument capture
     zargs_t *args = zargs_new(argc, argv);
@@ -366,30 +348,18 @@ int main(int argc, char** argv)
     stop = 0;
     int loops = -1;
     int loopCount = 0;
-    /*
-    if (!headless) {
-        //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
-        // capture stdout
-        // This approach uses a pipe to prevent multiple writes before reads overlapping
+
+    if (!headless)
+    {
         memset(huge_string_buf,0,4096);
-
-        int rc = pipe(out_pipe);
-        assert( rc == 0 );
-
-        long flags = fcntl(out_pipe[0], F_GETFL);
-        flags |= O_NONBLOCK;
-        fcntl(out_pipe[0], F_SETFL, flags);
-
-        dup2(out_pipe[1], STDOUT_FILENO);
-        close(out_pipe[1]);  
+        gzb::capture_stdio();
     }
-    */
 
     // try to init SDL and otherwise run headless
-    if ( !headless && SDLInit(&window, &gl_context, &glsl_version) == 0 ) {
+    if ( !headless && SDLInit(&window, &gl_context, &glsl_version) == 0 )
+    {
         SDL_SetWindowTitle(window, "Gazebosc       [" GIT_VERSION "]" );
-
-        zsys_info("VERSION: %s", glsl_version);
+        zsys_info("GLSL VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
 
         if ( stage_file )
@@ -417,12 +387,13 @@ int main(int argc, char** argv)
             {
                 zsys_error("Failed loading %s", stage_file);
             }
-            while (!stop) {
-                if ( loops != -1 ) {
+            while (!stop)
+            {
+                if ( loops != -1 )
+                {
                     std::this_thread::sleep_for (std::chrono::milliseconds(1));
-                    if ( ++loopCount > loops ) {
+                    if ( ++loopCount > loops )
                         break;
-                    }
                 }
             }
         }
@@ -461,7 +432,7 @@ void UpdateRegisteredActorsCache() {
 }
 
 std::map<std::string, int> max_actors_by_type;
-void RegisterActors() {
+void register_actors() {
     // register stock actors
     sph_stock_register_all();
 
@@ -650,11 +621,11 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
 
         // Get time since last frame
         deltaTime = SDL_GetTicks() - oldTime;
-        /* In here we can poll sockets */
+        // In here we can poll sockets
+        // For when we send msgs to the main thread
         if (deltaTime < 1000/30)
             SDL_Delay((1000/30)-deltaTime);
         //printf("fps %.2f %i\n", 1000./(SDL_GetTicks() - oldTime), deltaTime);
-        /* For when we send msgs to the main thread */
         oldTime = SDL_GetTicks();
 
         //main window
