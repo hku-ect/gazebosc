@@ -1,9 +1,8 @@
 #include "ActorContainer.hpp"
 #include "App.hpp"
+#include "ext/ImFileDialog/ImFileDialog.h"
 
 namespace gzb {
-
-imgui_addons::ImGuiFileBrowser actor_file_dialog;
 
 ActorContainer::ActorContainer(sphactor_t *actor) {
     this->actor = actor;
@@ -558,9 +557,27 @@ ActorContainer::RenderFilename(const char* name, zconfig_t *data) {
         file_selected = true;
 
     if ( file_selected )
-        ImGui::OpenPopup("Actor Open File");
+    {
+        char filter[1024];
+        sprintf(filter, "Valid files: (%s){%s},.*", valid_files, valid_files);
+        ifd::FileDialog::Instance().Open(std::string(title) + "ActorOpenDialog", "Actor Open File", filter);
+    }
 
-    if ( actor_file_dialog.showFileDialog("Actor Open File",
+    if (ifd::FileDialog::Instance().IsDone(std::string(title) + "ActorOpenDialog"))
+    {
+        if (ifd::FileDialog::Instance().HasResult())
+        {
+            std::string res = ifd::FileDialog::Instance().GetResult().u8string();
+            char *path = convert_to_relative_to_wd(res.c_str());
+            zconfig_set_value(zvalue, "%s", path );
+            strcpy(buf, path);
+            //SendAPI<char*>(zapic, zapiv, zvalue, &(p) );
+            zstr_free(&path);
+            sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
+        }
+    }
+
+    /*if ( actor_file_dialog.showFileDialog("Actor Open File",
                                          streq(zoptStr, "rw" ) ? imgui_addons::ImGuiFileBrowser::DialogMode::SAVE : imgui_addons::ImGuiFileBrowser::DialogMode::OPEN,
                                          ImVec2(700, 310),
                                          valid_files) ) // TODO: perhaps add type hint for extensions?
@@ -571,7 +588,7 @@ ActorContainer::RenderFilename(const char* name, zconfig_t *data) {
         //SendAPI<char*>(zapic, zapiv, zvalue, &(p) );
         zstr_free(&path);
         sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
-    }
+    }*/
 
     zconfig_t *help = zconfig_locate(data, "help");
     const char *helpv = "Load a file";

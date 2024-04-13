@@ -212,7 +212,6 @@ list(APPEND GZB_SOURCES
     ext/imgui/imgui_demo.cpp
     ext/ImFileDialog/ImFileDialog.h
     ext/ImFileDialog/ImFileDialog.cpp
-    ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.cpp
     ext/ImGuiColorTextEdit/LanguageDefinitions.cpp
     ext/ImGuiColorTextEdit/TextEditor.cpp
     ${ACTOR_SOURCES}

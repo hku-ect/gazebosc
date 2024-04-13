@@ -338,7 +338,7 @@ void TextEditorWindow::OnSaveCommand()
 {
     if (!has_associated_file || associated_file == "")
     {
-        ifd::FileDialog::Instance().Save(window_name+"SaveDialog", "Save text file", "*.py;*txt {.py,.txt}");
+        ifd::FileDialog::Instance().Save(window_name+"SaveDialog", "Save text file", "*.py;*.txt {.py,.txt}");
         return;
     }
     std::string textToSave = editor->GetText();

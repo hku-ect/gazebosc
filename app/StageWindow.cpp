@@ -4,7 +4,7 @@
 #include "App.hpp"
 #include "glm/glm/common.hpp"
 #include "helpers.h"
-
+#include "ext/ImFileDialog/ImFileDialog.h"
 
 namespace gzb {
 
@@ -218,7 +218,6 @@ bool StageWindow::Save( const char* configFile )
 }
 int StageWindow::RenderMenuBar()
 {
-    static imgui_addons::ImGuiFileBrowser file_dialog;
     static char* configFile = new char[64] { 0x0 };
     static int keyFocus = 0;
     MenuAction action = MenuAction_None;
@@ -361,21 +360,21 @@ int StageWindow::RenderMenuBar()
     ImGui::EndMainMenuBar();
 
     // Handle MenuActions
-    if ( action == MenuAction_Load) {
-        ImGui::OpenPopup("MenuAction_Load");
+    if ( action == MenuAction_Load)
+    {
+        ifd::FileDialog::Instance().Open(window_name + "LoadStageDialog", "Load stage from file", "*.gzb; {.gzb}");
         keyFocus = 2;
     }
     else if ( action == MenuAction_Save ) {
         if ( streq( editing_file.c_str(), "" ) ) {
-            ImGui::OpenPopup("MenuAction_Save");
+            ifd::FileDialog::Instance().Save(window_name + "SaveStageDialog", "Save stage to file", "*.gzb; {.gzb}");
         }
         else {
             Save(editing_path.c_str());
-            ImGui::CloseCurrentPopup();
         }
     }
     else if ( action == MenuAction_SaveAs ) {
-        ImGui::OpenPopup("MenuAction_Save");
+        ifd::FileDialog::Instance().Save(window_name + "SaveStageDialog", "Save stage to file", "*.gzb; {.gzb}");
     }
     else if ( action == MenuAction_Clear ) {
         Clear();
@@ -385,29 +384,37 @@ int StageWindow::RenderMenuBar()
         return -1;
     }
 
-    if(file_dialog.showFileDialog("MenuAction_Load", imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(700, 310), ".gzs"))
-    {
-        if (Load(file_dialog.selected_path.c_str())) {
-            editing_file = file_dialog.selected_fn;
-            editing_path = file_dialog.selected_path;
-
-            moveCwdIfNeeded();
+    if (ifd::FileDialog::Instance().IsDone(window_name + "LoadStageDialog")) {
+        if (ifd::FileDialog::Instance().HasResult()) {
+            std::string res = ifd::FileDialog::Instance().GetResult().u8string();
+            if (Load(res.c_str())) {
+                editing_file = ifd::FileDialog::Instance().GetResult().filename();
+                editing_path = ifd::FileDialog::Instance().GetResult().parent_path();
+                moveCwdIfNeeded();
+            }
         }
+        ifd::FileDialog::Instance().Close();
     }
 
-    if(file_dialog.showFileDialog("MenuAction_Save", imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(700, 310), ".gzs"))
+    if (ifd::FileDialog::Instance().IsDone(window_name + "SaveStageDialog"))
     {
-        if ( !Save(file_dialog.selected_path.c_str()) ) {
-            editing_file = "";
-            editing_path = "";
-            zsys_error("Saving file failed!");
+        if (ifd::FileDialog::Instance().HasResult())
+        {
+            std::string res = ifd::FileDialog::Instance().GetResult().u8string();
+            if ( !Save(res.c_str()) )
+            {
+                editing_file = "";
+                editing_path = "";
+                zsys_error("Saving file failed!");
+            }
+            else
+            {
+                editing_file = ifd::FileDialog::Instance().GetResult().filename();
+                editing_path = ifd::FileDialog::Instance().GetResult().parent_path();
+                moveCwdIfNeeded();
+            }
         }
-        else {
-            editing_file = file_dialog.selected_fn;
-            editing_path = file_dialog.selected_path;
-
-            moveCwdIfNeeded();
-        }
+        ifd::FileDialog::Instance().Close();
     }
 
     return 0;
