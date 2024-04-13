@@ -11,7 +11,6 @@
 #include "DemoWindow.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
-#include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
 #include <string>
 #include "fontawesome5.h"
 #include "config.h"

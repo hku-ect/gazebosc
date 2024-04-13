@@ -14,7 +14,7 @@
 #include "libsphactor.h"
 #include "ImNodes.h"
 #include "ImNodesEz.h"
-#include "ext/ImGui-Addons/FileBrowser/ImGuiFileBrowser.h"
+#include <vector>
 
 namespace gzb {
 // actor file browser

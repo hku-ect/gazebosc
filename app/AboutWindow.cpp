@@ -51,7 +51,7 @@ void SelectableText(const char *buf)
 
 AboutWindow::AboutWindow()
 {
-
+    window_name = "About";
 }
 
 AboutWindow::~AboutWindow()
