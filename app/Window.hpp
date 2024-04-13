@@ -10,7 +10,7 @@ struct Window
     virtual ~Window() {};
     virtual void OnImGui() {};
 
-    bool showing = true;
+    bool showing = false;
     std::string window_name = "noname";
 };
 }

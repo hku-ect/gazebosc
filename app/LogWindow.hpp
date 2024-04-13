@@ -25,7 +25,7 @@ struct LogWindow : public Window
         ImGui::PushID(123);
 
         ImGui::SetNextWindowSizeConstraints(ImVec2(100,100), ImVec2(1000,1000));
-        ImGui::Begin(window_name.c_str());
+        ImGui::Begin(window_name.c_str(), &showing);
 
         if (ImGui::Button("Clear")) buffer->clear();
         ImGui::SameLine();
