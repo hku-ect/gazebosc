@@ -388,8 +388,8 @@ int StageWindow::RenderMenuBar()
         if (ifd::FileDialog::Instance().HasResult()) {
             std::string res = ifd::FileDialog::Instance().GetResult().u8string();
             if (Load(res.c_str())) {
-                editing_file = ifd::FileDialog::Instance().GetResult().filename();
-                editing_path = ifd::FileDialog::Instance().GetResult().parent_path();
+                editing_file = ifd::FileDialog::Instance().GetResult().filename().u8string();
+                editing_path = ifd::FileDialog::Instance().GetResult().parent_path().u8string();
                 moveCwdIfNeeded();
             }
         }
@@ -409,8 +409,8 @@ int StageWindow::RenderMenuBar()
             }
             else
             {
-                editing_file = ifd::FileDialog::Instance().GetResult().filename();
-                editing_path = ifd::FileDialog::Instance().GetResult().parent_path();
+                editing_file = ifd::FileDialog::Instance().GetResult().filename().u8string();
+                editing_path = ifd::FileDialog::Instance().GetResult().parent_path().u8string();
                 moveCwdIfNeeded();
             }
         }
