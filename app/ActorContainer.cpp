@@ -577,19 +577,6 @@ ActorContainer::RenderFilename(const char* name, zconfig_t *data) {
         }
     }
 
-    /*if ( actor_file_dialog.showFileDialog("Actor Open File",
-                                         streq(zoptStr, "rw" ) ? imgui_addons::ImGuiFileBrowser::DialogMode::SAVE : imgui_addons::ImGuiFileBrowser::DialogMode::OPEN,
-                                         ImVec2(700, 310),
-                                         valid_files) ) // TODO: perhaps add type hint for extensions?
-    {
-        char *path = convert_to_relative_to_wd(actor_file_dialog.selected_path.c_str());
-        zconfig_set_value(zvalue, "%s", path );
-        strcpy(buf, path);
-        //SendAPI<char*>(zapic, zapiv, zvalue, &(p) );
-        zstr_free(&path);
-        sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
-    }*/
-
     zconfig_t *help = zconfig_locate(data, "help");
     const char *helpv = "Load a file";
     if (help)
