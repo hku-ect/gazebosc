@@ -352,9 +352,11 @@ int main(int argc, char** argv)
     if (!headless)
     {
         memset(huge_string_buf,0,4096);
+#ifdef __UNIX__
         int rc = pipe(out_pipe);
         assert( rc == 0 );
         gzb::capture_stdio(out_pipe[0], out_pipe[1]);
+#endif
     }
 
     // try to init SDL and otherwise run headless
