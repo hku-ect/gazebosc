@@ -65,7 +65,6 @@ public:
     sph_stage_t *stage = NULL;
     std::string editing_file = "";
     std::string editing_path = "";
-    ImVector<char*> actor_types;
     std::vector<ActorContainer*> actors;
     std::map<std::string, int> max_actors_by_type;
     std::stack<UndoData> undoStack;

@@ -38,6 +38,10 @@ inline ImU32 LerpImU32( ImU32 c1, ImU32 c2, int index, int total, float offset, 
 StageWindow::StageWindow()
 {
     window_name = "Stage Window";
+    // very hackish still
+    // enforcable maximum actor counts
+    max_actors_by_type.insert(std::make_pair("NatNet", 1));
+    max_actors_by_type.insert(std::make_pair("OpenVR", 1));
 }
 
 StageWindow::~StageWindow()
@@ -721,7 +725,11 @@ int StageWindow::UpdateActors(float deltaTime)
         if (ImGui::BeginPopup("NodesContextMenu"))
         {
             //TODO: Fetch updated available nodes?
-            for (const auto desc : actor_types)
+
+            zlist_t *actor_types = zhash_keys(sphactor_get_registered());
+            assert(actor_types);
+            char *desc = (char *)zlist_first(actor_types);
+            while(desc != NULL)
             {
                 if (ImGui::MenuItem(desc))
                 {
@@ -741,6 +749,7 @@ int StageWindow::UpdateActors(float deltaTime)
                         RegisterCreateAction(actor);
                     }
                 }
+                desc = (char *)zlist_next(actor_types);
             }
 
             ImGui::Separator();
