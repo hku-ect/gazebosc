@@ -71,7 +71,6 @@ const char* glsl_version;
 static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
 GZB_GLOBALS_t GZB_GLOBAL;
 // Logging
-char huge_string_buf[4096];
 int out_pipe[2];
 
 // exit handlers et al
@@ -351,7 +350,6 @@ int main(int argc, char** argv)
 
     if (!headless)
     {
-        memset(huge_string_buf,0,4096);
 #ifdef __UNIX__
         int rc = pipe(out_pipe);
         assert( rc == 0 );
@@ -422,19 +420,6 @@ int main(int argc, char** argv)
     return 0;
 }
 
-ImVector<char*> actor_types;
-void UpdateRegisteredActorsCache() {
-    zhash_t *hash = sphactor_get_registered();
-    zlist_t *list = zhash_keys(hash);
-    actor_types.clear();
-
-    char* item = (char*)zlist_first(list);
-    while( item ) {
-        actor_types.push_back(item);
-        item = (char*)zlist_next(list);
-    }
-}
-
 std::map<std::string, int> max_actors_by_type;
 void register_actors() {
     // register stock actors
@@ -472,11 +457,6 @@ void register_actors() {
     PyGILState_Release(gstate);
     /* End check newer version */
 #endif
-    //enforcable maximum actor counts
-    max_actors_by_type.insert(std::make_pair("NatNet", 1));
-    max_actors_by_type.insert(std::make_pair("OpenVR", 1));
-
-    UpdateRegisteredActorsCache();
 }
 
 int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version ) {
