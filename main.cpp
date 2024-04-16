@@ -25,14 +25,14 @@
 #include<dbghelp.h>
 #include"StackWalker.h"
 #endif
-
+#ifndef IMGUI_DEFINE_MATH_OPERATORS
+#   define IMGUI_DEFINE_MATH_OPERATORS
+#   define IM_VEC2_CLASS_EXTRA
+#endif
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_internal.h"
-#include "fontawesome5.h"
-#include <stdio.h>
-#include <signal.h>
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -43,10 +43,8 @@
 
 #include <chrono>
 #include <thread>
-
+#include <stdio.h>
 #include <signal.h>
-
-
 #include <streambuf>
 #include <iostream>
 #include <sstream>
@@ -54,21 +52,25 @@
 namespace fs = std::filesystem;
 
 #include "config.h"
+#include "ext/ImFileDialog/ImFileDialog.h"
+#include "actors/actors.h"
+#include "app/App.hpp"
 
 // Forward declare to keep main func on top for readability
 int SDLInit(SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version);
 ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* glsl_version);
 void UILoop(SDL_Window* window, ImGuiIO& io );
 void Cleanup(SDL_Window* window, SDL_GLContext* gl_context);
-
-void ShowConfigWindow(bool * showLog);
-void ShowLogWindow(ImGuiTextBuffer&);
-int UpdateActors(float deltaTime, bool * showLog);
-bool Load(const char* fileName);
-void Clear();
-void Init();
-
-void RegisterActors();
+void register_actors();
+// Window variables
+SDL_Window* window;
+SDL_GLContext gl_context;
+ImGuiIO io;
+const char* glsl_version;
+static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
+GZB_GLOBALS_t GZB_GLOBAL;
+// Logging
+int out_pipe[2];
 
 // exit handlers et al
 volatile sig_atomic_t stop;
@@ -90,34 +92,8 @@ static BOOL WINAPI s_exit_handler_fn (DWORD ctrltype)
 }
 #endif
 
-// Window variables
-SDL_Window* window;
-SDL_GLContext gl_context;
-ImGuiIO io;
-const char* glsl_version;
-static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
-
-GZB_GLOBALS_t GZB_GLOBAL;
-
-// Logging
-bool logWindow = false;
-char huge_string_buf[4096];
-int out_pipe[2];
-
-ImGuiTextBuffer& getBuffer(){
-    static ImGuiTextBuffer sLogBuffer; // static log buffer for logger channel
-
-    //read(out_pipe[0], huge_string_buf, 4096);
-    if ( strlen( huge_string_buf ) > 0 ) {
-        sLogBuffer.appendf("%s", huge_string_buf);
-        memset(huge_string_buf,0,4096);
-    }
-
-    return sLogBuffer;
-}
-/* Obtain a backtrace and print it to stdout. */
+// Obtain a backtrace and print it to stdout.
 #if defined(HAVE_LIBUNWIND)
-
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 #include <stdlib.h>
@@ -328,7 +304,6 @@ int main(int argc, char** argv)
     signal(SIGSEGV, print_backtrace); // Invalid memory reference
     signal(SIGABRT, print_backtrace); // Abort signal from abort(3)
     signal(SIGFPE,  print_backtrace); // Floating-point exception
-
 #if defined(__UNIX__)
     signal(SIGQUIT, sig_hand);
     signal(SIGTERM, sig_hand);
@@ -355,7 +330,7 @@ int main(int argc, char** argv)
     set_global_resources();
     set_global_temp();
     GZB_GLOBAL.UPDATE_AVAIL = false;
-    RegisterActors();
+    register_actors();
 
     // Argument capture
     zargs_t *args = zargs_new(argc, argv);
@@ -371,41 +346,32 @@ int main(int argc, char** argv)
     stop = 0;
     int loops = -1;
     int loopCount = 0;
-    /*
-    if (!headless) {
-        //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
-        // capture stdout
-        // This approach uses a pipe to prevent multiple writes before reads overlapping
-        memset(huge_string_buf,0,4096);
 
+    if (!headless)
+    {
+#ifdef __UNIX__
         int rc = pipe(out_pipe);
         assert( rc == 0 );
-
-        long flags = fcntl(out_pipe[0], F_GETFL);
-        flags |= O_NONBLOCK;
-        fcntl(out_pipe[0], F_SETFL, flags);
-
-        dup2(out_pipe[1], STDOUT_FILENO);
-        close(out_pipe[1]);  
+        gzb::capture_stdio(out_pipe[0], out_pipe[1]);
+#endif
     }
-    */
 
     // try to init SDL and otherwise run headless
-    if ( !headless && SDLInit(&window, &gl_context, &glsl_version) == 0 ) {
+    if ( !headless && SDLInit(&window, &gl_context, &glsl_version) == 0 )
+    {
         SDL_SetWindowTitle(window, "Gazebosc       [" GIT_VERSION "]" );
-
-        zsys_info("VERSION: %s", glsl_version);
+        zsys_info("GLSL VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
 
         if ( stage_file )
         {
-            if ( ! Load(stage_file))
+            if ( ! gzb::App::getApp().stage_win.Load(stage_file))
             {
                 zsys_error("Failed loading %s", stage_file);
             }
         }
         else
-            Init(); // start with an empty stage
+            gzb::App::getApp().stage_win.Init(); // start with an empty stage
 
         // Blocking UI loop
         UILoop(window, io);
@@ -418,16 +384,17 @@ int main(int argc, char** argv)
 
         if ( stage_file )
         {
-            if ( ! Load(stage_file))
+            if ( ! gzb::App::getApp().stage_win.Load(stage_file))
             {
                 zsys_error("Failed loading %s", stage_file);
             }
-            while (!stop) {
-                if ( loops != -1 ) {
+            while (!stop)
+            {
+                if ( loops != -1 )
+                {
                     std::this_thread::sleep_for (std::chrono::milliseconds(1));
-                    if ( ++loopCount > loops ) {
+                    if ( ++loopCount > loops )
                         break;
-                    }
                 }
             }
         }
@@ -441,7 +408,7 @@ int main(int argc, char** argv)
         }
     }
 
-    Clear();
+    gzb::App::getApp().stage_win.Clear();
     sphactor_dispose();
 
     zstr_free(&GZB_GLOBAL.RESOURCESPATH);
@@ -450,6 +417,45 @@ int main(int argc, char** argv)
 
     fflush(stdout);
     return 0;
+}
+
+std::map<std::string, int> max_actors_by_type;
+void register_actors() {
+    // register stock actors
+    sph_stock_register_all();
+
+    sphactor_register("HTTPLaunchpod", &httplaunchpodactor_handler, zconfig_str_load(httplaunchpodactorcapabilities), &httplaunchpodactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
+    sphactor_register<OSCOutput>( "OSC Output", OSCOutput::capabilities);
+    sphactor_register<OSCMultiOut>( "OSC Multi Output", OSCMultiOut::capabilities);
+    sphactor_register<NatNet>( "NatNet", NatNet::capabilities );
+    sphactor_register<NatNet2OSC>( "NatNet2OSC", NatNet2OSC::capabilities );
+    sphactor_register<Midi2OSC>( "Midi2OSC", Midi2OSC::capabilities );
+#ifdef HAVE_OPENVR
+    sphactor_register<OpenVR>("OpenVR", OpenVR::capabilities);
+#endif
+    sphactor_register<OSCInput>( "OSC Input", OSCInput::capabilities );
+    sphactor_register<Record>("Record", Record::capabilities );
+    sphactor_register<ModPlayerActor>( "ModPlayer", ModPlayerActor::capabilities );
+    sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
+#ifdef HAVE_OPENVR
+    sphactor_register<DmxActor>( "DmxOut", DmxActor::capabilities );
+    sphactor_register<IntSlider>( "IntSlider", IntSlider::capabilities );
+    sphactor_register<FloatSlider>( "FloatSlider", FloatSlider::capabilities );
+#endif
+#ifdef PYTHON3_FOUND
+    int rc = python_init();
+    assert( rc == 0);
+    /* Check newer version: We should make this async as it slows startup" */
+    PyGILState_STATE gstate;
+    gstate = PyGILState_Ensure();
+
+    PyObject *pUpdateBool = python_call_file_func("checkver", "check_github_newer_commit", "(s)", GIT_HASH);
+    if (pUpdateBool && PyObject_IsTrue(pUpdateBool))
+        GZB_GLOBAL.UPDATE_AVAIL = true;
+
+    PyGILState_Release(gstate);
+    /* End check newer version */
+#endif
 }
 
 int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_version ) {
@@ -485,7 +491,6 @@ int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_v
 #endif
 
     // Create window with graphics context
-    //TODO: Make this a skippable part of the system...
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
@@ -503,10 +508,24 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+    //io.ConfigViewportsNoAutoMerge = true;
+    //io.ConfigViewportsNoTaskBarIcon = true;
+
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
+
+    // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+    ImGuiStyle& style = ImGui::GetStyle();
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        style.WindowRounding = 0.0f;
+        style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+    }
 
     // Setup Platform/Renderer bindings
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
@@ -525,7 +544,7 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     font_cfg.PixelSnapH = true;
     font_cfg.SizePixels = 13.0f * 1.0f;
     font_cfg.EllipsisChar = (ImWchar)0x0085;
-    font_cfg.GlyphOffset.y = 1.0f * IM_FLOOR(font_cfg.SizePixels / 13.0f);  // Add +1 offset per 13 units
+    font_cfg.GlyphOffset.y = 1.0f * IM_TRUNC(font_cfg.SizePixels / 13.0f);  // Add +1 offset per 13 units
     char fontpath[PATH_MAX];
     snprintf(fontpath, PATH_MAX, "%s/%s", GZB_GLOBAL.RESOURCESPATH, "misc/fonts/ProggyCleanSZ.ttf");
     io.Fonts->AddFontFromFileTTF(fontpath, 13.0f, &font_cfg);
@@ -543,12 +562,36 @@ ImGuiIO& ImGUIInit(SDL_Window* window, SDL_GLContext* gl_context, const char* gl
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphR>
     //IM_ASSERT(font != NULL);
 
+    // ImFileDialog requires you to set the CreateTexture and DeleteTexture
+    ifd::FileDialog::Instance().CreateTexture = [](uint8_t* data, int w, int h, char fmt) -> void* {
+        GLuint tex;
+
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, (fmt == 0) ? GL_BGRA : GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE); //Gl2
+        //glGenerateMipmap(GL_TEXTURE_2D); //GL3
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        return (void*)tex;
+    };
+    ifd::FileDialog::Instance().DeleteTexture = [](void* tex) {
+        GLuint texID = (GLuint)((uintptr_t)tex);
+        glDeleteTextures(1, &texID);
+    };
+
     return io;
 }
 
 void UILoop( SDL_Window* window, ImGuiIO& io ) {
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+    gzb::App &app = gzb::App::getApp();
+    app.log_win.pipe_fd = out_pipe[0];
     // Main loop
     unsigned int deltaTime = 0, oldTime = 0;
     while (!stop)
@@ -568,49 +611,47 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
                 stop = 1;
         }
-
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
+        // Get time since last frame
+        deltaTime = SDL_GetTicks() - oldTime;
+        // In here we can poll sockets
+        // For when we send msgs to the main thread
+        if (deltaTime < 1000/30)
+            SDL_Delay((1000/30)-deltaTime);
+        //printf("fps %.2f %i, Application average %.3f ms/frame (%.1f FPS)\n", 1000./(SDL_GetTicks() - oldTime), deltaTime, 1000.0f / io.Framerate, io.Framerate);
+        oldTime = SDL_GetTicks();
+
         //main window
         //  this will be our main workspace
-
         SDL_GetWindowSize(window, &w, &h);
         ImVec2 size = ImVec2(w,h);
         ImGui::SetNextWindowSize(size);
 
-        // Get time since last frame
-        deltaTime = SDL_GetTicks() - oldTime;
-        /* In here we can poll sockets */
-        if (deltaTime < 1000/30)
-            SDL_Delay((1000/30)-deltaTime);
-        //printf("fps %.2f %i\n", 1000./(SDL_GetTicks() - oldTime), deltaTime);
-        /* For when we send msgs to the main thread */
-        oldTime = SDL_GetTicks();
-        int rc = UpdateActors( ((float)deltaTime) / 1000, &logWindow);
-
+        int rc = app.Update();
         if ( rc == -1 ) {
             stop = 1;
         }
-        // Save/load window
-        //size = ImVec2(350,135);
-        //ImVec2 pos = ImVec2(w - 400, 50);
-        //ImGui::SetNextWindowSize(size);
-        //ImGui::SetNextWindowPos(pos);
-        //ShowConfigWindow(&logWindow);
-
-        if ( logWindow ) {
-            ShowLogWindow(getBuffer());
-        }
-
         // Rendering
         ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        // Update and Render additional Platform Windows
+        // (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
+        //  For this specific demo app we could also call SDL_GL_MakeCurrent(window, gl_context) directly)
+        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        {
+            SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+            SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+            ImGui::UpdatePlatformWindows();
+            ImGui::RenderPlatformWindowsDefault();
+            SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+        }
         SDL_GL_SwapWindow(window);
     }
 }
