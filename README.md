@@ -4,6 +4,8 @@ OSX/Linux: [![Build Status](https://api.travis-ci.org/hku-ect/gazebosc.png?branc
 
 Gazebosc is a high level actor model programming environment. You can visually create actors and author them using a nodal UI. Actors are running concurrently and can be programmed sequentially using C, C++ or Python. Actors communicate using the [OSC](https://en.wikipedia.org/wiki/Open_Sound_Control) serialisation format. 
 
+![screenshot](dist/screenshot.png?raw=true)
+
 ## Prebuilt binaries
 
 CI tested binaries with bundled Python are available from:
