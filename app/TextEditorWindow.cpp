@@ -219,8 +219,7 @@ void TextEditorWindow::OnImGui()
             targetLineFixed = targetLine < 1 ? 0 : targetLine - 1;
             editor->ClearExtraCursors();
             editor->ClearSelections();
-            //editor->SetSelection({ targetLineFixed, 0 }, { targetLineFixed, editor->GetLineMaxColumn(targetLineFixed) });
-            CenterViewAtLine(targetLineFixed);
+            editor->SetCursorPosition( targetLineFixed, 0, -1);
             ImGui::CloseCurrentPopup();
             ImGui::GetIO().ClearInputKeys();
         }
@@ -243,7 +242,6 @@ void TextEditorWindow::OnImGui()
             editor->ClearExtraCursors();
             editor->SelectNextOccurrenceOf(ctrlf_text_to_find, toFindTextSize, ctrlf_case_sensitive);
             TextEditor::Coordinates nextOccurrenceLine = editor->GetCursorPosition();
-            CenterViewAtLine(nextOccurrenceLine.mLine);
         }
         //if (ImGui::Button("Find all") && toFindTextSize > 0)
         //	editor->SelectAllOccurrencesOf(ctrlf_text_to_find, toFindTextSize, ctrlf_case_sensitive);
@@ -282,18 +280,6 @@ void TextEditorWindow::OnImGui()
     //	codeFontSize--;
 
     ImGui::End();
-}
-
-void TextEditorWindow::SetSelection(int startLine, int startChar, int endLine, int endChar)
-{
-    editor->SetCursorPosition(endLine, endChar);
-    editor->SetSelectionStart(TextEditor::Coordinates(startLine, startChar));
-    editor->SetSelectionEnd(TextEditor::Coordinates(endLine, endChar));
-}
-
-void TextEditorWindow::CenterViewAtLine(int line)
-{
-    //editor->SetViewAtLine(line, TextEditor::SetViewAtLineMode::Centered);
 }
 
 const char* TextEditorWindow::GetAssociatedFile()

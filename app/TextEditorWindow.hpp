@@ -16,8 +16,6 @@ struct TextEditorWindow : public Window
 
     void OnImGui() override;
 
-    void SetSelection(int startLine, int startChar, int endLine, int endChar);
-    void CenterViewAtLine(int line);
     const char* GetAssociatedFile();
 
     void OnReloadCommand();
