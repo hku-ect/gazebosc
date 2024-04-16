@@ -631,31 +631,7 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         ImVec2 size = ImVec2(w,h);
         ImGui::SetNextWindowSize(size);
 
-        // root window
-        int rc = app.stage_win.UpdateActors(deltaTime);
-
-        // text editor windows
-        std::vector<gzb::TextEditorWindow *>::iterator itr = app.text_editors.begin();
-        while ( itr < app.text_editors.end() )
-        {
-            if ( (*itr)->showing )
-                (*itr)->OnImGui();
-            if ( (*itr)->requesting_destroy )
-            {
-                delete(*itr);
-                itr = app.text_editors.erase(itr);
-            }
-            else
-                ++itr;
-        }
-        if (app.about_win.showing)
-            app.about_win.OnImGui();
-        if (app.log_win.showing)
-            app.log_win.OnImGui();
-        if (app.demo_win.showing)
-            app.demo_win.OnImGui();
-
-
+        int rc = app.Update();
         if ( rc == -1 ) {
             stop = 1;
         }

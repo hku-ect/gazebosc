@@ -424,7 +424,7 @@ int StageWindow::RenderMenuBar()
     return 0;
 }
 
-int StageWindow::UpdateActors(float deltaTime)
+int StageWindow::UpdateActors()
 {
     static std::vector<ActorContainer*> selectedActors;
     static std::vector<char *> actorClipboardType;
@@ -631,7 +631,7 @@ int StageWindow::UpdateActors(float deltaTime)
                 ImNodes::Ez::InputSlots(actor->input_slots.data(), actor->input_slots.size());
 
                 // Custom node content may go here
-                actor->Render(deltaTime);
+                actor->Render();
 
                 // Render output slots second (order is important)
                 ImNodes::Ez::OutputSlots(actor->output_slots.data(), actor->output_slots.size());

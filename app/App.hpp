@@ -36,6 +36,37 @@ struct App
         for (auto w : text_editors)
             delete w;
     };
+
+    int Update() {
+        // root window
+        int rc = stage_win.UpdateActors();
+        if ( rc == -1)
+            return rc;
+
+        // text editor windows
+        std::vector<gzb::TextEditorWindow *>::iterator itr = text_editors.begin();
+        while ( itr < text_editors.end() )
+        {
+            if ( (*itr)->showing )
+                (*itr)->OnImGui();
+            if ( (*itr)->requesting_destroy )
+            {
+                delete(*itr);
+                itr = text_editors.erase(itr);
+            }
+            else
+                ++itr;
+        }
+        if (about_win.showing)
+            about_win.OnImGui();
+        if (log_win.showing)
+            log_win.OnImGui();
+        if (demo_win.showing)
+            demo_win.OnImGui();
+
+        return rc;
+    };
+
 };
 static void capture_stdio(int pipe_in, int pipe_out)
 {

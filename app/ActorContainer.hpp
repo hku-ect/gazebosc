@@ -87,7 +87,7 @@ struct ActorContainer
     void HandleAPICalls(zconfig_t * data);
     template<typename T>
     void SendAPI(zconfig_t *zapic, zconfig_t *zapiv, zconfig_t *zvalue, T * value);
-    void Render(float deltaTime);
+    void Render();
     void RenderCustomReport();
     void RenderList(const char *name, zconfig_t *data);
     void RenderMediacontrol(const char* name, zconfig_t *data);

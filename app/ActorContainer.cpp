@@ -198,7 +198,7 @@ ActorContainer::SendAPI(zconfig_t *zapic, zconfig_t *zapiv, zconfig_t *zvalue, T
 
 
 void
-ActorContainer::Render(float deltaTime) {
+ActorContainer::Render() {
     //loop through each data element in capabilities
     if ( this->capabilities == NULL ) return;
 

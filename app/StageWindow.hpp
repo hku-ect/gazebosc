@@ -77,7 +77,7 @@ public:
     bool Load( const char* configFile );
     bool Save( const char* configFile );
     int RenderMenuBar();
-    int UpdateActors(float deltaTime);
+    int UpdateActors();
     ActorContainer *Find(const char *endpoint);
     ActorContainer * CreateFromType( const char* typeStr, const char* uuidStr );
     int CountActorsOfType( const char* type );
