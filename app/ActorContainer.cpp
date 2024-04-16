@@ -1128,6 +1128,7 @@ ActorContainer::OpenTextEditor(const char *filepath)
     if (txtwin == NULL)
     {
         txtwin = new gzb::TextEditorWindow(filepath);
+        txtwin->showing = true;
         gzb::App::getApp().text_editors.push_back(txtwin);
     }
     else
