@@ -80,7 +80,7 @@ void AboutWindow::OnImGui()
     mouse_data.w = io.MouseDownDuration[1];
     float time = (float)ImGui::GetTime();
     FX(draw_list, p0, p1, size, mouse_data, time);
-    draw_list->AddText(ImGui::GetFont(), ImGui::GetFontSize()*4.f, p0 + ImVec2(16,120), ImColor::HSV(mouse_data.x,mouse_data.x,0.9), "GazebOsc");
+    draw_list->AddText(ImGui::GetFont(), ImGui::GetFontSize()*2.f, p0 + ImVec2(16,120), ImColor::HSV(mouse_data.x,mouse_data.x,0.9), "GazebOsc");
     //draw_list->AddText(p0 + size/2, IM_COL32(255,0,255,255), "GazebOsc");
     //draw_list->AddCircleFilled( p0 + size/2, 10.f, IM_COL32_WHITE, 8);
     draw_list->PopClipRect();
@@ -142,6 +142,8 @@ void AboutWindow::OnImGui()
         }
 
     }
+    //printf("fps %.2f %i, Application average %.3f ms/frame (%.1f FPS)\n", 1000./(SDL_GetTicks() - oldTime), deltaTime, 1000.0f / io.Framerate, io.Framerate);
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)\n", 1000.f/io.Framerate, io.Framerate);
     ImGui::End();
 }
 
