@@ -1,6 +1,5 @@
 import urllib.request
 import json
-import pdb
 
 URL="https://api.github.com/repos"
 OWN="hku-ect"
@@ -52,7 +51,6 @@ def check_github_newer_commit(cursha):
             """
             data = json.loads(response.read())
             if data:  # Check if data is not empty
-                pdb.set_trace()
                 t = data.get("sha")
                 if not cursha == t:
                     print("Current sha: {}, newer sha: {}".format(cursha, t))
