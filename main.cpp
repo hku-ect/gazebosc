@@ -367,6 +367,9 @@ int main(int argc, char** argv)
         // Blocking UI loop
         UILoop(window, io);
 
+        if (gzb::App::getApp().log_win.capture_stdout)
+            gzb::App::getApp().log_win.RevertStdOut();
+
         // Cleanup
         Cleanup(window, &gl_context);
     }
@@ -398,7 +401,6 @@ int main(int argc, char** argv)
             zsys_error("Can't open a window and no stage file provided, exiting");
         }
     }
-
     gzb::App::getApp().stage_win.Clear();
     sphactor_dispose();
 
