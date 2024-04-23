@@ -279,6 +279,13 @@ int StageWindow::RenderMenuBar()
         if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Log Console") ) {
             gzb::App::getApp().log_win.showing = !gzb::App::getApp().log_win.showing;
         }
+        if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Standard Out Capture") ) {
+            if (gzb::App::getApp().log_win.capture_stdout)
+                gzb::App::getApp().log_win.RevertStdOut();
+            else
+                gzb::App::getApp().log_win.CaptureStdOut();
+        }
+
 #ifdef HAVE_IMGUI_DEMO
         if ( ImGui::MenuItem(ICON_FA_CARAVAN " Toggle Demo") ) {
             gzb::App::getApp().demo_win.showing = !gzb::App::getApp().demo_win.showing;
