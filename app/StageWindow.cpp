@@ -220,6 +220,7 @@ bool StageWindow::Save( const char* configFile )
     int rc = sph_stage_save_as( stage, configFile);
     return rc == 0;
 }
+
 int StageWindow::RenderMenuBar()
 {
     static char* configFile = new char[64] { 0x0 };
@@ -263,7 +264,9 @@ int StageWindow::RenderMenuBar()
         {
             if ( ImGui::MenuItem(ICON_FA_FOLDER_OPEN " New editor") )
             {
-                gzb::App::getApp().text_editors.push_back(new gzb::TextEditorWindow());
+                TextEditorWindow *te = new gzb::TextEditorWindow();
+                gzb::App::getApp().text_editors.push_back(te);
+                te->showing = true;
             }
             for (auto w : gzb::App::getApp().text_editors )
             {
