@@ -122,6 +122,7 @@ struct LogWindow : public Window
     {
 #ifdef __WINDOWS__
         printf("WARNING: stdio redirection not implemented on Windows\n");
+        return -1;
 #else
         int rc = 0;
         if (original_stdout_fd != -1)
