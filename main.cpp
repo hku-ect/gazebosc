@@ -437,11 +437,11 @@ void register_actors() {
     sphactor_register<Record>("Record", Record::capabilities );
     sphactor_register<ModPlayerActor>( "ModPlayer", ModPlayerActor::capabilities );
     sphactor_register<ProcessActor>( "Process", ProcessActor::capabilities );
-#ifdef HAVE_OPENVR
+#ifdef HAVE_DMX
     sphactor_register<DmxActor>( "DmxOut", DmxActor::capabilities );
+#endif
     sphactor_register<IntSlider>( "IntSlider", IntSlider::capabilities );
     sphactor_register<FloatSlider>( "FloatSlider", FloatSlider::capabilities );
-#endif
 #ifdef PYTHON3_FOUND
     int rc = python_init();
     assert( rc == 0);
