@@ -20,6 +20,10 @@ namespace gzb {
 
 struct App
 {
+    // settings
+    unsigned int fps = 60;
+    unsigned int idle_fps = 10;
+    // windows
     ImGuiTextBuffer log_buffer;
     std::vector<TextEditorWindow*> text_editors;
     AboutWindow about_win;

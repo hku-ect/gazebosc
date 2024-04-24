@@ -498,7 +498,8 @@ int SDLInit( SDL_Window** window, SDL_GLContext* gl_context, const char** glsl_v
     *window = SDL_CreateWindow("GazebOSC", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     *gl_context = SDL_GL_CreateContext(*window);
     SDL_GL_MakeCurrent(*window, *gl_context);
-    SDL_GL_SetSwapInterval(1); // Enable vsync
+    if ( SDL_GL_SetSwapInterval(-1) == -1) // Enable adaptive vsync
+        SDL_GL_SetSwapInterval(1); // Enable vsync
 
     return 0;
 }
@@ -602,26 +603,30 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+        bool had_events = false;
+        unsigned int timeout = 1000/app.idle_fps; // 10 fps while idle
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
+            timeout = 1000/app.fps; // 60 fps while input events
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT)
                 stop = 1;
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
                 stop = 1;
         }
+        // Get time since last frame
+        deltaTime = SDL_GetTicks() - oldTime;
+
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        // Get time since last frame
-        deltaTime = SDL_GetTicks() - oldTime;
         // In here we can poll sockets
         // For when we send msgs to the main thread
-        if (deltaTime < 1000/30)
-            SDL_Delay((1000/30)-deltaTime);
+        if (deltaTime < timeout)
+            SDL_Delay(timeout-deltaTime);
         //printf("fps %.2f %i, Application average %.3f ms/frame (%.1f FPS)\n", 1000./(SDL_GetTicks() - oldTime), deltaTime, 1000.0f / io.Framerate, io.Framerate);
         oldTime = SDL_GetTicks();
 
