@@ -396,7 +396,7 @@ int StageWindow::RenderMenuBar()
             std::string res = ifd::FileDialog::Instance().GetResult().u8string();
             if (Load(res.c_str())) {
                 editing_file = ifd::FileDialog::Instance().GetResult().filename().u8string();
-                editing_path = ifd::FileDialog::Instance().GetResult().parent_path().u8string();
+                editing_path = res;
                 moveCwdIfNeeded();
             }
         }
@@ -417,7 +417,7 @@ int StageWindow::RenderMenuBar()
             else
             {
                 editing_file = ifd::FileDialog::Instance().GetResult().filename().u8string();
-                editing_path = ifd::FileDialog::Instance().GetResult().parent_path().u8string();
+                editing_path = res;
                 moveCwdIfNeeded();
             }
         }
@@ -1021,7 +1021,7 @@ void StageWindow::moveCwdIfNeeded()
     getcwd(cwd, PATH_MAX);
     // editingPath not starting with cwd means we need to move to the new wd
     if (editing_path.rfind(cwd, 0) != 0) {
-        // we're not in the current working dir! move files to editingPath
+        // we're not in the current working dir! move files to the new wd
         // moving if cwd was tmp dir (name contains _gzs_)
         std::string cwds = std::string(cwd);
         std::filesystem::path newcwds = std::filesystem::path(editing_path);
@@ -1029,6 +1029,7 @@ void StageWindow::moveCwdIfNeeded()
         tmppath.append("_gzs_");
         if (cwds.rfind(tmppath.string(), 0) == 0)
         {
+            zsys_info("%s is a temporary stage dir. Moving files to %s", cwd, newcwds.parent_path().generic_u8string().c_str());
             // cwd is a tmp dir so we need to move files
             // copy and delete for now
             try
