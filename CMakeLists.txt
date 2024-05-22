@@ -198,6 +198,7 @@ list(APPEND GZB_SOURCES
     app/AboutWindow.hpp
     app/AboutWindow.cpp
     app/LogWindow.hpp
+    app/PyWindow.hpp
     app/DemoWindow.hpp
     app/ActorContainer.hpp
     app/ActorContainer.cpp

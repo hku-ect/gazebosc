@@ -276,9 +276,14 @@ int StageWindow::RenderMenuBar()
             }
             ImGui::EndMenu();
         }
-        if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Log Console") ) {
+        if ( ImGui::MenuItem(ICON_FA_BARS " Toggle Log Console") ) {
             gzb::App::getApp().log_win.showing = !gzb::App::getApp().log_win.showing;
         }
+#ifdef PYTHON3_FOUND
+        if ( ImGui::MenuItem(ICON_FA_TERMINAL " Toggle Python Console") ) {
+            gzb::App::getApp().py_win.showing = !gzb::App::getApp().py_win.showing;
+        }
+#endif
 #ifdef HAVE_IMGUI_DEMO
         if ( ImGui::MenuItem(ICON_FA_CARAVAN " Toggle Demo") ) {
             gzb::App::getApp().demo_win.showing = !gzb::App::getApp().demo_win.showing;
