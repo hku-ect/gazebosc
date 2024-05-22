@@ -69,8 +69,6 @@ ImGuiIO io;
 const char* glsl_version;
 static ImWchar ranges[] = { ICON_MIN_FA, ICON_MAX_FA, 0 };
 GZB_GLOBALS_t GZB_GLOBAL;
-// Logging
-int out_pipe[2];
 
 // exit handlers et al
 volatile sig_atomic_t stop;
@@ -348,18 +346,10 @@ int main(int argc, char** argv)
     int loops = -1;
     int loopCount = 0;
 
-    if (!headless && ioredir)
-    {
-#ifdef __UNIX__
-        int rc = pipe(out_pipe);
-        assert( rc == 0 );
-        gzb::capture_stdio(out_pipe[0], out_pipe[1]);
-#endif
-    }
-
     // try to init SDL and otherwise run headless
     if ( !headless && SDLInit(&window, &gl_context, &glsl_version) == 0 )
     {
+        gzb::App::getApp().log_win.capture_stdout = ioredir;
         SDL_SetWindowTitle(window, "Gazebosc       [" GIT_VERSION "]" );
         zsys_info("GLSL VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
@@ -376,6 +366,9 @@ int main(int argc, char** argv)
 
         // Blocking UI loop
         UILoop(window, io);
+
+        if (gzb::App::getApp().log_win.capture_stdout)
+            gzb::App::getApp().log_win.RevertStdOut();
 
         // Cleanup
         Cleanup(window, &gl_context);
@@ -408,7 +401,6 @@ int main(int argc, char** argv)
             zsys_error("Can't open a window and no stage file provided, exiting");
         }
     }
-
     gzb::App::getApp().stage_win.Clear();
     sphactor_dispose();
 
@@ -593,7 +585,6 @@ void UILoop( SDL_Window* window, ImGuiIO& io ) {
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     gzb::App &app = gzb::App::getApp();
-    app.log_win.pipe_fd = out_pipe[0];
     // Main loop
     unsigned int deltaTime = 0, oldTime = 0;
     while (!stop)

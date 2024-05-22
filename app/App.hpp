@@ -72,20 +72,6 @@ struct App
     };
 
 };
-static void capture_stdio(int pipe_in, int pipe_out)
-{
-#ifdef __WINDOWS__
-    printf("WARNING: stdio redirection not implemented on Windows\n");
-#else
-    //TODO: Fix non-threadsafeness causing hangs on zsys_info calls during zactor_destroy
-    long flags = fcntl(pipe_in, F_GETFL);
-    flags |= O_NONBLOCK;
-    fcntl(pipe_in, F_SETFL, flags);
-
-    dup2(pipe_out, STDOUT_FILENO);
-    close(pipe_out);
-#endif
-}
 
 }
 #endif // WINDOW_HPP
