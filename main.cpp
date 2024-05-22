@@ -341,13 +341,14 @@ int main(int argc, char** argv)
     }
     bool verbose = zargs_hasx (args, "--verbose", "-v", NULL);
     bool headless = zargs_hasx (args, "--background", "-b", NULL);
+    bool ioredir = zargs_hasx (args, "--ioredir", "-i", NULL);
     const char *stage_file = zargs_first(args);
 
     stop = 0;
     int loops = -1;
     int loopCount = 0;
 
-    if (!headless)
+    if (!headless && ioredir)
     {
 #ifdef __UNIX__
         int rc = pipe(out_pipe);
