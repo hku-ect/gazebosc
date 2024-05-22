@@ -349,7 +349,7 @@ int main(int argc, char** argv)
     // try to init SDL and otherwise run headless
     if ( !headless && SDLInit(&window, &gl_context, &glsl_version) == 0 )
     {
-        gzb::App::getApp().log_win.CaptureStdOut();
+        gzb::App::getApp().log_win.capture_stdout = ioredir;
         SDL_SetWindowTitle(window, "Gazebosc       [" GIT_VERSION "]" );
         zsys_info("GLSL VERSION: %s", glsl_version);
         io = ImGUIInit(window, &gl_context, glsl_version);
