@@ -9,6 +9,7 @@
 #include "AboutWindow.hpp"
 #include "LogWindow.hpp"
 #include "DemoWindow.hpp"
+#include "PyWindow.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include <string>
@@ -30,7 +31,9 @@ struct App
     LogWindow log_win;
     DemoWindow demo_win;
     StageWindow stage_win;
-
+#ifdef PYTHON3_FOUND
+    PyWindow py_win;
+#endif
     static App& getApp() {
         static App app;
         return app;
@@ -67,6 +70,8 @@ struct App
             log_win.OnImGui();
         if (demo_win.showing)
             demo_win.OnImGui();
+        if (py_win.showing)
+            py_win.OnImGui();
 
         return rc;
     };
