@@ -374,19 +374,19 @@ int StageWindow::RenderMenuBar()
     // Handle MenuActions
     if ( action == MenuAction_Load)
     {
-        ifd::FileDialog::Instance().Open(window_name + "LoadStageDialog", "Load stage from file", "*.gzb; {.gzb}");
+        ifd::FileDialog::Instance().Open(window_name + "LoadStageDialog", "Load stage from file", "Gazebo Stage(*.gzs){.gzs},.*");
         keyFocus = 2;
     }
     else if ( action == MenuAction_Save ) {
         if ( streq( editing_file.c_str(), "" ) ) {
-            ifd::FileDialog::Instance().Save(window_name + "SaveStageDialog", "Save stage to file", "*.gzb; {.gzb}");
+            ifd::FileDialog::Instance().Save(window_name + "SaveStageDialog", "Save stage to file", "Gazebo Stage(*.gzs){.gzs},.*");
         }
         else {
             Save(editing_path.c_str());
         }
     }
     else if ( action == MenuAction_SaveAs ) {
-        ifd::FileDialog::Instance().Save(window_name + "SaveStageDialog", "Save stage to file", "*.gzb; {.gzb}");
+        ifd::FileDialog::Instance().Save(window_name + "SaveStageDialog", "Save stage to file", "Gazebo Stage(*.gzs){.gzs},.*");
     }
     else if ( action == MenuAction_Clear ) {
         Clear();
