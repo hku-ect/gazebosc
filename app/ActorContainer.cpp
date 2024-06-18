@@ -575,6 +575,7 @@ ActorContainer::RenderFilename(const char* name, zconfig_t *data) {
             zstr_free(&path);
             sphactor_ask_api(this->actor, zconfig_value(zapic), zconfig_value(zapiv), p );
         }
+        ifd::FileDialog::Instance().Close();
     }
 
     zconfig_t *help = zconfig_locate(data, "help");
