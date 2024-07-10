@@ -56,6 +56,7 @@ option (WITH_IMGUI_DEMO "Enable ImGUI demo console" ON)
 option (WITH_EMBED_PYTHON "Embed the python interpreter, otherwise use system installed" OFF)
 option (WITH_OPENVR "Enable OpenVR support" ON)
 option (WITH_DMX "Enable DMX support" ON)
+option (RPI "Build for the Raspberry PI" OFF)
 ### END SET OPTIONS
 
 ### EXTERNAL LIBS
@@ -82,17 +83,11 @@ add_subdirectory("ext/rtmidi" EXCLUDE_FROM_ALL)
 # include(CheckIncludeFile)
 # CHECK_INCLUDE_FILE(/opt/vc/include/bcm_host.h RPI) # doesn't work :S
 # Just check if the file is there
-if (EXISTS "/opt/vc/include/bcm_host.h")
+if (RPI)
     message(STATUS "Enabling building for the Raspberry Pi")
-    set(RPI "ON")
     add_definitions(-DIMGUI_IMPL_OPENGL_ES2)
     set(WITH_OPENVR "OFF")
-endif(EXISTS "/opt/vc/include/bcm_host.h")
-if (EXISTS "/usr/include/bcm_host.h")
-    message(STATUS "Enabling building for the Raspberry Pi on Raspberry Pi OS")
-    set(RPI4 "ON")
-    add_definitions(-DIMGUI_IMPL_OPENGL_ES2)
-endif(EXISTS "/usr/include/bcm_host.h")
+endif(RPI)
 
 # External system libraries through find_package
 find_package(libzmq REQUIRED)
@@ -346,16 +341,6 @@ elseif (RPI)
         SDL2-static
         sphactor-static
         rtmidi
-        ${Python3_LIBRARIES}
-        -lasound -ldl -L/opt/vc/lib -lbrcmGLESv2)
-    target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
-elseif (RPI4)
-    list(APPEND DIRS "${CMAKE_CURRENT_SOURCE_DIR}/ext/openvr/bin/linuxarm64")
-    target_link_libraries(gazebosc PUBLIC
-        SDL2-static
-        sphactor-static
-        rtmidi
-        ${OPENVR_LIBRARIES}
         ${Python3_LIBRARIES}
         -lasound -ldl -lGLESv2)
     target_compile_options(gazebosc PUBLIC -D__LINUX_ALSA__ )
