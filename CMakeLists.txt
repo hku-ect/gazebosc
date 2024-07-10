@@ -164,7 +164,7 @@ if(WITH_DMX)
 endif(WITH_DMX)
 
 ### PROJECT SOURCES
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/actors ACTOR_SOURCES)
+file (GLOB ACTOR_SOURCES CONFIGURE_DEPENDS actors/*.h actors/*.c actors/*.cpp actors/*.hpp)
 
 # get git version
 include(GitVersion)
