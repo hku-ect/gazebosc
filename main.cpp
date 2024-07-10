@@ -425,6 +425,7 @@ void register_actors() {
     // register stock actors
     sph_stock_register_all();
 
+    sphactor_register("OSC Create", &osccreate_actor_handler, zconfig_str_load(osccreate_capabilities), NULL, NULL); // no constructor needed
     sphactor_register("HTTPLaunchpod", &httplaunchpodactor_handler, zconfig_str_load(httplaunchpodactorcapabilities), &httplaunchpodactor_new_helper, NULL); // https://stackoverflow.com/questions/65957511/typedef-for-a-registering-a-constructor-function-in-c
     sphactor_register<OSCOutput>( "OSC Output", OSCOutput::capabilities);
     sphactor_register<OSCMultiOut>( "OSC Multi Output", OSCMultiOut::capabilities);
