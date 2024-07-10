@@ -1,6 +1,7 @@
 #ifndef ACTORS_H
 #define ACTORS_H
 
+#include "osccreate_actor.h"
 #include "HTTPLaunchpod.h"
 #include "OSCOutputActor.h"
 #include "OscMultiOut.h"
