@@ -35,6 +35,10 @@ jobs:
       with:
         submodules: true
 
+    - name: fix git
+      if: github.event_name == 'push'
+      run: git fetch --all --tags --recurse-submodules=no
+
     - name: add Debian Packages
       if: matrix.os == 'ubuntu-latest'
       uses: myci-actions/add-deb-repo@10
@@ -103,7 +107,6 @@ jobs:
       env:
         BBPWD: ${{ secrets.BBPWD }}
       run: |
-        git fetch --all --tags --recurse-submodules=no
         if [ "${RUNNER_OS}" == "Linux" ]; then zip -q -r $( echo $GITHUB_REPOSITORY | cut -d"/" -f2)_${RUNNER_OS}_$( git describe --tag --always --dirty --abbrev=4).zip * -x "*/test/*" "*/__pycache__/*"; fi
         echo 'pong.hku.nl,37.97.171.71 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFxUlmYnS6gItSE4QuXpJxVFqhatyadmYaSQ+GPYwna9bs3KoWxfYl2j0ijA4aVAPPZLjLAjNbxd26fIrocW5fQ=' >> ./known_hosts
         git clone https://github.com/clarkwang/passh.git
