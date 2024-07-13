@@ -33,11 +33,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        fetch-depth: 0
         submodules: true
 
     - name: fix git
       if: github.event_name == 'push'
-      run: git fetch --all --tags --recurse-submodules=no
+      run: git fetch --force --tags --recurse-submodules=no
 
     - name: add Debian Packages
       if: matrix.os == 'ubuntu-latest'
