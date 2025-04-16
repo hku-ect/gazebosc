@@ -130,7 +130,7 @@ static PyMethodDef PyZmsg_methods[] = {
 };*/
 
 static PyTypeObject PyZmsgType = {
-    PyObject_HEAD_INIT(NULL)
+    PyVarObject_HEAD_INIT(NULL, 0)
     "internal.Zmsg",           // tp_name
     sizeof(PyZmsgObject),      // tp_basicsize
     0,                         // tp_itemsize
